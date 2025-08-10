@@ -5,17 +5,35 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// PostgreSQL bağlantısı
+// Railway PostgreSQL bağlantısı - DÜZELTME!
 const { Pool } = require('pg');
+
+// Railway database URL'sini kontrol et
+console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+// Bağlantı testi
+pool.on('connect', () => {
+    console.log('🐘 PostgreSQL bağlantısı başarılı (Railway)');
+});
+
+pool.on('error', (err) => {
+    console.error('❌ PostgreSQL bağlantı hatası:', err.message);
+});
+
 // Veritabanı tablolarını oluştur
 async function initDatabase() {
     try {
-        console.log('🔧 Veritabanı kontrol ediliyor...');
+        console.log('🔧 Railway PostgreSQL veritabanı kontrol ediliyor...');
+        
+        // Bağlantı testi
+        const testResult = await pool.query('SELECT NOW()');
+        console.log('✅ Veritabanı bağlantısı aktif:', testResult.rows[0].now);
         
         // Sadece eksik tabloları oluştur, mevcut tabloları silme!
         
@@ -57,7 +75,7 @@ async function initDatabase() {
             )
         `);
 
-        console.log('✅ PostgreSQL tabloları kontrol edildi');
+        console.log('✅ Railway PostgreSQL tabloları kontrol edildi');
         
         // Test kullanıcısı ekle/güncelle - SADECE YOKSA EKLE
         try {
@@ -75,12 +93,18 @@ async function initDatabase() {
                 console.log(`🧪 Test kullanıcısı mevcut: 1234 (${existingUser.rows[0].credits} kredi)`);
             }
         } catch (err) {
-            console.log('Test kullanıcısı kontrol hatası:', err.message);
+            console.log('⚠️ Test kullanıcısı kontrol hatası:', err.message);
         }
         
     } catch (error) {
-        console.error('❌ PostgreSQL bağlantı hatası:', error);
-        console.log('💡 LocalStorage ile devam ediliyor...');
+        console.error('❌ Railway PostgreSQL bağlantı hatası:', error);
+        console.log('💡 Veritabanı bağlantısı kurulamadı - LocalStorage ile devam edilecek...');
+        
+        // Railway'de bu hata olmamalı, ama yine de LocalStorage fallback'i hazır
+        console.log('🔧 Railway PostgreSQL ayarlarını kontrol edin:');
+        console.log('   - DATABASE_URL environment variable var mı?');
+        console.log('   - PostgreSQL service çalışıyor mu?');
+        console.log('   - SSL ayarları doğru mu?');
     }
 }
 
@@ -90,7 +114,7 @@ app.use(cors());
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// PostgreSQL yardımcı fonksiyonları
+// PostgreSQL yardımcı fonksiyonları - HEPSİ DÜZELTME!
 async function saveApprovedUser(userId, userName, credits = 0) {
     try {
         await pool.query(
@@ -100,7 +124,7 @@ async function saveApprovedUser(userId, userName, credits = 0) {
         console.log(`📝 Onaylı kullanıcı eklendi: ${userName} (${userId})`);
         return true;
     } catch (error) {
-        console.log('PostgreSQL kullanıcı kayıt hatası:', error.message);
+        console.log('❌ Railway PostgreSQL kullanıcı kayıt hatası:', error.message);
         return false;
     }
 }
@@ -110,7 +134,7 @@ async function getUserCredits(userId) {
         const result = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
         return result.rows[0]?.credits || 0;
     } catch (error) {
-        console.log('PostgreSQL kredi sorgulama hatası:', error.message);
+        console.log('❌ Railway PostgreSQL kredi sorgulama hatası:', error.message);
         return 0;
     }
 }
@@ -120,7 +144,7 @@ async function getFullUserInfo(userId) {
         const result = await pool.query('SELECT * FROM approved_users WHERE id = $1 AND status = $2', [userId, 'active']);
         return result.rows[0] || null;
     } catch (error) {
-        console.log('PostgreSQL kullanıcı kontrol hatası:', error.message);
+        console.log('❌ Railway PostgreSQL kullanıcı kontrol hatası:', error.message);
         return null;
     }
 }
@@ -130,7 +154,7 @@ async function isUserApproved(userId) {
         const result = await pool.query('SELECT * FROM approved_users WHERE id = $1 AND status = $2', [userId, 'active']);
         return result.rows[0] || null;
     } catch (error) {
-        console.log('PostgreSQL kullanıcı kontrol hatası:', error.message);
+        console.log('❌ Railway PostgreSQL kullanıcı kontrol hatası:', error.message);
         return null;
     }
 }
@@ -154,7 +178,7 @@ async function updateUserCredits(userId, amount, type = 'add', description = '')
         console.log(`💰 Kredi güncellendi: ${userId} ${type} ${amount}`);
         return true;
     } catch (error) {
-        console.log('PostgreSQL kredi güncelleme hatası:', error.message);
+        console.log('❌ Railway PostgreSQL kredi güncelleme hatası:', error.message);
         return false;
     }
 }
@@ -200,7 +224,7 @@ async function saveCallToDatabase(userId, duration, creditsUsed) {
         return true;
         
     } catch (error) {
-        console.error('❌ PostgreSQL arama kayıt hatası:', error);
+        console.error('❌ Railway PostgreSQL arama kayıt hatası:', error);
         console.error('Hata detayları:', error.message);
         return false;
     }
@@ -212,7 +236,7 @@ app.get('/api/approved-users', async (req, res) => {
         const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ error: error.message, message: 'Veritabanı kullanılamıyor' });
+        res.status(500).json({ error: error.message, message: 'Railway PostgreSQL kullanılamıyor' });
     }
 });
 
@@ -305,7 +329,7 @@ app.get('/api/calls', async (req, res) => {
         `);
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ error: error.message, message: 'Veritabanı kullanılamıyor' });
+        res.status(500).json({ error: error.message, message: 'Railway PostgreSQL kullanılamıyor' });
     }
 });
 
@@ -371,7 +395,7 @@ const activeCalls = new Map(); // userId -> { adminId, startTime, status }
 // YENİ: Admin'den gelen aramalar takibi
 const adminCalls = new Map(); // userId -> { adminId, startTime, status }
 
-// Yerel IP adresini bul
+// Yerel IP adresini bul (Railway'de gerekli değil, ama localhost testi için)
 function getLocalIP() {
     const nets = require('os').networkInterfaces();
     for (const name of Object.keys(nets)) {
@@ -384,13 +408,18 @@ function getLocalIP() {
     return 'localhost';
 }
 
-// Basit ana sayfa
+// Railway ana sayfa (güncellenmiş)
 app.get('/', (req, res) => {
+    const serverUrl = process.env.RAILWAY_STATIC_URL || `http://${getLocalIP()}:${process.env.PORT || 8080}`;
+    const wsUrl = process.env.RAILWAY_STATIC_URL ? 
+        `wss://${process.env.RAILWAY_STATIC_URL.replace('https://', '')}` : 
+        `ws://${getLocalIP()}:${process.env.PORT || 8080}`;
+    
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>VIPCEP Server</title>
+            <title>VIPCEP Server (Railway)</title>
             <meta charset="UTF-8">
             <style>
                 body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
@@ -410,23 +439,24 @@ app.get('/', (req, res) => {
                 .app-button { background: #2563eb; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none; display: inline-block; }
                 .app-button:hover { background: #1d4ed8; color: white; }
                 .test-user { background: #dcfce7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #22c55e; }
-                .feature-new { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+                .railway-info { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>🎯 VIPCEP Server Çalışıyor!</h1>
+                <h1>🚄 VIPCEP Server (Railway Cloud)</h1>
                 
-                <div class="info">
-                    <p><strong>Server IP:</strong> ${getLocalIP()}</p>
-                    <p><strong>WebSocket URL:</strong> ws://${getLocalIP()}:8080</p>
-                    <p><strong>Port:</strong> 8080</p>
+                <div class="railway-info">
+                    <h3>🌐 Railway Deployment</h3>
+                    <p><strong>Status:</strong> LIVE & Running</p>
+                    <p><strong>Database:</strong> Railway PostgreSQL</p>
+                    <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'production'}</p>
                 </div>
                 
-                <div class="feature-new">
-                    <h3>🚀 YENİ ÖZELLİK: Admin → Müşteri Arama</h3>
-                    <p>Admin artık müşterileri arayabilir! Admin panel'de her kullanıcının yanında "Ara" butonu var.</p>
-                    <p><strong>Özellikler:</strong> Gelen arama bildirimi, kabul/reddet seçenekleri, WebRTC ses bağlantısı</p>
+                <div class="info">
+                    <p><strong>Server URL:</strong> ${serverUrl}</p>
+                    <p><strong>WebSocket URL:</strong> ${wsUrl}</p>
+                    <p><strong>Database:</strong> Railway PostgreSQL</p>
                 </div>
                 
                 <h3>📱 Uygulamalar</h3>
@@ -460,7 +490,8 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <hr style="margin: 20px 0;">
-                <p><small>Server başlatıldı: ${new Date().toLocaleString()}</small></p>
+                <p><small>Railway deployment başlatıldı: ${new Date().toLocaleString()}</small></p>
+                <p><small>Database: Railway PostgreSQL</small></p>
             </div>
             
             <script>
@@ -478,8 +509,7 @@ const server = http.createServer(app);
 // WebSocket server
 const wss = new WebSocket.Server({ server });
 
-console.log('🚀 VIPCEP Server Başlatılıyor...');
-console.log('📍 Yerel IP:', getLocalIP());
+console.log('🚄 VIPCEP Server Başlatılıyor (Railway)...');
 
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress;
@@ -1052,50 +1082,42 @@ function broadcastUserList() {
 // Veritabanını başlat
 initDatabase();
 
-// Server'ı başlat
+// Server'ı başlat - Railway için düzenleme
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
-    const localIP = getLocalIP();
     console.log('');
-    console.log('🎯 VIPCEP Server çalışıyor!');
-    console.log('📍 Yerel erişim: http://localhost:' + PORT);
-    console.log('🌐 Ağ erişimi: http://' + localIP + ':' + PORT);
-    console.log('🔌 WebSocket: ws://' + localIP + ':' + PORT);
-    console.log('🗄️ Veritabanı: PostgreSQL (vip123456)');
+    console.log('🚄 VIPCEP Server çalışıyor (Railway Cloud)!');
+    console.log('🌐 Port:', PORT);
+    console.log('🗄️ Veritabanı: Railway PostgreSQL');
+    console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'CONFIGURED' : 'MISSING');
     console.log('');
-    console.log('🚀 YENİ ÖZELLİK: Admin → Müşteri Arama');
-    console.log('   📞 Admin artık müşterileri arayabilir');
-    console.log('   📱 Gelen arama bildirimleri');
-    console.log('   ✅ İki yönlü arama sistemi tamamlandı');
+    console.log('🚀 Özellikler:');
+    console.log('   📞 Admin ↔ Müşteri İki Yönlü Arama');
+    console.log('   💳 Kredi Sistemi (Railway PostgreSQL)');
+    console.log('   📱 WebRTC Ses Bağlantısı');
+    console.log('   📊 Gerçek Zamanlı İstatistikler');
     console.log('');
     console.log('📱 Uygulamalar:');
-    console.log('   📞 Admin paneli: http://localhost:' + PORT + '/admin-panel.html');
-    console.log('   📱 Müşteri uygulaması: http://localhost:' + PORT + '/customer-app.html');
-    console.log('📊 API Endpoints:');
-    console.log('   GET  /api/approved-users - Onaylı kullanıcı listesi');
-    console.log('   POST /api/approved-users - Yeni onaylı kullanıcı');
-    console.log('   DELETE /api/approved-users/:id - Onaylı kullanıcı sil');
-    console.log('   POST /api/approved-users/:id/credits - Kredi güncelle');
-    console.log('   GET  /api/calls - Arama geçmişi');
-    console.log('   GET  /api/stats - İstatistikler');
-    console.log('   POST /api/add-credit/:id - Manuel kredi ekleme');
+    console.log('   📞 Admin paneli: /admin-panel.html');
+    console.log('   📱 Müşteri uygulaması: /customer-app.html');
     console.log('');
     console.log('🧪 TEST KULLANICISI: ID=1234, Ad=Test Kullanıcı, Kredi=10');
     console.log('📞 WhatsApp: +90 537 479 24 03');
     console.log('📧 Email: vipcepservis@gmail.com');
     console.log('');
-    console.log('✅ Proje %95 tamamlandı - Admin → Müşteri arama özelliği eklendi!');
+    console.log('✅ Railway Deployment READY!');
     console.log('');
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-    console.log('\n🛑 Server kapatılıyor...');
+    console.log('\n🛑 Railway server kapatılıyor...');
     wss.close(() => {
         server.close(() => {
-            console.log('✅ Server başarıyla kapatıldı');
-            process.exit(0);
+            pool.end(() => {
+                console.log('✅ Railway server başarıyla kapatıldı');
+                process.exit(0);
+            });
         });
     });
-
 });
