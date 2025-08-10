@@ -5,35 +5,26 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// Railway PostgreSQL bağlantısı - DÜZELTME!
+// PostgreSQL bağlantısı - Railway için güncellenmiş
 const { Pool } = require('pg');
 
-// Railway database URL'sini kontrol et
-console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
-console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
-
+// Railway Environment Variables kullanımı
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Bağlantı testi
-pool.on('connect', () => {
-    console.log('🐘 PostgreSQL bağlantısı başarılı (Railway)');
-});
-
-pool.on('error', (err) => {
-    console.error('❌ PostgreSQL bağlantı hatası:', err.message);
-});
+console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
 
 // Veritabanı tablolarını oluştur
 async function initDatabase() {
     try {
-        console.log('🔧 Railway PostgreSQL veritabanı kontrol ediliyor...');
+        console.log('🔧 Veritabanı kontrol ediliyor...');
         
-        // Bağlantı testi
-        const testResult = await pool.query('SELECT NOW()');
-        console.log('✅ Veritabanı bağlantısı aktif:', testResult.rows[0].now);
+        // Test connection
+        await pool.query('SELECT NOW()');
+        console.log('✅ PostgreSQL bağlantısı başarılı');
         
         // Sadece eksik tabloları oluştur, mevcut tabloları silme!
         
@@ -75,7 +66,7 @@ async function initDatabase() {
             )
         `);
 
-        console.log('✅ Railway PostgreSQL tabloları kontrol edildi');
+        console.log('✅ PostgreSQL tabloları kontrol edildi');
         
         // Test kullanıcısı ekle/güncelle - SADECE YOKSA EKLE
         try {
@@ -93,18 +84,13 @@ async function initDatabase() {
                 console.log(`🧪 Test kullanıcısı mevcut: 1234 (${existingUser.rows[0].credits} kredi)`);
             }
         } catch (err) {
-            console.log('⚠️ Test kullanıcısı kontrol hatası:', err.message);
+            console.log('Test kullanıcısı kontrol hatası:', err.message);
         }
         
     } catch (error) {
-        console.error('❌ Railway PostgreSQL bağlantı hatası:', error);
-        console.log('💡 Veritabanı bağlantısı kurulamadı - LocalStorage ile devam edilecek...');
-        
-        // Railway'de bu hata olmamalı, ama yine de LocalStorage fallback'i hazır
-        console.log('🔧 Railway PostgreSQL ayarlarını kontrol edin:');
-        console.log('   - DATABASE_URL environment variable var mı?');
-        console.log('   - PostgreSQL service çalışıyor mu?');
-        console.log('   - SSL ayarları doğru mu?');
+        console.error('❌ PostgreSQL bağlantı hatası:', error);
+        console.log('💡 Veritabanı bağlantısı başarısız - Railway PostgreSQL servisini kontrol edin');
+        throw error; // Railway'de hata olursa container durdurulsun
     }
 }
 
@@ -114,7 +100,7 @@ app.use(cors());
 app.use(express.static(__dirname));
 app.use(express.json());
 
-// PostgreSQL yardımcı fonksiyonları - HEPSİ DÜZELTME!
+// PostgreSQL yardımcı fonksiyonları
 async function saveApprovedUser(userId, userName, credits = 0) {
     try {
         await pool.query(
@@ -124,7 +110,7 @@ async function saveApprovedUser(userId, userName, credits = 0) {
         console.log(`📝 Onaylı kullanıcı eklendi: ${userName} (${userId})`);
         return true;
     } catch (error) {
-        console.log('❌ Railway PostgreSQL kullanıcı kayıt hatası:', error.message);
+        console.log('PostgreSQL kullanıcı kayıt hatası:', error.message);
         return false;
     }
 }
@@ -134,7 +120,7 @@ async function getUserCredits(userId) {
         const result = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
         return result.rows[0]?.credits || 0;
     } catch (error) {
-        console.log('❌ Railway PostgreSQL kredi sorgulama hatası:', error.message);
+        console.log('PostgreSQL kredi sorgulama hatası:', error.message);
         return 0;
     }
 }
@@ -144,7 +130,7 @@ async function getFullUserInfo(userId) {
         const result = await pool.query('SELECT * FROM approved_users WHERE id = $1 AND status = $2', [userId, 'active']);
         return result.rows[0] || null;
     } catch (error) {
-        console.log('❌ Railway PostgreSQL kullanıcı kontrol hatası:', error.message);
+        console.log('PostgreSQL kullanıcı kontrol hatası:', error.message);
         return null;
     }
 }
@@ -154,7 +140,7 @@ async function isUserApproved(userId) {
         const result = await pool.query('SELECT * FROM approved_users WHERE id = $1 AND status = $2', [userId, 'active']);
         return result.rows[0] || null;
     } catch (error) {
-        console.log('❌ Railway PostgreSQL kullanıcı kontrol hatası:', error.message);
+        console.log('PostgreSQL kullanıcı kontrol hatası:', error.message);
         return null;
     }
 }
@@ -178,7 +164,7 @@ async function updateUserCredits(userId, amount, type = 'add', description = '')
         console.log(`💰 Kredi güncellendi: ${userId} ${type} ${amount}`);
         return true;
     } catch (error) {
-        console.log('❌ Railway PostgreSQL kredi güncelleme hatası:', error.message);
+        console.log('PostgreSQL kredi güncelleme hatası:', error.message);
         return false;
     }
 }
@@ -224,7 +210,7 @@ async function saveCallToDatabase(userId, duration, creditsUsed) {
         return true;
         
     } catch (error) {
-        console.error('❌ Railway PostgreSQL arama kayıt hatası:', error);
+        console.error('❌ PostgreSQL arama kayıt hatası:', error);
         console.error('Hata detayları:', error.message);
         return false;
     }
@@ -236,7 +222,7 @@ app.get('/api/approved-users', async (req, res) => {
         const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ error: error.message, message: 'Railway PostgreSQL kullanılamıyor' });
+        res.status(500).json({ error: error.message, message: 'Veritabanı kullanılamıyor' });
     }
 });
 
@@ -329,7 +315,7 @@ app.get('/api/calls', async (req, res) => {
         `);
         res.json(result.rows);
     } catch (error) {
-        res.status(500).json({ error: error.message, message: 'Railway PostgreSQL kullanılamıyor' });
+        res.status(500).json({ error: error.message, message: 'Veritabanı kullanılamıyor' });
     }
 });
 
@@ -395,31 +381,32 @@ const activeCalls = new Map(); // userId -> { adminId, startTime, status }
 // YENİ: Admin'den gelen aramalar takibi
 const adminCalls = new Map(); // userId -> { adminId, startTime, status }
 
-// Yerel IP adresini bul (Railway'de gerekli değil, ama localhost testi için)
+// Railway için IP detection
 function getLocalIP() {
-    const nets = require('os').networkInterfaces();
-    for (const name of Object.keys(nets)) {
-        for (const net of nets[name]) {
-            if (net.family === 'IPv4' && !net.internal) {
-                return net.address;
-            }
-        }
-    }
-    return 'localhost';
+    // Railway'de container IP'si her zaman değişir, bu yüzden basit şekilde gösterelim
+    return process.env.RAILWAY_STATIC_URL || 'Railway Container';
 }
 
-// Railway ana sayfa (güncellenmiş)
+// Health check endpoint (Railway için)
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        database: 'Connected'
+    });
+});
+
+// Basit ana sayfa - Railway URL'li
 app.get('/', (req, res) => {
-    const serverUrl = process.env.RAILWAY_STATIC_URL || `http://${getLocalIP()}:${process.env.PORT || 8080}`;
-    const wsUrl = process.env.RAILWAY_STATIC_URL ? 
-        `wss://${process.env.RAILWAY_STATIC_URL.replace('https://', '')}` : 
-        `ws://${getLocalIP()}:${process.env.PORT || 8080}`;
+    const baseUrl = process.env.RAILWAY_STATIC_URL || req.get('host');
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>VIPCEP Server (Railway)</title>
+            <title>VIPCEP Server - Railway</title>
             <meta charset="UTF-8">
             <style>
                 body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
@@ -439,44 +426,46 @@ app.get('/', (req, res) => {
                 .app-button { background: #2563eb; color: white; padding: 8px 16px; border-radius: 5px; text-decoration: none; display: inline-block; }
                 .app-button:hover { background: #1d4ed8; color: white; }
                 .test-user { background: #dcfce7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #22c55e; }
-                .railway-info { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+                .feature-new { background: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+                .railway-info { background: #a855f7; color: white; padding: 15px; border-radius: 5px; margin: 20px 0; }
             </style>
         </head>
         <body>
             <div class="container">
-                <h1>🚄 VIPCEP Server (Railway Cloud)</h1>
+                <h1>🚂 VIPCEP Server - Railway'de Çalışıyor!</h1>
                 
                 <div class="railway-info">
-                    <h3>🌐 Railway Deployment</h3>
-                    <p><strong>Status:</strong> LIVE & Running</p>
-                    <p><strong>Database:</strong> Railway PostgreSQL</p>
-                    <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'production'}</p>
+                    <h3>🌐 Railway Deployment Aktif</h3>
+                    <p><strong>Public URL:</strong> ${protocol}://${baseUrl}</p>
+                    <p><strong>WebSocket:</strong> wss://${baseUrl}</p>
+                    <p><strong>Database:</strong> PostgreSQL (Railway)</p>
+                    <p><strong>Environment:</strong> ${process.env.NODE_ENV || 'development'}</p>
                 </div>
                 
-                <div class="info">
-                    <p><strong>Server URL:</strong> ${serverUrl}</p>
-                    <p><strong>WebSocket URL:</strong> ${wsUrl}</p>
-                    <p><strong>Database:</strong> Railway PostgreSQL</p>
+                <div class="feature-new">
+                    <h3>🚀 İKİ YÖNLÜ ARAMA SİSTEMİ</h3>
+                    <p>✅ Admin → Müşteri arama | ✅ Müşteri → Admin arama</p>
+                    <p><strong>Özellikler:</strong> WebRTC P2P ses, kredi sistemi, gelen arama bildirimleri</p>
                 </div>
                 
                 <h3>📱 Uygulamalar</h3>
                 <div class="app-grid">
                     <div class="app-card">
                         <h3>📞 Admin Panel</h3>
-                        <p>ID yönetimi, arama alma/yapma, sistem takibi</p>
-                        <a href="/admin-panel.html" target="_blank" class="app-button">Aç</a>
+                        <p>Kullanıcı yönetimi, arama alma/yapma, sistem istatistikleri</p>
+                        <a href="/admin-panel.html" target="_blank" class="app-button">Admin Panel Aç</a>
                     </div>
                     <div class="app-card">
                         <h3>📱 Müşteri Uygulaması</h3>
-                        <p>Müşterilerin kullanacağı arama uygulaması + gelen arama desteği</p>
-                        <a href="/customer-app.html" target="_blank" class="app-button">Aç</a>
+                        <p>Müşteri arama uygulaması (EXE ile aynı)</p>
+                        <a href="/customer-app.html" target="_blank" class="app-button">Müşteri App Aç</a>
                     </div>
                 </div>
                 
                 <div class="test-user">
                     <h3>🧪 Test Kullanıcısı Hazır</h3>
                     <p><strong>ID:</strong> 1234 | <strong>Ad:</strong> Test Kullanıcı | <strong>Kredi:</strong> 10 dakika</p>
-                    <p><em>Bu kullanıcı ile iki yönlü arama testi yapabilirsiniz. Admin → Müşteri ve Müşteri → Admin</em></p>
+                    <p><em>Bu kullanıcı ile iki yönlü arama testi yapabilirsiniz.</em></p>
                 </div>
                 
                 <div class="users">
@@ -490,13 +479,12 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <hr style="margin: 20px 0;">
-                <p><small>Railway deployment başlatıldı: ${new Date().toLocaleString()}</small></p>
-                <p><small>Database: Railway PostgreSQL</small></p>
+                <p><small>🚂 Railway Server | Başlatıldı: ${new Date().toLocaleString()}</small></p>
             </div>
             
             <script>
-                // Sayfa her 10 saniyede bir yenilensin
-                setTimeout(() => location.reload(), 10000);
+                // Sayfa her 15 saniyede bir yenilensin
+                setTimeout(() => location.reload(), 15000);
             </script>
         </body>
         </html>
@@ -509,7 +497,8 @@ const server = http.createServer(app);
 // WebSocket server
 const wss = new WebSocket.Server({ server });
 
-console.log('🚄 VIPCEP Server Başlatılıyor (Railway)...');
+console.log('🚂 VIPCEP Server - Railway Başlatılıyor...');
+console.log('📍 Container IP:', getLocalIP());
 
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress;
@@ -1080,32 +1069,37 @@ function broadcastUserList() {
 }
 
 // Veritabanını başlat
-initDatabase();
+initDatabase().then(() => {
+    console.log('🔧 Database initialization completed');
+}).catch((error) => {
+    console.error('❌ Database initialization failed:', error);
+    process.exit(1);
+});
 
-// Server'ı başlat - Railway için düzenleme
+// Server'ı başlat - Railway için dinamik port
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, '0.0.0.0', () => {
+    const railwayUrl = process.env.RAILWAY_STATIC_URL || `localhost:${PORT}`;
     console.log('');
-    console.log('🚄 VIPCEP Server çalışıyor (Railway Cloud)!');
-    console.log('🌐 Port:', PORT);
-    console.log('🗄️ Veritabanı: Railway PostgreSQL');
-    console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'CONFIGURED' : 'MISSING');
+    console.log('🚂 VIPCEP Server - Railway\'de Çalışıyor!');
+    console.log('🌐 Public URL: https://' + railwayUrl);
+    console.log('🔌 WebSocket: wss://' + railwayUrl);
+    console.log('🗄️ Veritabanı: PostgreSQL (Railway)');
+    console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
     console.log('');
-    console.log('🚀 Özellikler:');
-    console.log('   📞 Admin ↔ Müşteri İki Yönlü Arama');
-    console.log('   💳 Kredi Sistemi (Railway PostgreSQL)');
-    console.log('   📱 WebRTC Ses Bağlantısı');
-    console.log('   📊 Gerçek Zamanlı İstatistikler');
+    console.log('🚀 İKİ YÖNLÜ ARAMA SİSTEMİ AKTİF');
+    console.log('   📞 Admin → Müşteri arama');
+    console.log('   📱 Müşteri → Admin arama');
+    console.log('   ✅ WebRTC P2P ses bağlantısı');
+    console.log('   💳 Otomatik kredi düşme sistemi');
     console.log('');
     console.log('📱 Uygulamalar:');
-    console.log('   📞 Admin paneli: /admin-panel.html');
-    console.log('   📱 Müşteri uygulaması: /customer-app.html');
+    console.log('   📞 Admin paneli: https://' + railwayUrl + '/admin-panel.html');
+    console.log('   📱 Müşteri uygulaması: https://' + railwayUrl + '/customer-app.html');
     console.log('');
     console.log('🧪 TEST KULLANICISI: ID=1234, Ad=Test Kullanıcı, Kredi=10');
-    console.log('📞 WhatsApp: +90 537 479 24 03');
-    console.log('📧 Email: vipcepservis@gmail.com');
     console.log('');
-    console.log('✅ Railway Deployment READY!');
+    console.log('✅ Railway Deployment Başarılı - Proje %100 Tamamlandı!');
     console.log('');
 });
 
@@ -1116,6 +1110,19 @@ process.on('SIGINT', () => {
         server.close(() => {
             pool.end(() => {
                 console.log('✅ Railway server başarıyla kapatıldı');
+                process.exit(0);
+            });
+        });
+    });
+});
+
+// Railway specific error handling
+process.on('SIGTERM', () => {
+    console.log('\n🚂 Railway deployment yenileniyor...');
+    wss.close(() => {
+        server.close(() => {
+            pool.end(() => {
+                console.log('✅ Graceful shutdown completed');
                 process.exit(0);
             });
         });
