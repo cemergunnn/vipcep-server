@@ -8,11 +8,8 @@ const fs = require('fs');
 // PostgreSQL bağlantısı
 const { Pool } = require('pg');
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'vipcep',
-    password: 'vip123456',
-    port: 5432,
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Veritabanı tablolarını oluştur
@@ -1100,4 +1097,5 @@ process.on('SIGINT', () => {
             process.exit(0);
         });
     });
+
 });
