@@ -1582,6 +1582,37 @@
             const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
             window.open(whatsappUrl, '_blank');
         }
+ async function handleIncomingOffer(message) {
+            if (!peerConnection) {
+                console.log('❌ PeerConnection hazır değil');
+                return;
+            }
+            
+            try {
+                console.log('📥 Admin\'den offer alındı');
+                
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                console.log('✅ Remote description ayarlandı');
+                
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                console.log('📤 Answer oluşturuldu');
+                
+                socket.send(JSON.stringify({
+                    type: 'answer',
+                    answer: answer,
+                    targetId: message.userId,
+                    userId: userInfo.id
+                }));
+                
+                console.log('📞 Gelen arama cevaplandı - Answer gönderildi');
+                
+            } catch (error) {
+                console.error('❌ Offer işleme hatası:', error);
+                rejectIncomingCall('webrtc_error');
+            }
+        }
     </script>
 </body>
 </html>
+
