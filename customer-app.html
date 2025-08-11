@@ -946,9 +946,18 @@
                         
                     case 'answer':
                         if (peerConnection) {
-                            peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                            this.setState('connected');
-                            callStartTime = Date.now();
+                            console.log('📥 Admin\'den answer alındı');
+                            peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
+                                .then(() => {
+                                    console.log('✅ Remote description (answer) ayarlandı');
+                                    // Answer aldıktan sonra hemen connected state'e geçme
+                                    // ICE bağlantısını bekle
+                                    console.log('⏳ ICE bağlantısı bekleniyor...');
+                                })
+                                .catch(error => {
+                                    console.error('❌ Remote description ayarlama hatası:', error);
+                                    this.endCall();
+                                });
                         }
                         break;
 
@@ -1047,20 +1056,41 @@
                 try {
                     console.log('🔗 Gelen arama için WebRTC kuruluyor...');
                     
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
                     localStream = stream;
                     
                     peerConnection = new RTCPeerConnection(rtcConfig);
                     
+                    // Local stream'i ekle
                     stream.getTracks().forEach(track => {
                         peerConnection.addTrack(track, stream);
+                        console.log('🎤 Local track eklendi:', track.kind);
                     });
                     
+                    // Remote stream handler
                     peerConnection.ontrack = (event) => {
-                        document.getElementById('remoteAudio').srcObject = event.streams[0];
-                        console.log('🔊 Uzak ses akışı alındı');
+                        console.log('📡 Remote track alındı:', event.track.kind);
+                        const remoteAudio = document.getElementById('remoteAudio');
+                        if (event.streams && event.streams[0]) {
+                            remoteAudio.srcObject = event.streams[0];
+                            console.log('🔊 Remote audio stream atandı');
+                            
+                            // Audio element'in oynatılmasını garanti et
+                            remoteAudio.play().then(() => {
+                                console.log('✅ Remote audio oynatılmaya başladı');
+                            }).catch(e => {
+                                console.log('⚠️ Remote audio oynatma hatası:', e);
+                            });
+                        }
                     };
                     
+                    // ICE candidate handler
                     peerConnection.onicecandidate = (event) => {
                         if (event.candidate && socket && incomingCallInfo) {
                             socket.send(JSON.stringify({
@@ -1068,15 +1098,18 @@
                                 candidate: event.candidate,
                                 targetId: incomingCallInfo.adminId
                             }));
-                            console.log('📡 ICE candidate gönderildi');
+                            console.log('📡 ICE candidate gönderildi:', event.candidate.type);
+                        } else if (!event.candidate) {
+                            console.log('📡 ICE gathering tamamlandı');
                         }
                     };
                     
+                    // Bağlantı durumu takibi - daha detaylı
                     peerConnection.onconnectionstatechange = () => {
-                        console.log('🔗 Bağlantı durumu:', peerConnection.connectionState);
+                        console.log('🔗 Connection State:', peerConnection.connectionState);
                         switch (peerConnection.connectionState) {
                             case 'connected':
-                                console.log('✅ WebRTC bağlantısı kuruldu!');
+                                console.log('✅ WebRTC TAM OLARAK BAĞLANDI!');
                                 this.setState('connected');
                                 callStartTime = Date.now();
                                 incomingCallInfo = null;
@@ -1086,8 +1119,37 @@
                                 this.setState('connecting');
                                 break;
                             case 'failed':
+                                console.log('❌ WebRTC bağlantısı başarısız');
+                                this.endCall();
+                                break;
                             case 'disconnected':
-                                console.log('❌ WebRTC bağlantısı koptu');
+                                console.log('📞 WebRTC bağlantısı koptu');
+                                this.endCall();
+                                break;
+                        }
+                    };
+                    
+                    // ICE bağlantı durumu takibi
+                    peerConnection.oniceconnectionstatechange = () => {
+                        console.log('🧊 ICE Connection State:', peerConnection.iceConnectionState);
+                        switch (peerConnection.iceConnectionState) {
+                            case 'connected':
+                            case 'completed':
+                                console.log('✅ ICE bağlantısı kuruldu');
+                                // Eğer connection state henüz connected değilse, zorla connected yap
+                                if (peerConnection.connectionState === 'connecting') {
+                                    setTimeout(() => {
+                                        if (peerConnection.connectionState === 'connecting') {
+                                            console.log('🔄 ICE connected oldu, call state güncelleniyor');
+                                            this.setState('connected');
+                                            callStartTime = Date.now();
+                                            incomingCallInfo = null;
+                                        }
+                                    }, 1000);
+                                }
+                                break;
+                            case 'failed':
+                                console.log('❌ ICE bağlantısı başarısız');
                                 this.endCall();
                                 break;
                         }
@@ -1112,17 +1174,20 @@
                 try {
                     console.log('📥 Admin\'den offer alındı');
                     
+                    // Remote description ayarla
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                    console.log('✅ Remote description ayarlandı');
+                    console.log('✅ Remote description (offer) ayarlandı');
                     
+                    // Answer oluştur
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
-                    console.log('📤 Answer oluşturuldu');
+                    console.log('📤 Answer oluşturuldu ve local description ayarlandı');
                     
+                    // Answer'ı gönder
                     socket.send(JSON.stringify({
                         type: 'answer',
                         answer: answer,
-                        targetId: message.userId,
+                        targetId: incomingCallInfo.adminId, // message.userId yerine doğru admin ID
                         userId: userInfo.id
                     }));
                     
@@ -1130,6 +1195,7 @@
                     
                 } catch (error) {
                     console.error('❌ Offer işleme hatası:', error);
+                    this.showError('WebRTC bağlantı hatası oluştu.');
                     this.rejectIncomingCall('webrtc_error');
                 }
             }
@@ -1302,17 +1368,41 @@
             
             async setupPeerConnection() {
                 try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    console.log('🔗 Normal arama için WebRTC kuruluyor...');
+                    
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } 
+                    });
                     peerConnection = new RTCPeerConnection(rtcConfig);
                     
+                    // Local stream'i ekle
                     localStream.getTracks().forEach(track => {
                         peerConnection.addTrack(track, localStream);
+                        console.log('🎤 Local track eklendi:', track.kind);
                     });
                     
+                    // Remote stream handler
                     peerConnection.ontrack = (event) => {
-                        document.getElementById('remoteAudio').srcObject = event.streams[0];
+                        console.log('📡 Remote track alındı:', event.track.kind);
+                        const remoteAudio = document.getElementById('remoteAudio');
+                        if (event.streams && event.streams[0]) {
+                            remoteAudio.srcObject = event.streams[0];
+                            console.log('🔊 Remote audio stream atandı');
+                            
+                            // Audio element'in oynatılmasını garanti et
+                            remoteAudio.play().then(() => {
+                                console.log('✅ Remote audio oynatılmaya başladı');
+                            }).catch(e => {
+                                console.log('⚠️ Remote audio oynatma hatası:', e);
+                            });
+                        }
                     };
                     
+                    // ICE candidate handler
                     peerConnection.onicecandidate = (event) => {
                         if (event.candidate && socket) {
                             socket.send(JSON.stringify({
@@ -1320,11 +1410,65 @@
                                 candidate: event.candidate,
                                 targetId: userInfo.adminId
                             }));
+                            console.log('📡 ICE candidate gönderildi:', event.candidate.type);
+                        } else if (!event.candidate) {
+                            console.log('📡 ICE gathering tamamlandı');
                         }
                     };
                     
+                    // Bağlantı durumu takibi
+                    peerConnection.onconnectionstatechange = () => {
+                        console.log('🔗 Connection State:', peerConnection.connectionState);
+                        switch (peerConnection.connectionState) {
+                            case 'connected':
+                                console.log('✅ WebRTC TAM OLARAK BAĞLANDI!');
+                                this.setState('connected');
+                                callStartTime = Date.now();
+                                break;
+                            case 'connecting':
+                                console.log('🔗 WebRTC bağlanıyor...');
+                                this.setState('connecting');
+                                break;
+                            case 'failed':
+                                console.log('❌ WebRTC bağlantısı başarısız');
+                                this.endCall();
+                                break;
+                            case 'disconnected':
+                                console.log('📞 WebRTC bağlantısı koptu');
+                                this.endCall();
+                                break;
+                        }
+                    };
+                    
+                    // ICE bağlantı durumu takibi
+                    peerConnection.oniceconnectionstatechange = () => {
+                        console.log('🧊 ICE Connection State:', peerConnection.iceConnectionState);
+                        switch (peerConnection.iceConnectionState) {
+                            case 'connected':
+                            case 'completed':
+                                console.log('✅ ICE bağlantısı kuruldu');
+                                // Eğer connection state henüz connected değilse, zorla connected yap
+                                if (peerConnection.connectionState === 'connecting') {
+                                    setTimeout(() => {
+                                        if (peerConnection.connectionState === 'connecting') {
+                                            console.log('🔄 ICE connected oldu, call state güncelleniyor');
+                                            this.setState('connected');
+                                            callStartTime = Date.now();
+                                        }
+                                    }, 1000);
+                                }
+                                break;
+                            case 'failed':
+                                console.log('❌ ICE bağlantısı başarısız');
+                                this.endCall();
+                                break;
+                        }
+                    };
+                    
+                    // Offer oluştur ve gönder
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
+                    console.log('📤 Offer oluşturuldu ve local description ayarlandı');
                     
                     socket.send(JSON.stringify({
                         type: 'offer',
@@ -1333,8 +1477,10 @@
                         userId: userInfo.id,
                         userName: userInfo.name
                     }));
+                    console.log('📨 Offer admin\'e gönderildi');
                     
                 } catch (error) {
+                    console.error('❌ WebRTC kurulum hatası:', error);
                     this.showError('Mikrofon erişimi gerekli.');
                     this.setState('idle');
                 }
