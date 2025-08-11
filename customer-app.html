@@ -1085,6 +1085,16 @@
                         setState('connected');
                         callStartTime = Date.now();
                         incomingCallInfo = null; // Artık aktif görüşme
+switch (peerConnection.connectionState) {
+        case 'connecting':
+            console.log('🔗 WebRTC bağlanıyor...');
+            setState('connecting');
+            break;
+        case 'failed':
+        case 'disconnected':
+            console.log('❌ WebRTC bağlantısı koptu');
+            endCall();
+            break;
                     }
                 };
                 
@@ -1615,4 +1625,5 @@
     </script>
 </body>
 </html>
+
 
