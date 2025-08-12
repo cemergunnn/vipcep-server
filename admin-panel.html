@@ -353,9 +353,18 @@
         let currentCall = null;
         let connectedUsers = [];
         let approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
+        let peerConnection = null;
+        let localStream = null;
         
         const adminId = "ADMIN001";
         const serverUrl = 'wss://vipcep-server-production.up.railway.app';
+        
+        // WebRTC yapılandırması
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
+        };
 
         // Debug fonksiyonları
         function debugLog(message, type = 'log') {
@@ -711,6 +720,21 @@
                     debugLog(`👥 Kullanıcı listesi güncellendi: ${message.users?.length || 0} kullanıcı`, 'log');
                     updateUserList(message.users || []);
                     break;
+                    
+                case 'offer':
+                    debugLog('📥 WebRTC Offer alındı', 'log');
+                    handleOffer(message);
+                    break;
+
+                case 'answer':
+                    debugLog('📥 WebRTC Answer alındı', 'log');
+                    handleAnswer(message);
+                    break;
+                    
+                case 'ice-candidate':
+                    debugLog('🧊 ICE Candidate alındı', 'log');
+                    handleIceCandidate(message);
+                    break;
             }
         }
 
@@ -765,11 +789,180 @@
                     userId: currentCall.userId
                 }));
                 
+                // WebRTC bağlantısını kur
+                setupPeerConnection();
+                
                 document.getElementById('incomingCall').classList.add('hidden');
                 log('Arama kabul edildi: ' + currentCall.userName);
                 debugLog('📨 Accept-call mesajı gönderildi', 'success');
-                currentCall = null;
             }
+        }
+
+        async function setupPeerConnection() {
+            try {
+                debugLog('🔗 Admin WebRTC kuruluyor...', 'log');
+                
+                // Mikrofon erişimi al
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Local stream'i ekle
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                    debugLog('🎤 Admin local track eklendi: ' + track.kind, 'log');
+                });
+                
+                // Remote stream handler
+                peerConnection.ontrack = function(event) {
+                    debugLog('📡 Admin remote track alındı: ' + event.track.kind, 'success');
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (event.streams && event.streams[0]) {
+                        remoteAudio.srcObject = event.streams[0];
+                        debugLog('🔊 Remote audio stream atandı', 'success');
+                        
+                        remoteAudio.play().then(() => {
+                            debugLog('✅ Remote audio oynatılıyor', 'success');
+                        }).catch(e => {
+                            debugLog('❌ Remote audio oynatma hatası: ' + e.message, 'error');
+                        });
+                    }
+                };
+                
+                // ICE candidate handler
+                peerConnection.onicecandidate = function(event) {
+                    if (event.candidate && socket && currentCall) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: currentCall.userId
+                        }));
+                        debugLog('📡 Admin ICE candidate gönderildi: ' + event.candidate.type, 'log');
+                    } else if (!event.candidate) {
+                        debugLog('📡 Admin ICE gathering tamamlandı', 'log');
+                    }
+                };
+
+                // Bağlantı durumu takibi
+                peerConnection.onconnectionstatechange = function() {
+                    debugLog('🔗 Admin Connection State: ' + peerConnection.connectionState, 'log');
+                    switch (peerConnection.connectionState) {
+                        case 'connected':
+                            debugLog('✅ Admin WebRTC TAM OLARAK BAĞLANDI!', 'success');
+                            log('🔊 Ses bağlantısı kuruldu!');
+                            break;
+                        case 'connecting':
+                            debugLog('🔗 Admin WebRTC bağlanıyor...', 'log');
+                            log('🔗 Ses bağlantısı kuruluyor...');
+                            break;
+                        case 'failed':
+                            debugLog('❌ Admin WebRTC bağlantısı başarısız', 'error');
+                            log('❌ Ses bağlantısı başarısız');
+                            endCall();
+                            break;
+                        case 'disconnected':
+                            debugLog('📞 Admin WebRTC bağlantısı koptu', 'warning');
+                            log('📞 Ses bağlantısı koptu');
+                            endCall();
+                            break;
+                    }
+                };
+
+                debugLog('✅ Admin WebRTC hazır', 'success');
+                
+            } catch (error) {
+                debugLog('❌ Admin WebRTC hatası: ' + error.message, 'error');
+                log('❌ Mikrofon erişimi hatası: ' + error.message);
+                alert('Mikrofon erişimi gerekli!');
+            }
+        }
+
+        async function handleOffer(message) {
+            if (peerConnection) {
+                try {
+                    debugLog('📥 Admin offer işleniyor', 'log');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    debugLog('✅ Admin remote description (offer) ayarlandı', 'success');
+                    
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    debugLog('📤 Admin answer oluşturuldu', 'success');
+                    
+                    socket.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer,
+                        targetId: message.userId
+                    }));
+                    debugLog('📞 Admin answer gönderildi', 'success');
+                    
+                } catch (error) {
+                    debugLog('❌ Admin offer işleme hatası: ' + error.message, 'error');
+                    endCall();
+                }
+            }
+        }
+
+        async function handleAnswer(message) {
+            if (peerConnection) {
+                try {
+                    debugLog('📥 Admin answer işleniyor', 'log');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                    debugLog('✅ Admin remote description (answer) ayarlandı', 'success');
+                    
+                } catch (error) {
+                    debugLog('❌ Admin answer işleme hatası: ' + error.message, 'error');
+                    endCall();
+                }
+            }
+        }
+        
+        async function handleIceCandidate(message) {
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    debugLog('📡 Admin ICE candidate eklendi: ' + message.candidate.type, 'success');
+                } catch (error) {
+                    debugLog('❌ Admin ICE candidate hatası: ' + error.message, 'error');
+                }
+            }
+        }
+
+        function endCall() {
+            debugLog('📞 Admin görüşme sonlandırılıyor', 'warning');
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+                debugLog('✅ PeerConnection kapatıldı', 'log');
+            }
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                debugLog('✅ Local stream durduruldu', 'log');
+            }
+            
+            if (currentCall && socket) {
+                socket.send(JSON.stringify({
+                    type: 'end-call',
+                    userId: adminId,
+                    targetId: currentCall.userId,
+                    userType: 'admin',
+                    endedBy: 'admin'
+                }));
+                debugLog('📨 End-call mesajı gönderildi', 'log');
+            }
+            
+            currentCall = null;
+            log('📞 Görüşme sonlandırıldı');
         }
         
         function rejectCall() {
