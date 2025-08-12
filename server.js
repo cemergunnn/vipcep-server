@@ -17,7 +17,6 @@ const pool = new Pool({
 console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
 console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
         res.status(500).json({ error: error.message });
-    }
 });
 
 // Kredi debug endpoint'i
@@ -74,5 +73,6 @@ app.get('/api/debug/user/:id', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 
