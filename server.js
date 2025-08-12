@@ -81,14 +81,22 @@ async function initDatabase() {
 
         console.log('✅ PostgreSQL tabloları kontrol edildi');
         
-        // Test kullanıcısını kontrol et ve ekle
-        const testUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', ['1234']);
-        if (testUser.rows.length === 0) {
-            await pool.query(`
-                INSERT INTO approved_users (id, name, credits) 
-                VALUES ($1, $2, $3)
-            `, ['1234', 'Test Kullanıcı', 10]);
-            console.log('📝 Test kullanıcısı eklendi: 1234 - Test Kullanıcı');
+        // Test kullanıcılarını kontrol et ve ekle
+        const testUsers = [
+            ['1234', 'Test Kullanıcı', 10],
+            ['0005', 'VIP Müşteri', 25],
+            ['9999', 'Demo User', 5]
+        ];
+
+        for (const [id, name, credits] of testUsers) {
+            const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
+            if (existingUser.rows.length === 0) {
+                await pool.query(`
+                    INSERT INTO approved_users (id, name, credits) 
+                    VALUES ($1, $2, $3)
+                `, [id, name, credits]);
+                console.log(`📝 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
+            }
         }
 
     } catch (error) {
@@ -107,11 +115,7 @@ async function isUserApproved(userId, userName) {
             
             // İsim kontrolü (büyük/küçük harf duyarsız)
             if (user.name.toLowerCase().trim() === userName.toLowerCase().trim()) {
-                console.log('🔍 Veritabanı sonucu:', user);
-                console.log('🔍 Ad karşılaştırma:');
-                console.log('   Girilen:', `"${userName}"`);
-                console.log('   Kayıtlı:', `"${user.name}"`);
-                console.log('   Eşit mi:', user.name.toLowerCase().trim() === userName.toLowerCase().trim());
+                console.log(`✅ Kullanıcı doğrulandı: ${userName} (${userId}) - ${user.credits} dk`);
                 
                 return {
                     approved: true,
@@ -122,15 +126,15 @@ async function isUserApproved(userId, userName) {
                 };
             } else {
                 console.log(`❌ İsim uyumsuzluğu: "${userName}" != "${user.name}"`);
-                return { approved: false, reason: 'İsim uymuyor' };
+                return { approved: false, reason: 'İsim uyuşmuyor. Lütfen kayıtlı isminizi tam olarak girin.' };
             }
         } else {
             console.log(`❌ Kullanıcı bulunamadı: ${userId}`);
-            return { approved: false, reason: 'ID bulunamadı' };
+            return { approved: false, reason: 'ID kodu bulunamadı. Kredi talep etmek için WhatsApp ile iletişime geçin.' };
         }
     } catch (error) {
         console.log('💾 PostgreSQL kullanıcı kontrol hatası:', error.message);
-        return { approved: false, reason: 'Veritabanı hatası' };
+        return { approved: false, reason: 'Sistem hatası. Lütfen tekrar deneyin.' };
     }
 }
 
@@ -141,7 +145,7 @@ async function saveApprovedUser(userId, userName, credits = 0) {
             INSERT INTO approved_users (id, name, credits, created_at) 
             VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
             ON CONFLICT (id) 
-            DO UPDATE SET name = $2, credits = $3
+            DO UPDATE SET name = $2, credits = $3, status = 'active'
             RETURNING *
         `, [userId, userName, credits]);
         
@@ -245,7 +249,7 @@ wss.on('connection', (ws, req) => {
                         online: true
                     });
 
-                    console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} ${message.userId}`);
+                    console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} (${message.userId})`);
                     broadcastUserList();
                     break;
 
@@ -273,11 +277,11 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'call-request':
-                    console.log('📞 Arama talebi:', message.userId, '->', message.targetId);
+                    console.log('📞 Müşteri → Admin arama talebi:', message.userId);
                     
-                    const targetClient = clients.get(message.targetId);
-                    if (targetClient && targetClient.userType === 'admin') {
-                        targetClient.ws.send(JSON.stringify({
+                    const adminClient = Array.from(clients.values()).find(c => c.userType === 'admin');
+                    if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
+                        adminClient.ws.send(JSON.stringify({
                             type: 'incoming-call',
                             userId: message.userId,
                             userName: message.userName,
@@ -287,7 +291,7 @@ wss.on('connection', (ws, req) => {
                     } else {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
-                            reason: 'Admin müsait değil'
+                            reason: 'Teknik destek şu anda müsait değil. Lütfen daha sonra tekrar deneyin.'
                         }));
                         console.log('❌ Admin bulunamadı, arama reddedildi');
                     }
@@ -297,7 +301,7 @@ wss.on('connection', (ws, req) => {
                     console.log('📞 Admin → Müşteri arama talebi:', message.adminId, '->', message.targetId);
                     
                     const customerClient = clients.get(message.targetId);
-                    if (customerClient && customerClient.userType === 'customer') {
+                    if (customerClient && customerClient.userType === 'customer' && customerClient.ws.readyState === WebSocket.OPEN) {
                         customerClient.ws.send(JSON.stringify({
                             type: 'admin-call-request',
                             adminId: message.adminId,
@@ -305,15 +309,15 @@ wss.on('connection', (ws, req) => {
                         }));
                         console.log('📞 Müşteriye arama bildirimi gönderildi');
                     } else {
-                        const adminClient = clients.get(message.adminId);
-                        if (adminClient) {
-                            adminClient.ws.send(JSON.stringify({
+                        const adminSender = clients.get(message.adminId);
+                        if (adminSender) {
+                            adminSender.ws.send(JSON.stringify({
                                 type: 'admin-call-rejected',
                                 userId: message.targetId,
                                 reason: 'Müşteri çevrimiçi değil'
                             }));
                         }
-                        console.log('❌ Müşteri bulunamadı, admin arama reddedildi');
+                        console.log('❌ Müşteri bulunamadı/çevrimdışı, admin arama reddedildi');
                     }
                     break;
 
@@ -321,7 +325,7 @@ wss.on('connection', (ws, req) => {
                     console.log('✅ Müşteri admin aramasını kabul etti:', message.userId);
                     
                     const acceptingAdmin = clients.get(message.adminId);
-                    if (acceptingAdmin) {
+                    if (acceptingAdmin && acceptingAdmin.ws.readyState === WebSocket.OPEN) {
                         acceptingAdmin.ws.send(JSON.stringify({
                             type: 'admin-call-accepted',
                             userId: message.userId
@@ -330,10 +334,10 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'admin-call-rejected':
-                    console.log('❌ Müşteri admin aramasını reddetti:', message.userId);
+                    console.log('❌ Müşteri admin aramasını reddetti:', message.userId, '-', message.reason);
                     
                     const rejectingAdmin = clients.get(message.adminId);
-                    if (rejectingAdmin) {
+                    if (rejectingAdmin && rejectingAdmin.ws.readyState === WebSocket.OPEN) {
                         rejectingAdmin.ws.send(JSON.stringify({
                             type: 'admin-call-rejected',
                             userId: message.userId,
@@ -346,7 +350,7 @@ wss.on('connection', (ws, req) => {
                     console.log('📞 Admin aramayı iptal etti:', message.adminId, '->', message.targetId);
                     
                     const cancelTargetClient = clients.get(message.targetId);
-                    if (cancelTargetClient) {
+                    if (cancelTargetClient && cancelTargetClient.ws.readyState === WebSocket.OPEN) {
                         cancelTargetClient.ws.send(JSON.stringify({
                             type: 'admin-call-cancelled',
                             reason: message.reason
@@ -355,31 +359,21 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'accept-call':
-                    console.log('✅ Arama kabul edildi:', message.userId);
+                    console.log('✅ Arama kabul edildi (Admin tarafından):', message.userId);
                     
                     const callerClient = clients.get(message.userId);
-                    if (callerClient) {
+                    if (callerClient && callerClient.ws.readyState === WebSocket.OPEN) {
                         callerClient.ws.send(JSON.stringify({
                             type: 'call-accepted'
                         }));
                     }
-                    
-                    // Admin'e de bildir
-                    clients.forEach((client) => {
-                        if (client.userType === 'admin' && client.ws !== ws) {
-                            client.ws.send(JSON.stringify({
-                                type: 'call-accepted',
-                                userId: message.userId
-                            }));
-                        }
-                    });
                     break;
 
                 case 'reject-call':
-                    console.log('❌ Arama reddedildi:', message.userId);
+                    console.log('❌ Arama reddedildi (Admin tarafından):', message.userId, '-', message.reason);
                     
                     const rejectedClient = clients.get(message.userId);
-                    if (rejectedClient) {
+                    if (rejectedClient && rejectedClient.ws.readyState === WebSocket.OPEN) {
                         rejectedClient.ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: message.reason || 'Arama reddedildi'
@@ -388,62 +382,30 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'call-cancelled':
-                    console.log('📞 Arama iptal edildi:', message.userId);
+                    console.log('📞 Arama iptal edildi (Müşteri tarafından):', message.userId);
                     
                     // Admin'e bildir
-                    clients.forEach((client) => {
-                        if (client.userType === 'admin') {
-                            client.ws.send(JSON.stringify({
-                                type: 'call-cancelled',
-                                userId: message.userId,
-                                userName: message.userName,
-                                reason: message.reason
-                            }));
-                        }
-                    });
+                    const adminToNotify = Array.from(clients.values()).find(c => c.userType === 'admin');
+                    if (adminToNotify && adminToNotify.ws.readyState === WebSocket.OPEN) {
+                        adminToNotify.ws.send(JSON.stringify({
+                            type: 'call-cancelled',
+                            userId: message.userId,
+                            userName: message.userName,
+                            reason: message.reason
+                        }));
+                    }
                     break;
 
                 case 'offer':
-                    console.log('📤 Offer gönderiliyor:', message.userId, '->', message.targetId);
-                    
-                    const offerTarget = clients.get(message.targetId);
-                    if (offerTarget) {
-                        offerTarget.ws.send(JSON.stringify({
-                            type: 'offer',
-                            offer: message.offer,
-                            userId: message.userId,
-                            userName: message.userName
-                        }));
-                        console.log('📨 Offer iletildi');
-                    } else {
-                        console.log('❌ Offer hedefi bulunamadı:', message.targetId);
-                    }
-                    break;
-
                 case 'answer':
-                    console.log('📤 Answer gönderiliyor:', message.userId, '->', message.targetId);
-                    
-                    const answerTarget = clients.get(message.targetId);
-                    if (answerTarget) {
-                        answerTarget.ws.send(JSON.stringify({
-                            type: 'answer',
-                            answer: message.answer,
-                            userId: message.userId
-                        }));
-                        console.log('📨 Answer iletildi');
-                    } else {
-                        console.log('❌ Answer hedefi bulunamadı:', message.targetId);
-                    }
-                    break;
-
                 case 'ice-candidate':
-                    const candidateTarget = clients.get(message.targetId);
-                    if (candidateTarget) {
-                        candidateTarget.ws.send(JSON.stringify({
-                            type: 'ice-candidate',
-                            candidate: message.candidate,
-                            userId: message.userId
-                        }));
+                    // WebRTC mesajlarını hedef kullanıcıya ilet
+                    const targetClient = clients.get(message.targetId);
+                    if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
+                        targetClient.ws.send(JSON.stringify(message));
+                        console.log(`🔄 ${message.type} iletildi: ${message.userId || 'unknown'} -> ${message.targetId}`);
+                    } else {
+                        console.log(`❌ ${message.type} hedefi bulunamadı: ${message.targetId}`);
                     }
                     break;
 
@@ -453,9 +415,10 @@ wss.on('connection', (ws, req) => {
                     const duration = message.duration || 0;
                     const creditsUsed = Math.ceil(duration / 60); // Yukarı yuvarlamalı
                     
+                    // Hedef kullanıcıya bildir
                     if (message.targetId) {
                         const endTarget = clients.get(message.targetId);
-                        if (endTarget) {
+                        if (endTarget && endTarget.ws.readyState === WebSocket.OPEN) {
                             endTarget.ws.send(JSON.stringify({
                                 type: 'call-ended',
                                 userId: message.userId,
@@ -466,7 +429,7 @@ wss.on('connection', (ws, req) => {
                         }
                     }
                     
-                    // Arama kaydını veritabanına kaydet
+                    // Arama kaydını veritabanına kaydet (sadece gerçek görüşmeler için)
                     if (duration > 0 && message.userId && message.userId !== 'ADMIN001') {
                         const saveResult = await saveCallToDatabase({
                             userId: message.userId,
@@ -478,8 +441,9 @@ wss.on('connection', (ws, req) => {
                         
                         if (saveResult.success) {
                             // Tüm admin client'lara kredi güncellemesi bildir
-                            clients.forEach((client) => {
-                                if (client.userType === 'admin') {
+                            const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+                            adminClients.forEach(client => {
+                                if (client.ws.readyState === WebSocket.OPEN) {
                                     client.ws.send(JSON.stringify({
                                         type: 'credit-updated',
                                         userId: message.userId,
@@ -491,9 +455,9 @@ wss.on('connection', (ws, req) => {
                             });
                             
                             // Müşteriye de güncel kredi bilgisini gönder
-                            const customerClient = clients.get(message.userId);
-                            if (customerClient) {
-                                customerClient.ws.send(JSON.stringify({
+                            const customerForUpdate = clients.get(message.userId);
+                            if (customerForUpdate && customerForUpdate.ws.readyState === WebSocket.OPEN) {
+                                customerForUpdate.ws.send(JSON.stringify({
                                     type: 'credit-update',
                                     credits: saveResult.newCredits
                                 }));
@@ -507,7 +471,7 @@ wss.on('connection', (ws, req) => {
                     
                     // Güncellenen kullanıcıya bildir
                     const updatedUserClient = clients.get(message.userId);
-                    if (updatedUserClient && updatedUserClient.userType === 'customer') {
+                    if (updatedUserClient && updatedUserClient.userType === 'customer' && updatedUserClient.ws.readyState === WebSocket.OPEN) {
                         updatedUserClient.ws.send(JSON.stringify({
                             type: 'credit-update',
                             credits: message.newCredits,
@@ -515,13 +479,12 @@ wss.on('connection', (ws, req) => {
                             message: 'Krediniz güncellendi!'
                         }));
                         console.log(`📱 Müşteriye kredi güncelleme bildirildi: ${message.userId} -> ${message.newCredits} dk`);
-                    } else {
-                        console.log(`📱 Kullanıcı çevrimdışı: ${message.userId}`);
                     }
                     
-                    // Tüm admin'lere de bildir
-                    clients.forEach((client) => {
-                        if (client.userType === 'admin' && client.ws !== ws) {
+                    // Diğer admin'lere de bildir
+                    const otherAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.ws !== ws);
+                    otherAdmins.forEach(client => {
+                        if (client.ws.readyState === WebSocket.OPEN) {
                             client.ws.send(JSON.stringify({
                                 type: 'credit-updated',
                                 userId: message.userId,
@@ -539,11 +502,12 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
-        console.log('👋 Kullanıcı ayrıldı:', findClientById(ws)?.id || 'unknown');
+        const client = findClientById(ws);
+        console.log('👋 Kullanıcı ayrıldı:', client?.name || 'unknown');
         
         // Client'ı kaldır
-        for (const [key, client] of clients.entries()) {
-            if (client.ws === ws) {
+        for (const [key, clientData] of clients.entries()) {
+            if (clientData.ws === ws) {
                 clients.delete(key);
                 break;
             }
@@ -609,11 +573,19 @@ app.post('/api/approved-users', async (req, res) => {
             return res.status(400).json({ error: 'ID ve isim gerekli' });
         }
         
+        if (!/^\d{4}$/.test(id)) {
+            return res.status(400).json({ error: 'ID 4 haneli sayı olmalı' });
+        }
+        
         const user = await saveApprovedUser(id, name, credits);
         res.json({ success: true, user });
     } catch (error) {
-        console.log('💾 PostgreSQL kullanıcı ekleme hatası:', error.message);
-        res.status(500).json({ error: error.message });
+        if (error.message.includes('duplicate key')) {
+            res.status(400).json({ error: 'Bu ID zaten kullanımda' });
+        } else {
+            console.log('💾 PostgreSQL kullanıcı ekleme hatası:', error.message);
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 
@@ -682,116 +654,202 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Manuel kredi ekleme
-app.post('/api/add-credit/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { amount, reason } = req.body;
-        
-        const user = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [id]);
-        if (user.rows.length === 0) {
-            return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
-        }
-        
-        const currentCredits = user.rows[0].credits;
-        const newCredits = currentCredits + amount;
-        
-        await updateUserCredits(id, newCredits, reason || 'Manuel kredi ekleme');
-        res.json({ success: true, credits: newCredits });
-    } catch (error) {
-        console.log('💾 PostgreSQL kredi ekleme hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        clients: clients.size,
+        database: process.env.DATABASE_URL ? 'Connected' : 'Offline'
+    });
 });
 
 // Ana sayfa
 app.get('/', (req, res) => {
+    const host = req.get('host');
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>VIPCEP Server</title>
+            <title>🎯 VIPCEP Server</title>
+            <meta charset="UTF-8">
             <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-                .header { background: #22c55e; color: white; padding: 20px; border-radius: 8px; text-align: center; }
-                .links { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0; }
-                .link-card { background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0; }
-                .link-card a { color: #2563eb; text-decoration: none; font-weight: bold; }
-                .stats { background: #eff6ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+                    max-width: 900px; 
+                    margin: 50px auto; 
+                    padding: 20px;
+                    background: #f8fafc;
+                }
+                .header { 
+                    background: linear-gradient(135deg, #22c55e, #16a34a); 
+                    color: white; 
+                    padding: 30px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    margin-bottom: 30px;
+                    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
+                }
+                .links { 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr; 
+                    gap: 20px; 
+                    margin: 30px 0; 
+                }
+                .link-card { 
+                    background: white; 
+                    padding: 25px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    border: 1px solid #e2e8f0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    transition: transform 0.3s ease;
+                }
+                .link-card:hover {
+                    transform: translateY(-5px);
+                }
+                .link-card a { 
+                    color: #2563eb; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    background: #eff6ff;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    display: inline-block;
+                    margin-top: 10px;
+                }
+                .link-card a:hover {
+                    background: #dbeafe;
+                }
+                .stats { 
+                    background: linear-gradient(135deg, #eff6ff, #dbeafe); 
+                    padding: 20px; 
+                    border-radius: 12px; 
+                    border-left: 4px solid #3b82f6; 
+                    margin-bottom: 20px;
+                }
+                .status-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                .status-item {
+                    background: rgba(255,255,255,0.8);
+                    padding: 15px;
+                    border-radius: 8px;
+                    text-align: center;
+                }
+                .status-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #059669;
+                }
+                .whatsapp-link {
+                    background: #25d366;
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    display: inline-block;
+                    margin-top: 20px;
+                    font-weight: bold;
+                }
             </style>
         </head>
         <body>
             <div class="header">
                 <h1>🎯 VIPCEP Server</h1>
-                <p>Voice IP Communication Emergency Protocol</p>
+                <p style="font-size: 18px; margin: 10px 0;">Voice IP Communication Emergency Protocol</p>
+                <p style="font-size: 14px; opacity: 0.9;">Mobil Cihaz Teknik Danışmanlık Sistemi</p>
             </div>
             
             <div class="links">
                 <div class="link-card">
                     <h3>👨‍💼 Admin Panel</h3>
-                    <p>Teknik servis yönetim paneli</p>
+                    <p>Teknik servis yönetim sistemi</p>
+                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü, kredi sistemi</p>
+                    <a href="/admin-panel.html">Admin Panel'e Git →</a>
                 </div>
                 <div class="link-card">
                     <h3>📱 Müşteri Uygulaması</h3>
                     <p>Sesli danışmanlık uygulaması</p>
+                    <p style="font-size: 12px; color: #64748b;">Teknik destek almak için</p>
                     <a href="/customer-app.html">Müşteri Uygulaması →</a>
                 </div>
             </div>
             
             <div class="stats">
-                <h3>📊 Server Bilgileri</h3>
-                <p><strong>Port:</strong> ${PORT}</p>
-                <p><strong>WebSocket:</strong> wss://${req.get('host')}</p>
-                <p><strong>Status:</strong> ✅ Çalışıyor</p>
-                <p><strong>Database:</strong> ${process.env.DATABASE_URL ? '✅ PostgreSQL' : '❌ Unavailable'}</p>
+                <h3>📊 Server Durumu</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-value">${clients.size}</div>
+                        <div>Aktif Bağlantı</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">✅</div>
+                        <div>Sistem Durumu</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${process.env.DATABASE_URL ? '✅' : '❌'}</div>
+                        <div>Veritabanı</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${PORT}</div>
+                        <div>Port</div>
+                    </div>
+                </div>
+                <p style="margin-top: 15px;"><strong>WebSocket URL:</strong> wss://${host}</p>
+                <p><strong>Railway Deploy:</strong> ${process.env.RAILWAY_ENVIRONMENT || 'Local'}</p>
+            </div>
+
+            <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <h3>💳 Kredi Talebi</h3>
+                <p style="color: #64748b; margin-bottom: 15px;">Sistemimizi kullanmak için kredi satın alın</p>
+                <a href="https://wa.me/905374792403?text=VIPCEP%20Kredi%20Talebi%20-%20Lütfen%20bana%20kredi%20yükleyin" 
+                   target="_blank" class="whatsapp-link">
+                    📞 WhatsApp ile Kredi Talep Et
+                </a>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                    Telefon: +90 537 479 24 03
+                </p>
+            </div>
+
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f59e0b;">
+                <h4>📋 Test Kullanıcıları:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li><strong>ID:</strong> 1234 | <strong>Ad:</strong> Test Kullanıcı | <strong>Kredi:</strong> 10 dk</li>
+                    <li><strong>ID:</strong> 0005 | <strong>Ad:</strong> VIP Müşteri | <strong>Kredi:</strong> 25 dk</li>
+                    <li><strong>ID:</strong> 9999 | <strong>Ad:</strong> Demo User | <strong>Kredi:</strong> 5 dk</li>
+                </ul>
             </div>
         </body>
         </html>
     `);
 });
 
-// Admin panel route'u
+// Static dosya route'ları
 app.get('/admin-panel.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
-// Customer app route'u  
 app.get('/customer-app.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'customer-app.html'));
 });
 
-// Veritabanı debug endpoint'i
-app.get('/api/debug/users', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
-        res.json({
-            count: result.rows.length,
-            users: result.rows
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Kredi debug endpoint'i
-app.get('/api/debug/user/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const user = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
-        const transactions = await pool.query('SELECT * FROM credit_transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [id]);
-        
-        res.json({
-            user: user.rows[0] || null,
-            transactions: transactions.rows
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// 404 handler
+app.use((req, res) => {
+    res.status(404).send(`
+        <h1>404 - Sayfa Bulunamadı</h1>
+        <p><a href="/">Ana sayfaya dön</a></p>
+    `);
 });
 
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
+    console.log('📍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -799,29 +857,19 @@ async function startServer() {
     // HTTP Server'ı başlat
     server.listen(PORT, '0.0.0.0', () => {
         console.log('🎯 VIPCEP Server çalışıyor!');
-        console.log(`📍 Yerel erişim: http://localhost:${PORT}`);
-        console.log(`🌐 Ağ erişimi: http://0.0.0.0:${PORT}`);
+        console.log(`📍 Port: ${PORT}`);
+        console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
         console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
-        console.log('🚀 YENİ ÖZELLİK: Admin → Müşteri Arama');
-        console.log(' 📞 Admin artık müşterileri arayabilir');
-        console.log(' 📱 Gelen arama bildirimleri');
-        console.log(' ✅ İki yönlü arama sistemi tamamlandı');
+        console.log('');
         console.log('📱 Uygulamalar:');
-        console.log(` 📞 Admin paneli: http://localhost:${PORT}/admin-panel.html`);
-        console.log(` 📱 Müşteri uygulaması: http://localhost:${PORT}/customer-app.html`);
-        console.log('📊 API Endpoints:');
-        console.log(' GET /api/approved-users - Onaylı kullanıcı listesi');
-        console.log(' POST /api/approved-users - Yeni onaylı kullanıcı');
-        console.log(' DELETE /api/approved-users/:id - Onaylı kullanıcı sil');
-        console.log(' POST /api/approved-users/:id/credits - Kredi güncelle');
-        console.log(' GET /api/calls - Arama geçmişi');
-        console.log(' GET /api/stats - İstatistikler');
-        console.log(' POST /api/add-credit/:id - Manuel kredi ekleme');
-        console.log('🧪 TEST KULLANICISI: ID=1234, Ad=Test Kullanıcı, Kredi=10');
+        console.log(` 👨‍💼 Admin paneli: /admin-panel.html`);
+        console.log(` 📱 Müşteri uygulaması: /customer-app.html`);
+        console.log('');
+        console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
-        console.log('📧 Email: vipcepservis@gmail.com');
-        console.log('✅ Proje %100 tamamlandı - Tüm özellikler çalışıyor!');
+        console.log('✅ Sistem hazır - Arama kabul ediliyor!');
+        console.log('═══════════════════════════════════════════');
     });
 }
 
@@ -832,6 +880,15 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
     console.log('❌ İşlenmemiş promise reddi:', reason);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('📴 Server kapatılıyor...');
+    server.close(() => {
+        console.log('✅ Server başarıyla kapatıldı');
+        process.exit(0);
+    });
 });
 
 // Server'ı başlat
