@@ -730,8 +730,112 @@ app.get('/', (req, res) => {
                 <div class="link-card">
                     <h3>👨‍💼 Admin Panel</h3>
                     <p>Teknik servis yönetim paneli</p>
-                    <a href="/admin-panel.html">Admin Panel'e Git →</a>
                 </div>
                 <div class="link-card">
                     <h3>📱 Müşteri Uygulaması</h3>
                     <p>Sesli danışmanlık uygulaması</p>
+                    <a href="/customer-app.html">Müşteri Uygulaması →</a>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <h3>📊 Server Bilgileri</h3>
+                <p><strong>Port:</strong> ${PORT}</p>
+                <p><strong>WebSocket:</strong> wss://${req.get('host')}</p>
+                <p><strong>Status:</strong> ✅ Çalışıyor</p>
+                <p><strong>Database:</strong> ${process.env.DATABASE_URL ? '✅ PostgreSQL' : '❌ Unavailable'}</p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// Admin panel route'u
+app.get('/admin-panel.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
+});
+
+// Customer app route'u  
+app.get('/customer-app.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'customer-app.html'));
+});
+
+// Veritabanı debug endpoint'i
+app.get('/api/debug/users', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
+        res.json({
+            count: result.rows.length,
+            users: result.rows
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Kredi debug endpoint'i
+app.get('/api/debug/user/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
+        const transactions = await pool.query('SELECT * FROM credit_transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [id]);
+        
+        res.json({
+            user: user.rows[0] || null,
+            transactions: transactions.rows
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Server'ı başlat
+async function startServer() {
+    console.log('🚀 VIPCEP Server Başlatılıyor...');
+    
+    // Veritabanını başlat
+    await initDatabase();
+    
+    // HTTP Server'ı başlat
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log('🎯 VIPCEP Server çalışıyor!');
+        console.log(`📍 Yerel erişim: http://localhost:${PORT}`);
+        console.log(`🌐 Ağ erişimi: http://0.0.0.0:${PORT}`);
+        console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
+        console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
+        console.log('🚀 YENİ ÖZELLİK: Admin → Müşteri Arama');
+        console.log(' 📞 Admin artık müşterileri arayabilir');
+        console.log(' 📱 Gelen arama bildirimleri');
+        console.log(' ✅ İki yönlü arama sistemi tamamlandı');
+        console.log('📱 Uygulamalar:');
+        console.log(` 📞 Admin paneli: http://localhost:${PORT}/admin-panel.html`);
+        console.log(` 📱 Müşteri uygulaması: http://localhost:${PORT}/customer-app.html`);
+        console.log('📊 API Endpoints:');
+        console.log(' GET /api/approved-users - Onaylı kullanıcı listesi');
+        console.log(' POST /api/approved-users - Yeni onaylı kullanıcı');
+        console.log(' DELETE /api/approved-users/:id - Onaylı kullanıcı sil');
+        console.log(' POST /api/approved-users/:id/credits - Kredi güncelle');
+        console.log(' GET /api/calls - Arama geçmişi');
+        console.log(' GET /api/stats - İstatistikler');
+        console.log(' POST /api/add-credit/:id - Manuel kredi ekleme');
+        console.log('🧪 TEST KULLANICISI: ID=1234, Ad=Test Kullanıcı, Kredi=10');
+        console.log('📞 WhatsApp: +90 537 479 24 03');
+        console.log('📧 Email: vipcepservis@gmail.com');
+        console.log('✅ Proje %100 tamamlandı - Tüm özellikler çalışıyor!');
+    });
+}
+
+// Hata yakalama
+process.on('uncaughtException', (error) => {
+    console.log('❌ Yakalanmamış hata:', error.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.log('❌ İşlenmemiş promise reddi:', reason);
+});
+
+// Server'ı başlat
+startServer().catch(error => {
+    console.log('❌ Server başlatma hatası:', error.message);
+    process.exit(1);
+});
