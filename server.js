@@ -429,8 +429,10 @@ wss.on('connection', (ws, req) => {
                         }
                     }
                     
-                    // Arama kaydını veritabanına kaydet (sadece gerçek görüşmeler için)
+                    // Arama kaydını veritabanına kaydet ve kredi düş (sadece gerçek görüşmeler için)
                     if (duration > 0 && message.userId && message.userId !== 'ADMIN001') {
+                        console.log(`💾 Kredi düşürülüyor: ${message.userId} -> ${creditsUsed} kredi (${duration} saniye)`);
+                        
                         const saveResult = await saveCallToDatabase({
                             userId: message.userId,
                             adminId: message.targetId || 'ADMIN001',
@@ -440,6 +442,8 @@ wss.on('connection', (ws, req) => {
                         });
                         
                         if (saveResult.success) {
+                            console.log(`✅ Kredi başarıyla düşürüldü: ${message.userId} -> Yeni kredi: ${saveResult.newCredits}`);
+                            
                             // Tüm admin client'lara kredi güncellemesi bildir
                             const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
                             adminClients.forEach(client => {
@@ -462,7 +466,11 @@ wss.on('connection', (ws, req) => {
                                     credits: saveResult.newCredits
                                 }));
                             }
+                        } else {
+                            console.log(`❌ Kredi düşürme hatası: ${saveResult.error}`);
                         }
+                    } else {
+                        console.log(`ℹ️ Kredi düşürülmedi: duration=${duration}, userId=${message.userId}`);
                     }
                     break;
 
