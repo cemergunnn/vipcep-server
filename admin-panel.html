@@ -640,8 +640,8 @@
                 
                 <!-- Hızlı İşlemler -->
                 <div class="quick-actions">
-                    <button class="btn btn-secondary" onclick="window.location.reload()">
-                        🔄 Yenile
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 Verileri Yenile
                     </button>
                     <button class="btn btn-success" onclick="downloadCustomerApp()">
                         📱 Müşteri App
@@ -677,9 +677,11 @@
         let outgoingCallInfo = null;
         
         const adminId = "ADMIN001";
-        const serverUrl = window.location.protocol === 'https:' 
-            ? 'wss://vipcep-server-production.up.railway.app'
-            : 'ws://localhost:8080';
+        const serverUrl = window.location.hostname === 'localhost' 
+            ? 'ws://localhost:8080'
+            : `wss://vipcep-server-production.up.railway.app`;
+        
+        console.log('🔗 Admin WebSocket URL:', serverUrl);
         
         // WebRTC yapılandırması
         const rtcConfig = {
@@ -726,8 +728,12 @@
                         lastCall: user.last_call ? new Date(user.last_call).toLocaleString() : null
                     }));
                     
+                    // LocalStorage'ı API verisi ile güncelle (önemli!)
                     saveApprovedUsers();
-                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi`);
+                    renderApprovedUsers();
+                    updateStats();
+                    
+                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
                 } else {
                     log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
                 }
@@ -1371,14 +1377,21 @@
                     console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
                     const updatedUser = approvedUsers.find(u => u.id === message.userId);
                     if (updatedUser) {
+                        // Kredi bilgisini güncelle
                         updatedUser.credits = message.newCredits;
+                        updatedUser.totalCalls = (updatedUser.totalCalls || 0) + 1;
+                        updatedUser.lastCall = new Date().toLocaleString();
+                        
+                        // localStorage'ı güncelle (önemli!)
                         saveApprovedUsers();
-                        searchUsers();
+                        renderApprovedUsers();
                         updateStats();
                         
                         if (message.creditsUsed && message.duration) {
                             showCreditNotification(message.userId, message.creditsUsed, message.duration);
                         }
+                        
+                        log(`💳 ${updatedUser.name} kredi güncellendi: ${message.newCredits} dk`);
                     }
                     break;
                     
@@ -1987,6 +2000,28 @@
         function downloadCustomerApp() {
             const appUrl = `${window.location.origin}/customer-app.html`;
             prompt('Müşteri Uygulaması URL\'si (kopyalayın):', appUrl);
+        }
+        
+        // Verileri API'den yenile
+        async function refreshData() {
+            log('🔄 Veriler API\'den yenileniyor...');
+            const refreshButton = document.querySelector('button[onclick="refreshData()"]');
+            const originalText = refreshButton.textContent;
+            
+            refreshButton.disabled = true;
+            refreshButton.textContent = '⏳ Yenileniyor...';
+            
+            try {
+                await loadUsersFromAPI();
+                showSuccessNotification('Veriler başarıyla yenilendi!');
+                log('✅ Tüm veriler API\'den güncellendi');
+            } catch (error) {
+                log('❌ Veri yenileme hatası: ' + error.message);
+                alert('Veri yenileme hatası: ' + error.message);
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.textContent = originalText;
+            }
         }
         
         function testIncomingCall() {
