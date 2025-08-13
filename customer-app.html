@@ -488,7 +488,7 @@
                 <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="rememberMe" style="width: auto; margin: 0;">
                     <label for="rememberMe" style="margin: 0; font-size: 14px; color: #374151; cursor: pointer;">
-                        🔐 Beni Hatırla
+                        🔒 Beni Hatırla
                     </label>
                 </div>
                 <button class="btn btn-login" id="loginButton">
@@ -673,9 +673,14 @@
         let callDuration = 0;
         let callStartTime = null;
         let isLoggedIn = false;
-        let serverUrl = 'wss://vipcep-server-production.up.railway.app';
         let ringbackAudio = null;
         let incomingCallInfo = null;
+        let pendingIceCandidates = []; // ICE candidate queue
+        
+        // DÜZELTME 1: Dinamik WebSocket URL
+        const serverUrl = window.location.hostname === 'localhost' 
+            ? 'ws://localhost:8080'
+            : `wss://${window.location.host}`;
         
         // Kullanıcı bilgileri
         let userInfo = {
@@ -761,35 +766,41 @@
                 }
             }
             
-            loginUser() {
-                const userId = document.getElementById('userIdInput').value.trim();
-                const userName = document.getElementById('userNameInput').value.trim();
-                
-                if (!userId || userId.length !== 4) {
-                    this.showLoginMessage('Lütfen 4 haneli ID kodunuzu girin!', 'error');
-                    return;
-                }
-                
-                if (!userName || userName.length < 2) {
-                    this.showLoginMessage('Lütfen adınızı ve soyadınızı girin!', 'error');
-                    return;
-                }
-                
-                userInfo.id = userId;
-                userInfo.name = userName;
-                this.saveUserInfo();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'login-request',
-                        userId: userId,
-                        userName: userName
-                    }));
+            // DÜZELTME 5: Error handling eklendi
+            async loginUser() {
+                try {
+                    const userId = document.getElementById('userIdInput').value.trim();
+                    const userName = document.getElementById('userNameInput').value.trim();
                     
-                    document.getElementById('loginButton').disabled = true;
-                    document.getElementById('loginButton').innerHTML = '🔄 Kontrol Ediliyor...';
-                } else {
-                    this.showLoginMessage('Sunucu bağlantısı yok. Lütfen bekleyin...', 'error');
+                    if (!userId || userId.length !== 4) {
+                        this.showLoginMessage('Lütfen 4 haneli ID kodunuzu girin!', 'error');
+                        return;
+                    }
+                    
+                    if (!userName || userName.length < 2) {
+                        this.showLoginMessage('Lütfen adınızı ve soyadınızı girin!', 'error');
+                        return;
+                    }
+                    
+                    userInfo.id = userId;
+                    userInfo.name = userName;
+                    this.saveUserInfo();
+                    
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'login-request',
+                            userId: userId,
+                            userName: userName
+                        }));
+                        
+                        document.getElementById('loginButton').disabled = true;
+                        document.getElementById('loginButton').innerHTML = '🔄 Kontrol Ediliyor...';
+                    } else {
+                        this.showLoginMessage('Sunucu bağlantısı yok. Lütfen bekleyin...', 'error');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    this.showLoginMessage('Giriş sırasında hata oluştu.', 'error');
                 }
             }
             
@@ -847,7 +858,8 @@
                 }
             }
             
-            connectToServer() {
+            // DÜZELTME 5: Error handling eklendi
+            async connectToServer() {
                 try {
                     console.log('Bağlanıyor:', serverUrl);
                     socket = new WebSocket(serverUrl);
@@ -870,116 +882,110 @@
                     };
                     
                     socket.onmessage = (event) => {
-                        const message = JSON.parse(event.data);
-                        this.handleMessage(message);
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleMessage(message);
+                        } catch (error) {
+                            console.error('Message parsing error:', error);
+                        }
                     };
                     
                 } catch (error) {
                     this.updateConnectionStatus('error');
-                    console.error('Bağlantı hatası:', error);
+                    console.error('Connection error:', error);
                 }
             }
             
-            handleMessage(message) {
-                console.log('Mesaj alındı:', message.type);
-                
-                switch (message.type) {
-                    case 'login-response':
-                        if (message.success) {
-                            userInfo.credits = message.credits || 0;
-                            this.loginSuccess();
-                        } else {
-                            this.loginFailed(message.reason);
-                        }
-                        break;
-
-                    case 'admin-call-request':
-                        console.log('🔔 Admin araması alındı:', message);
-                        
-                        incomingCallInfo = {
-                            adminId: message.adminId,
-                            adminName: message.adminName || 'Teknik Destek',
-                            startTime: Date.now()
-                        };
-                        
-                        this.showIncomingCall();
-                        this.playIncomingCallSound();
-                        
-                        setTimeout(() => {
-                            if (incomingCallInfo && callState === 'incoming') {
-                                console.log('⏰ Gelen arama zaman aşımı');
-                                this.rejectIncomingCall('timeout');
+            // DÜZELTME 5: Error handling eklendi
+            async handleMessage(message) {
+                try {
+                    console.log('Mesaj alındı:', message.type);
+                    
+                    switch (message.type) {
+                        case 'login-response':
+                            if (message.success) {
+                                userInfo.credits = message.credits || 0;
+                                this.loginSuccess();
+                            } else {
+                                this.loginFailed(message.reason);
                             }
-                        }, 30000);
-                        break;
+                            break;
 
-                    case 'admin-call-cancelled':
-                        console.log('📞 Admin aramayı iptal etti');
-                        if (incomingCallInfo) {
-                            this.hideIncomingCall();
-                            this.showError('Teknik destek aramayı iptal etti.');
-                            this.stopIncomingCallSound();
-                        }
-                        break;
-                        
-                    case 'call-accepted':
-                        this.stopRingbackTone();
-                        this.setupPeerConnection();
-                        this.setState('connecting');
-                        break;
-                        
-                    case 'call-rejected':
-                        this.stopRingbackTone();
-                        this.setState('idle');
-                        if (message.reason === 'unauthorized') {
-                            this.showError('ID kodunuz onaylanmamış! Lütfen kredi talep edin.');
-                        } else {
-                            this.showError('Arama reddedildi veya usta müsait değil.');
-                        }
-                        break;
-                        
-                    case 'ice-candidate':
-                        if (peerConnection) {
-                            peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                        }
-                        break;
-                        
-                    case 'answer':
-                        if (peerConnection) {
-                            console.log('📥 Admin\'den answer alındı');
-                            peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
-                                .then(() => {
-                                    console.log('✅ Remote description (answer) ayarlandı');
-                                    // Answer aldıktan sonra hemen connected state'e geçme
-                                    // ICE bağlantısını bekle
-                                    console.log('⏳ ICE bağlantısı bekleniyor...');
-                                })
-                                .catch(error => {
-                                    console.error('❌ Remote description ayarlama hatası:', error);
-                                    this.endCall();
-                                });
-                        }
-                        break;
+                        case 'admin-call-request':
+                            console.log('📞 Admin araması alındı:', message);
+                            
+                            incomingCallInfo = {
+                                adminId: message.adminId,
+                                adminName: message.adminName || 'Teknik Destek',
+                                startTime: Date.now()
+                            };
+                            
+                            this.showIncomingCall();
+                            this.playIncomingCallSound();
+                            
+                            setTimeout(() => {
+                                if (incomingCallInfo && callState === 'incoming') {
+                                    console.log('⏰ Gelen arama zaman aşımı');
+                                    this.rejectIncomingCall('timeout');
+                                }
+                            }, 30000);
+                            break;
 
-                    case 'offer':
-                        if (incomingCallInfo && peerConnection) {
-                            this.handleIncomingOffer(message);
-                        }
-                        break;
-                        
-                    case 'call-ended':
-                        if (message.creditsUsed && message.creditsUsed > 0) {
-                            userInfo.credits = Math.max(0, userInfo.credits - message.creditsUsed);
+                        case 'admin-call-cancelled':
+                            console.log('📞 Admin aramayı iptal etti');
+                            if (incomingCallInfo) {
+                                this.hideIncomingCall();
+                                this.showError('Teknik destek aramayı iptal etti.');
+                                this.stopIncomingCallSound();
+                            }
+                            break;
+                            
+                        case 'call-accepted':
+                            this.stopRingbackTone();
+                            await this.setupPeerConnection();
+                            this.setState('connecting');
+                            break;
+                            
+                        case 'call-rejected':
+                            this.stopRingbackTone();
+                            this.setState('idle');
+                            if (message.reason === 'unauthorized') {
+                                this.showError('ID kodunuz onaylanmamış! Lütfen kredi talep edin.');
+                            } else {
+                                this.showError('Arama reddedildi veya usta müsait değil.');
+                            }
+                            break;
+                            
+                        case 'ice-candidate':
+                            await this.handleIceCandidate(message);
+                            break;
+                            
+                        case 'answer':
+                            await this.handleAnswer(message);
+                            break;
+
+                        case 'offer':
+                            if (incomingCallInfo && peerConnection) {
+                                await this.handleIncomingOffer(message);
+                            }
+                            break;
+                            
+                        case 'call-ended':
+                            if (message.creditsUsed && message.creditsUsed > 0) {
+                                userInfo.credits = Math.max(0, userInfo.credits - message.creditsUsed);
+                                this.updateCreditsDisplay();
+                                this.showCreditModal(message.duration, message.creditsUsed, userInfo.credits);
+                            }
+                            this.endCall();
+                            break;
+                            
+                        case 'credit-update':
+                            userInfo.credits = message.credits;
                             this.updateCreditsDisplay();
-                            this.showCreditModal(message.duration, message.creditsUsed, userInfo.credits);
-                        }
-                        this.endCall();
-                        break;
-                        
-                    case 'credit-update':
-                        userInfo.credits = message.credits;
-                        this.updateCreditsDisplay();
-                        break;
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Message handling error:', error);
                 }
             }
 
@@ -1004,25 +1010,31 @@
                 this.setState('idle');
             }
 
-            acceptIncomingCall() {
-                if (!incomingCallInfo) {
-                    console.log('❌ Gelen arama bilgisi bulunamadı');
-                    return;
-                }
+            // DÜZELTME 5: Error handling eklendi
+            async acceptIncomingCall() {
+                try {
+                    if (!incomingCallInfo) {
+                        console.log('❌ Gelen arama bilgisi bulunamadı');
+                        return;
+                    }
 
-                console.log('✅ Gelen arama kabul ediliyor...');
-                
-                this.stopIncomingCallSound();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'admin-call-accepted',
-                        userId: userInfo.id,
-                        adminId: incomingCallInfo.adminId
-                    }));
+                    console.log('✅ Gelen arama kabul ediliyor...');
+                    
+                    this.stopIncomingCallSound();
+                    
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'admin-call-accepted',
+                            userId: userInfo.id,
+                            adminId: incomingCallInfo.adminId
+                        }));
+                    }
+                    
+                    await this.setupIncomingPeerConnection();
+                } catch (error) {
+                    console.error('Accept incoming call error:', error);
+                    this.showError('Arama kabul edilirken hata oluştu.');
                 }
-                
-                this.setupIncomingPeerConnection();
             }
 
             rejectIncomingCall(reason = 'user_rejected') {
@@ -1052,6 +1064,7 @@
                 }
             }
 
+            // DÜZELTME 5: Error handling eklendi
             async setupIncomingPeerConnection() {
                 try {
                     console.log('🔗 Gelen arama için WebRTC kuruluyor...');
@@ -1090,7 +1103,7 @@
                         }
                     };
                     
-                    // ICE candidate handler
+                    // DÜZELTME 6: ICE candidate handler with error handling
                     peerConnection.onicecandidate = (event) => {
                         if (event.candidate && socket && incomingCallInfo) {
                             socket.send(JSON.stringify({
@@ -1165,6 +1178,7 @@
                 }
             }
 
+            // DÜZELTME 5 & 6: Error handling ve ICE candidate queue
             async handleIncomingOffer(message) {
                 if (!peerConnection) {
                     console.log('❌ PeerConnection hazır değil');
@@ -1178,6 +1192,12 @@
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     console.log('✅ Remote description (offer) ayarlandı');
                     
+                    // Pending ICE candidates varsa ekle
+                    while (pendingIceCandidates.length > 0) {
+                        const candidate = pendingIceCandidates.shift();
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                    
                     // Answer oluştur
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
@@ -1187,7 +1207,7 @@
                     socket.send(JSON.stringify({
                         type: 'answer',
                         answer: answer,
-                        targetId: incomingCallInfo.adminId, // message.userId yerine doğru admin ID
+                        targetId: incomingCallInfo.adminId,
                         userId: userInfo.id
                     }));
                     
@@ -1197,6 +1217,45 @@
                     console.error('❌ Offer işleme hatası:', error);
                     this.showError('WebRTC bağlantı hatası oluştu.');
                     this.rejectIncomingCall('webrtc_error');
+                }
+            }
+
+            // DÜZELTME 6: ICE candidate race condition düzeltmesi
+            async handleIceCandidate(message) {
+                try {
+                    if (peerConnection && peerConnection.remoteDescription) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        console.log('📡 ICE candidate eklendi:', message.candidate.type);
+                    } else {
+                        // Remote description henüz set edilmemişse queue'ya ekle
+                        pendingIceCandidates.push(message.candidate);
+                        console.log('⏳ ICE candidate queue\'ya eklendi');
+                    }
+                } catch (error) {
+                    console.error('❌ ICE candidate hatası:', error);
+                }
+            }
+
+            // DÜZELTME 6: Answer handling with ICE candidate queue
+            async handleAnswer(message) {
+                try {
+                    if (peerConnection) {
+                        console.log('📥 Admin\'den answer alındı');
+                        
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                        console.log('✅ Remote description (answer) ayarlandı');
+                        
+                        // Pending ICE candidates varsa ekle
+                        while (pendingIceCandidates.length > 0) {
+                            const candidate = pendingIceCandidates.shift();
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                        }
+                        
+                        console.log('⏳ ICE bağlantısı bekleniyor...');
+                    }
+                } catch (error) {
+                    console.error('❌ Answer işleme hatası:', error);
+                    this.endCall();
                 }
             }
 
@@ -1233,7 +1292,7 @@
                     };
                     
                     playRing();
-                    console.log('🔔 Gelen arama zil sesi başlatıldı');
+                    console.log('📞 Gelen arama zil sesi başlatıldı');
                     
                 } catch (error) {
                     console.log('🔇 Zil sesi çalınamadı:', error);
@@ -1334,6 +1393,7 @@
                 }
             }
             
+            // DÜZELTME 7: Timer cleanup
             stopRingbackTone() {
                 if (ringbackAudio) {
                     try {
@@ -1366,6 +1426,7 @@
                 document.getElementById('creditModalOverlay').classList.add('hidden');
             }
             
+            // DÜZELTME 5: Error handling eklendi
             async setupPeerConnection() {
                 try {
                     console.log('🔗 Normal arama için WebRTC kuruluyor...');
@@ -1536,10 +1597,12 @@
                 this.endCall();
             }
             
+            // DÜZELTME 7: Memory leak prevention - timer cleanup
             endCall() {
                 this.stopRingbackTone();
                 this.stopIncomingCallSound();
                 
+                // Timer cleanup
                 if (callTimer) {
                     clearInterval(callTimer);
                     callTimer = null;
@@ -1549,11 +1612,14 @@
                     peerConnection.close();
                     peerConnection = null;
                 }
-                
+
                 if (localStream) {
                     localStream.getTracks().forEach(track => track.stop());
                     localStream = null;
                 }
+                
+                // Clear ICE candidate queue
+                pendingIceCandidates = [];
                 
                 if (socket && callState === 'connected' && callStartTime) {
                     const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
@@ -1613,14 +1679,23 @@
                 }
             }
             
+            // DÜZELTME 7: Timer management improvement
             startCallTimer() {
+                // Cleanup existing timer
+                if (callTimer) {
+                    clearInterval(callTimer);
+                }
+                
                 callDuration = 0;
                 callTimer = setInterval(() => {
                     callDuration++;
                     const mins = Math.floor(callDuration / 60);
                     const secs = callDuration % 60;
-                    document.getElementById('callTimer').textContent = 
-                        mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+                    const timerElement = document.getElementById('callTimer');
+                    if (timerElement) {
+                        timerElement.textContent = 
+                            mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+                    }
                 }, 1000);
             }
             
@@ -1642,12 +1717,17 @@
             
             showError(message) {
                 const errorElement = document.getElementById('errorMessage');
-                errorElement.textContent = message;
-                errorElement.classList.remove('hidden');
+                if (errorElement) {
+                    errorElement.textContent = message;
+                    errorElement.classList.remove('hidden');
+                }
             }
             
             hideError() {
-                document.getElementById('errorMessage').classList.add('hidden');
+                const errorElement = document.getElementById('errorMessage');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                }
             }
             
             logoutUser() {
@@ -1662,6 +1742,12 @@
                     
                     if (socket) {
                         socket.close();
+                    }
+                    
+                    // Cleanup all timers
+                    if (callTimer) {
+                        clearInterval(callTimer);
+                        callTimer = null;
                     }
                     
                     isLoggedIn = false;
@@ -1708,6 +1794,19 @@
         // Initialize the application when the page loads
         window.addEventListener('DOMContentLoaded', () => {
             new VIPCEPApp();
+        });
+
+        // DÜZELTME 7: Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (callTimer) {
+                clearInterval(callTimer);
+            }
+            if (socket) {
+                socket.close();
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
         });
     </script>
 </body>
