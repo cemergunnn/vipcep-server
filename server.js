@@ -85,6 +85,7 @@ async function initDatabase() {
         const testUsers = [
             ['1234', 'Test Kullanıcı', 10],
             ['0005', 'VIP Müşteri', 25],
+            ['0007', 'Cenk Zortu', 999],
             ['9999', 'Demo User', 5]
         ];
 
@@ -183,27 +184,39 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
     }
 }
 
-// Arama kayıtlarını veritabanına kaydet
+// Arama kayıtlarını veritabanına kaydet ve kredi düş
 async function saveCallToDatabase(callData) {
     try {
         console.log('💾 Arama veritabanına kaydediliyor:', callData);
         
         const { userId, adminId, duration, creditsUsed, endReason } = callData;
         
-        // Call history kaydet
-        await pool.query(`
-            INSERT INTO call_history (user_id, admin_id, duration, credits_used, call_time, end_reason)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
-        `, [userId, adminId || 'ADMIN001', duration, creditsUsed, endReason || 'normal']);
-        
-        // Kullanıcı kredi ve istatistiklerini güncelle
+        // Önce kullanıcının mevcut kredisini al
         const userResult = await pool.query('SELECT * FROM approved_users WHERE id = $1', [userId]);
         
-        if (userResult.rows.length > 0) {
-            const user = userResult.rows[0];
-            const newCredits = Math.max(0, user.credits - creditsUsed);
-            const newTotalCalls = (user.total_calls || 0) + 1;
+        if (userResult.rows.length === 0) {
+            console.log(`❌ Kullanıcı bulunamadı: ${userId}`);
+            return { success: false, error: 'Kullanıcı bulunamadı' };
+        }
+        
+        const user = userResult.rows[0];
+        const oldCredits = user.credits;
+        const newCredits = Math.max(0, oldCredits - creditsUsed);
+        const newTotalCalls = (user.total_calls || 0) + 1;
+        
+        console.log(`💳 Kredi işlemi: ${userId} -> Eski: ${oldCredits}, Düşecek: ${creditsUsed}, Yeni: ${newCredits}`);
+        
+        // Aynı transaction içinde hem call history'yi kaydet hem krediyi düş
+        await pool.query('BEGIN');
+        
+        try {
+            // Call history kaydet
+            await pool.query(`
+                INSERT INTO call_history (user_id, admin_id, duration, credits_used, call_time, end_reason)
+                VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
+            `, [userId, adminId || 'ADMIN001', duration, creditsUsed, endReason || 'normal']);
             
+            // Kullanıcı kredi ve istatistiklerini güncelle
             await pool.query(`
                 UPDATE approved_users 
                 SET credits = $1, total_calls = $2, last_call = CURRENT_TIMESTAMP 
@@ -218,12 +231,18 @@ async function saveCallToDatabase(callData) {
                 `, [userId, 'call', -creditsUsed, newCredits, `Görüşme: ${Math.floor(duration/60)}:${(duration%60).toString().padStart(2,'0')}`]);
             }
             
-            console.log(`✅ Arama kaydedildi: ${userId} -> ${creditsUsed} kredi düşüldü (${newCredits} kalan)`);
-            return { success: true, newCredits, creditsUsed };
+            await pool.query('COMMIT');
+            
+            console.log(`✅ KREDİ BAŞARIYLA DÜŞTÜ: ${userId} -> ${oldCredits} -> ${newCredits} (${creditsUsed} düştü)`);
+            return { success: true, newCredits, creditsUsed, oldCredits };
+            
+        } catch (error) {
+            await pool.query('ROLLBACK');
+            throw error;
         }
         
     } catch (error) {
-        console.log('💾 PostgreSQL arama kayıt hatası:', error.message);
+        console.log('💾 PostgreSQL arama kayıt/kredi düşme hatası:', error.message);
         return { success: false, error: error.message };
     }
 }
@@ -431,7 +450,10 @@ wss.on('connection', (ws, req) => {
                     
                     // Arama kaydını veritabanına kaydet ve kredi düş (sadece gerçek görüşmeler için)
                     if (duration > 0 && message.userId && message.userId !== 'ADMIN001') {
-                        console.log(`💾 Kredi düşürülüyor: ${message.userId} -> ${creditsUsed} kredi (${duration} saniye)`);
+                        console.log(`💾 KREDİ DÜŞÜRME İŞLEMİ BAŞLIYOR:`);
+                        console.log(`   - Kullanıcı: ${message.userId}`);
+                        console.log(`   - Süre: ${duration} saniye`);
+                        console.log(`   - Düşecek Kredi: ${creditsUsed} dakika`);
                         
                         const saveResult = await saveCallToDatabase({
                             userId: message.userId,
@@ -442,7 +464,10 @@ wss.on('connection', (ws, req) => {
                         });
                         
                         if (saveResult.success) {
-                            console.log(`✅ Kredi başarıyla düşürüldü: ${message.userId} -> Yeni kredi: ${saveResult.newCredits}`);
+                            console.log(`✅ KREDİ DÜŞÜRME BAŞARILI:`);
+                            console.log(`   - Eski Kredi: ${saveResult.oldCredits}`);
+                            console.log(`   - Yeni Kredi: ${saveResult.newCredits}`);
+                            console.log(`   - Düşen: ${saveResult.creditsUsed}`);
                             
                             // Tüm admin client'lara kredi güncellemesi bildir
                             const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
@@ -453,8 +478,10 @@ wss.on('connection', (ws, req) => {
                                         userId: message.userId,
                                         creditsUsed: creditsUsed,
                                         newCredits: saveResult.newCredits,
+                                        oldCredits: saveResult.oldCredits,
                                         duration: duration
                                     }));
+                                    console.log(`📨 Admin'e kredi güncelleme gönderildi: ${client.id}`);
                                 }
                             });
                             
@@ -465,9 +492,10 @@ wss.on('connection', (ws, req) => {
                                     type: 'credit-update',
                                     credits: saveResult.newCredits
                                 }));
+                                console.log(`📨 Müşteriye kredi güncellemesi gönderildi: ${message.userId}`);
                             }
                         } else {
-                            console.log(`❌ Kredi düşürme hatası: ${saveResult.error}`);
+                            console.log(`❌ KREDİ DÜŞÜRME HATASI: ${saveResult.error}`);
                         }
                     } else {
                         console.log(`ℹ️ Kredi düşürülmedi: duration=${duration}, userId=${message.userId}`);
