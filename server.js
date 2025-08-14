@@ -1162,6 +1162,11 @@ app.get('/health', (req, res) => {
 
 // Ana sayfa - DÜZELTİLDİ
 app.get('/', (req, res) => {
+    res.redirect('/admin-kuyruklu.html');
+});
+
+// Info sayfası - YENİ
+app.get('/info', (req, res) => {
     const host = req.get('host');
     res.send(`
         <!DOCTYPE html>
