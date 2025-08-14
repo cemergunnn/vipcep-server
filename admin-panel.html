@@ -14,8 +14,76 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            padding: 20px;
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Login Screen */
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .admin-cards {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-card {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .admin-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+        }
+        
+        .admin-card.cenk {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+        
+        .admin-card.cenk:hover {
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+        }
+        
+        /* Main App */
+        .main-app {
+            width: 100%;
+            height: 100vh;
+            padding: 20px;
         }
         
         .container {
@@ -73,40 +141,192 @@
             border: 1px solid rgba(34, 197, 94, 0.1);
         }
         
+        .admin-info {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 3px solid #22c55e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .admin-name {
+            font-weight: 700;
+            color: #2563eb;
+            font-size: 16px;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+        
         .hidden {
             display: none !important;
+        }
+        
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>🎯 VIPCEP Admin Panel</h1>
-                <p>Teknik Servis Danışmanlık Programı</p>
-            </div>
-            <div class="status">
-                <div class="status-dot disconnected" id="statusDot"></div>
-                <span id="statusText">Bağlanıyor...</span>
-            </div>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-header">
+            <div class="login-title">🎯 VIPCEP Admin</div>
+            <div class="login-subtitle">Hangi admin olarak giriş yapmak istiyorsunuz?</div>
         </div>
         
-        <div class="main-content">
-            <div class="panel">
-                <h3>📞 Arama Yönetimi</h3>
-                <p>Admin panel başarıyla yüklendi!</p>
+        <div class="admin-cards">
+            <button class="admin-card" onclick="loginAs('ADMIN001')">
+                <div style="font-size: 24px; margin-bottom: 8px;">👨‍🔧</div>
+                <div>Cem Usta</div>
+                <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">ADMIN001</div>
+            </button>
+            
+            <button class="admin-card cenk" onclick="loginAs('ADMIN002')">
+                <div style="font-size: 24px; margin-bottom: 8px;">👨‍💻</div>
+                <div>Cenk Usta</div>
+                <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">ADMIN002</div>
+            </button>
+        </div>
+        
+        <div style="text-align: center; color: #64748b; font-size: 12px;">
+            Teknik Servis Danışmanlık Programı v2.0
+        </div>
+    </div>
+    
+    <!-- Main App -->
+    <div id="mainApp" class="main-app hidden">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h1>🎯 VIPCEP Admin Panel</h1>
+                    <p style="font-size: 16px; opacity: 0.9;">Teknik Servis Danışmanlık Programı</p>
+                </div>
+                <div class="status">
+                    <div class="status-dot disconnected" id="statusDot"></div>
+                    <span id="statusText">Bağlanıyor...</span>
+                </div>
             </div>
             
-            <div class="panel">
-                <h3>👥 Kullanıcı Yönetimi</h3>
-                <p>Kullanıcı listesi yükleniyor...</p>
+            <!-- Admin Info -->
+            <div class="admin-info">
+                <div>
+                    <div class="admin-name" id="currentAdminName">Admin Sistemi</div>
+                    <div style="font-size: 12px; color: #6b7280;" id="currentAdminInfo">Sistem başlatılıyor...</div>
+                </div>
+                <button class="logout-btn" onclick="logout()">🚪 Çıkış</button>
             </div>
             
-            <div class="panel">
-                <h3>📋 Kuyruk Sistemi</h3>
-                <p>Kuyruk sistemi aktif!</p>
+            <div class="main-content">
+                <div class="panel">
+                    <h3>📞 Arama Yönetimi</h3>
+                    <div style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📞</div>
+                        <div>Arama sistemi aktif</div>
+                        <div style="font-size: 12px; margin-top: 8px;">WebSocket bağlantısı bekleniyor...</div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3>👥 Kullanıcı Yönetimi</h3>
+                    <div style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                        <div>Kullanıcı listesi yükleniyor...</div>
+                        <div style="font-size: 12px; margin-top: 8px;">API bağlantısı kuruluyor...</div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h3>📋 Kuyruk & Bağlantılar</h3>
+                    <div style="padding: 20px; text-align: center; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
+                        <div>Kuyruk sistemi hazır</div>
+                        <div style="font-size: 12px; margin-top: 8px;">Real-time güncellemeler aktif</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+        let currentAdminId = null;
+        const adminNames = {
+            'ADMIN001': 'Cem Usta',
+            'ADMIN002': 'Cenk Usta'
+        };
+        
+        function loginAs(adminId) {
+            currentAdminId = adminId;
+            
+            // Admin bilgilerini güncelle
+            document.getElementById('currentAdminName').textContent = adminNames[adminId];
+            document.getElementById('currentAdminInfo').textContent = `${adminNames[adminId]} olarak giriş yapıldı`;
+            
+            // Ekranları değiştir
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            // Header rengini değiştir
+            const header = document.querySelector('.header');
+            if (adminId === 'ADMIN002') {
+                header.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+            }
+            
+            console.log(`🔐 ${adminNames[adminId]} (${adminId}) olarak giriş yapıldı`);
+            
+            // WebSocket bağlantısını başlat
+            connectToServer();
+        }
+        
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                currentAdminId = null;
+                
+                // Ekranları değiştir
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                
+                // Header rengini sıfırla
+                const header = document.querySelector('.header');
+                header.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+                
+                console.log('🚪 Çıkış yapıldı');
+            }
+        }
+        
+        function connectToServer() {
+            // WebSocket bağlantısı simülasyonu
+            document.getElementById('statusText').textContent = 'Bağlanıyor...';
+            
+            setTimeout(() => {
+                document.getElementById('statusDot').className = 'status-dot connected';
+                document.getElementById('statusText').textContent = 'Bağlı';
+                console.log('✅ WebSocket bağlantısı kuruldu');
+            }, 2000);
+        }
+        
+        // Sayfa yüklendiğinde
+        window.onload = function() {
+            console.log('🚀 VIPCEP Admin Panel v2.0 başlatıldı');
+        };
+    </script>
 </body>
 </html>
