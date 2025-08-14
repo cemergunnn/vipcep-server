@@ -35,209 +35,6 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map();
 let callHistory = [];
 
-// Çoklu Admin sistemi
-const ADMINS = {
-    'ADMIN001': { name: 'Cem Usta', status: 'idle', currentCall: null },
-    'ADMIN002': { name: 'Cenk Usta', status: 'idle', currentCall: null }
-};
-
-// Kuyruk sistemi
-let callQueue = [];
-let queueCounter = 0;
-
-// İlk müsait admin bulma
-function findAvailableAdmin() {
-    return Object.keys(ADMINS).find(adminId => 
-        ADMINS[adminId].status === 'idle' && 
-        clients.get(adminId)?.ws.readyState === WebSocket.OPEN
-    );
-}
-
-// Admin durumunu güncelle
-function updateAdminStatus(adminId, status, callInfo = null) {
-    if (ADMINS[adminId]) {
-        ADMINS[adminId].status = status;
-        ADMINS[adminId].currentCall = callInfo;
-        console.log(`👨‍💼 ${ADMINS[adminId].name} durumu: ${status}`);
-        broadcastAdminStatus();
-    }
-}
-
-// Admin durumlarını broadcast et
-function broadcastAdminStatus() {
-    const adminStatus = Object.keys(ADMINS).map(adminId => ({
-        id: adminId,
-        name: ADMINS[adminId].name,
-        status: ADMINS[adminId].status,
-        currentCall: ADMINS[adminId].currentCall,
-        online: clients.get(adminId)?.ws.readyState === WebSocket.OPEN
-    }));
-
-    const message = JSON.stringify({
-        type: 'admin-status-update',
-        admins: adminStatus
-    });
-
-    // Sadece admin client'lara gönder
-    clients.forEach(client => {
-        if (client.userType === 'admin' && client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
-        }
-    });
-}
-
-// Kuyruğa ekle
-function addToQueue(userId, userName, credits) {
-    const queueItem = {
-        id: ++queueCounter,
-        userId,
-        userName,
-        credits,
-        queueTime: Date.now(),
-        callAttempts: 0,
-        lastCallAttempt: null,
-        status: 'waiting'
-    };
-    
-    callQueue.push(queueItem);
-    console.log(`📋 Kuyruğa eklendi: ${userName} (${userId}) - Sıra: ${callQueue.length}`);
-    
-    broadcastQueueUpdate();
-    notifyUserQueuePosition(userId);
-    
-    return queueItem;
-}
-
-// Kuyruktan çıkar
-function removeFromQueue(userId) {
-    const index = callQueue.findIndex(item => item.userId === userId);
-    if (index !== -1) {
-        const removed = callQueue.splice(index, 1)[0];
-        console.log(`📋 Kuyruktan çıkarıldı: ${removed.userName} (${removed.userId})`);
-        broadcastQueueUpdate();
-        updateAllQueuePositions();
-        return removed;
-    }
-    return null;
-}
-
-// Kuyruk pozisyonunu bul
-function getQueuePosition(userId) {
-    return callQueue.findIndex(item => item.userId === userId) + 1;
-}
-
-// Tüm kuyruk pozisyonlarını güncelle
-function updateAllQueuePositions() {
-    callQueue.forEach((item, index) => {
-        notifyUserQueuePosition(item.userId, index + 1);
-    });
-}
-
-// Kullanıcıya kuyruk pozisyonunu bildir
-function notifyUserQueuePosition(userId, position = null) {
-    const client = clients.get(userId);
-    if (client && client.ws.readyState === WebSocket.OPEN) {
-        const currentPosition = position || getQueuePosition(userId);
-        if (currentPosition > 0) {
-            client.ws.send(JSON.stringify({
-                type: 'queue-position-update',
-                position: currentPosition,
-                totalWaiting: callQueue.length,
-                estimatedWait: currentPosition * 3 // 3 dakika tahmin
-            }));
-        }
-    }
-}
-
-// Kuyruk güncellemesini broadcast et
-function broadcastQueueUpdate() {
-    const queueData = callQueue.map(item => ({
-        id: item.id,
-        userId: item.userId,
-        userName: item.userName,
-        credits: item.credits,
-        queueTime: item.queueTime,
-        callAttempts: item.callAttempts,
-        lastCallAttempt: item.lastCallAttempt,
-        status: item.status,
-        waitingMinutes: Math.floor((Date.now() - item.queueTime) / 60000)
-    }));
-
-    const message = JSON.stringify({
-        type: 'queue-update',
-        queue: queueData
-    });
-
-    // Admin'lere gönder
-    clients.forEach(client => {
-        if (client.userType === 'admin' && client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
-        }
-    });
-}
-
-// Kuyruktan admin ile arama yap
-function callFromQueue(queueId, adminId) {
-    const queueItem = callQueue.find(item => item.id === queueId);
-    if (!queueItem) {
-        console.log(`❌ Kuyruk öğesi bulunamadı: ${queueId}`);
-        return false;
-    }
-
-    const customerClient = clients.get(queueItem.userId);
-    if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
-        console.log(`❌ Müşteri çevrimdışı: ${queueItem.userId}`);
-        return false;
-    }
-
-    // Arama denemesi say
-    queueItem.callAttempts++;
-    queueItem.lastCallAttempt = Date.now();
-    queueItem.status = 'calling';
-
-    console.log(`📞 Kuyruktan arama: ${ADMINS[adminId].name} -> ${queueItem.userName} (${queueItem.callAttempts}. deneme)`);
-
-    // Müşteriye arama bildirimi gönder
-    customerClient.ws.send(JSON.stringify({
-        type: 'admin-call-request',
-        adminId: adminId,
-        adminName: ADMINS[adminId].name,
-        fromQueue: true,
-        callAttempt: queueItem.callAttempts
-    }));
-
-    // Admin durumunu güncelle
-    updateAdminStatus(adminId, 'calling', {
-        userId: queueItem.userId,
-        userName: queueItem.userName
-    });
-
-    broadcastQueueUpdate();
-
-    // 30 saniye timeout
-    setTimeout(() => {
-        if (queueItem.status === 'calling') {
-            console.log(`⏰ Kuyruk araması zaman aşımı: ${queueItem.userName}`);
-            queueItem.status = 'waiting';
-            updateAdminStatus(adminId, 'idle');
-            
-            // Admin'e timeout bildirimi
-            const adminClient = clients.get(adminId);
-            if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
-                adminClient.ws.send(JSON.stringify({
-                    type: 'queue-call-timeout',
-                    userId: queueItem.userId,
-                    userName: queueItem.userName
-                }));
-            }
-            
-            broadcastQueueUpdate();
-        }
-    }, 30000);
-
-    return true;
-}
-
 // Veritabanı başlatma
 async function initDatabase() {
     try {
@@ -256,7 +53,7 @@ async function initDatabase() {
             )
         `);
 
-        // Call history tablosu
+        // Call history tablosu (Foreign key olmadan)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS call_history (
                 id SERIAL PRIMARY KEY,
@@ -279,21 +76,6 @@ async function initDatabase() {
                 balance_after INTEGER,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Call queue tablosu (yeni)
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS call_queue (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10) NOT NULL,
-                user_name VARCHAR(255) NOT NULL,
-                queue_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                call_attempts INTEGER DEFAULT 0,
-                last_call_attempt TIMESTAMP,
-                queue_position INTEGER,
-                status VARCHAR(20) DEFAULT 'waiting',
-                preferred_admin VARCHAR(10)
             )
         `);
 
@@ -487,15 +269,7 @@ wss.on('connection', (ws, req) => {
                     });
 
                     console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} (${message.userId})`);
-                    
-                    // Admin ise durumunu güncelle
-                    if (message.userType === 'admin' && ADMINS[message.userId]) {
-                        ADMINS[message.userId].status = 'idle';
-                    }
-                    
                     broadcastUserList();
-                    broadcastAdminStatus();
-                    broadcastQueueUpdate();
                     break;
 
                 case 'login-request':
@@ -522,75 +296,24 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'call-request':
-                    console.log('📞 Müşteri arama talebi:', message.userId);
+                    console.log('📞 Müşteri → Admin arama talebi:', message.userId);
                     
-                    const availableAdmin = findAvailableAdmin();
-                    
-                    if (availableAdmin) {
-                        // Müsait admin var, direkt bağla
-                        const adminClient = clients.get(availableAdmin);
-                        if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
-                            adminClient.ws.send(JSON.stringify({
-                                type: 'incoming-call',
-                                userId: message.userId,
-                                userName: message.userName,
-                                credits: message.credits
-                            }));
-                            
-                            updateAdminStatus(availableAdmin, 'incoming_call', {
-                                userId: message.userId,
-                                userName: message.userName
-                            });
-                            
-                            console.log(`📞 ${ADMINS[availableAdmin].name}'e arama bildirimi gönderildi`);
-                        }
-                    } else {
-                        // Tüm adminler meşgul, kuyruğa al
-                        addToQueue(message.userId, message.userName, message.credits);
-                        
-                        ws.send(JSON.stringify({
-                            type: 'added-to-queue',
-                            position: getQueuePosition(message.userId),
-                            totalWaiting: callQueue.length,
-                            message: 'Tüm uzmanlarımız meşgul. Çağrınız sıraya alındı.'
+                    const adminClient = Array.from(clients.values()).find(c => c.userType === 'admin');
+                    if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
+                        adminClient.ws.send(JSON.stringify({
+                            type: 'incoming-call',
+                            userId: message.userId,
+                            userName: message.userName,
+                            credits: message.credits
                         }));
-                        
-                        console.log(`📋 Müşteri kuyruğa alındı: ${message.userName} (${message.userId})`);
-                    }
-                    break;
-
-                case 'queue-call-request':
-                    console.log('📞 Admin kuyruktan arama talebi:', message.adminId, '->', message.queueId);
-                    
-                    if (ADMINS[message.adminId] && ADMINS[message.adminId].status === 'idle') {
-                        callFromQueue(message.queueId, message.adminId);
+                        console.log('📞 Admin\'e arama bildirimi gönderildi');
                     } else {
-                        console.log(`❌ Admin müsait değil: ${message.adminId}`);
+                        ws.send(JSON.stringify({
+                            type: 'call-rejected',
+                            reason: 'Teknik destek şu anda müsait değil. Lütfen daha sonra tekrar deneyin.'
+                        }));
+                        console.log('❌ Admin bulunamadı, arama reddedildi');
                     }
-                    break;
-
-                case 'remove-from-queue':
-                    console.log('📋 Kuyruktan çıkarma talebi:', message.adminId, '->', message.queueId);
-                    
-                    const queueItem = callQueue.find(item => item.id === message.queueId);
-                    if (queueItem) {
-                        removeFromQueue(queueItem.userId);
-                        
-                        // Müşteriye bildir
-                        const customerClient = clients.get(queueItem.userId);
-                        if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                            customerClient.ws.send(JSON.stringify({
-                                type: 'removed-from-queue',
-                                reason: 'Admin tarafından çıkarıldınız',
-                                message: 'Görüşme talebi iptal edildi'
-                            }));
-                        }
-                    }
-                    break;
-
-                case 'leave-queue':
-                    console.log('📋 Müşteri kuyruktan ayrıldı:', message.userId);
-                    removeFromQueue(message.userId);
                     break;
 
                 case 'admin-call-request':
@@ -601,7 +324,7 @@ wss.on('connection', (ws, req) => {
                         customerClient.ws.send(JSON.stringify({
                             type: 'admin-call-request',
                             adminId: message.adminId,
-                            adminName: message.adminName || ADMINS[message.adminId]?.name || 'USTAM'
+                            adminName: message.adminName || 'USTAM'
                         }));
                         console.log('📞 Müşteriye arama bildirimi gönderildi');
                     } else {
@@ -626,14 +349,6 @@ wss.on('connection', (ws, req) => {
                             type: 'admin-call-accepted',
                             userId: message.userId
                         }));
-                        
-                        // Admin durumunu güncelle
-                        updateAdminStatus(message.adminId, 'connected', {
-                            userId: message.userId
-                        });
-                        
-                        // Kuyruktan çıkar (eğer kuyrukta ise)
-                        removeFromQueue(message.userId);
                     }
                     break;
 
@@ -647,16 +362,6 @@ wss.on('connection', (ws, req) => {
                             userId: message.userId,
                             reason: message.reason
                         }));
-                        
-                        // Admin durumunu serbest yap
-                        updateAdminStatus(message.adminId, 'idle');
-                        
-                        // Kuyruk durumunu güncelle
-                        const queueItem = callQueue.find(item => item.userId === message.userId);
-                        if (queueItem) {
-                            queueItem.status = 'waiting';
-                            broadcastQueueUpdate();
-                        }
                     }
                     break;
 
@@ -670,9 +375,6 @@ wss.on('connection', (ws, req) => {
                             reason: message.reason
                         }));
                     }
-                    
-                    // Admin durumunu serbest yap
-                    updateAdminStatus(message.adminId, 'idle');
                     break;
 
                 case 'accept-call':
@@ -732,14 +434,6 @@ wss.on('connection', (ws, req) => {
                     const duration = message.duration || 0;
                     const creditsUsed = Math.ceil(duration / 60); // Yukarı yuvarlamalı
                     
-                    // Admin durumunu serbest yap
-                    if (message.targetId && ADMINS[message.targetId]) {
-                        updateAdminStatus(message.targetId, 'idle');
-                    }
-                    if (message.userId && ADMINS[message.userId]) {
-                        updateAdminStatus(message.userId, 'idle');
-                    }
-                    
                     // Hedef kullanıcıya bildir
                     if (message.targetId) {
                         const endTarget = clients.get(message.targetId);
@@ -755,7 +449,7 @@ wss.on('connection', (ws, req) => {
                     }
                     
                     // Arama kaydını veritabanına kaydet ve kredi düş (sadece gerçek görüşmeler için)
-                    if (duration > 0 && message.userId && !message.userId.startsWith('ADMIN')) {
+                    if (duration > 0 && message.userId && message.userId !== 'ADMIN001') {
                         console.log(`💾 KREDİ DÜŞÜRME İŞLEMİ BAŞLIYOR:`);
                         console.log(`   - Kullanıcı: ${message.userId}`);
                         console.log(`   - Süre: ${duration} saniye`);
@@ -847,16 +541,6 @@ wss.on('connection', (ws, req) => {
         const client = findClientById(ws);
         console.log('👋 Kullanıcı ayrıldı:', client?.name || 'unknown');
         
-        // Admin ise durumunu offline yap
-        if (client && client.userType === 'admin' && ADMINS[client.id]) {
-            ADMINS[client.id].status = 'offline';
-        }
-        
-        // Eğer kuyrukta ise çıkar
-        if (client && client.userType === 'customer') {
-            removeFromQueue(client.id);
-        }
-        
         // Client'ı kaldır
         for (const [key, clientData] of clients.entries()) {
             if (clientData.ws === ws) {
@@ -866,7 +550,6 @@ wss.on('connection', (ws, req) => {
         }
         
         broadcastUserList();
-        broadcastAdminStatus();
     });
 
     ws.on('error', (error) => {
@@ -903,11 +586,6 @@ function broadcastUserList() {
         }
     });
 }
-
-// Kuyruk pozisyonu güncellemelerini periyodik gönder
-setInterval(() => {
-    updateAllQueuePositions();
-}, 5000); // Her 5 saniyede bir
 
 // API Routes
 
@@ -974,36 +652,6 @@ app.post('/api/approved-users/:id/credits', async (req, res) => {
     }
 });
 
-// Kuyruk durumunu getir
-app.get('/api/queue', (req, res) => {
-    const queueData = callQueue.map(item => ({
-        id: item.id,
-        userId: item.userId,
-        userName: item.userName,
-        credits: item.credits,
-        queueTime: item.queueTime,
-        callAttempts: item.callAttempts,
-        lastCallAttempt: item.lastCallAttempt,
-        status: item.status,
-        waitingMinutes: Math.floor((Date.now() - item.queueTime) / 60000)
-    }));
-    
-    res.json(queueData);
-});
-
-// Admin durumlarını getir
-app.get('/api/admin-status', (req, res) => {
-    const adminStatus = Object.keys(ADMINS).map(adminId => ({
-        id: adminId,
-        name: ADMINS[adminId].name,
-        status: ADMINS[adminId].status,
-        currentCall: ADMINS[adminId].currentCall,
-        online: clients.get(adminId)?.ws.readyState === WebSocket.OPEN
-    }));
-    
-    res.json(adminStatus);
-});
-
 // Arama geçmişini getir
 app.get('/api/calls', async (req, res) => {
     try {
@@ -1034,14 +682,7 @@ app.get('/api/stats', async (req, res) => {
             totalCalls: parseInt(totalCalls.rows[0].count),
             totalCredits: parseInt(totalCredits.rows[0].sum || 0),
             todayCalls: parseInt(todayCalls.rows[0].count),
-            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
-            queueLength: callQueue.length,
-            adminStatus: Object.keys(ADMINS).map(adminId => ({
-                id: adminId,
-                name: ADMINS[adminId].name,
-                status: ADMINS[adminId].status,
-                online: clients.get(adminId)?.ws.readyState === WebSocket.OPEN
-            }))
+            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length
         });
     } catch (error) {
         console.log('💾 PostgreSQL istatistik hatası:', error.message);
@@ -1056,32 +697,18 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         clients: clients.size,
-        database: process.env.DATABASE_URL ? 'Connected' : 'Offline',
-        queue: callQueue.length,
-        admins: Object.keys(ADMINS).map(adminId => ({
-            id: adminId,
-            name: ADMINS[adminId].name,
-            status: ADMINS[adminId].status,
-            online: clients.get(adminId)?.ws.readyState === WebSocket.OPEN
-        }))
+        database: process.env.DATABASE_URL ? 'Connected' : 'Offline'
     });
 });
 
 // Ana sayfa
 app.get('/', (req, res) => {
     const host = req.get('host');
-    const adminStatusHTML = Object.keys(ADMINS).map(adminId => {
-        const admin = ADMINS[adminId];
-        const isOnline = clients.get(adminId)?.ws.readyState === WebSocket.OPEN;
-        const statusIcon = isOnline ? (admin.status === 'idle' ? '🟢' : '🟡') : '🔴';
-        return `<li><strong>${admin.name}:</strong> ${statusIcon} ${admin.status} ${isOnline ? '(Çevrimiçi)' : '(Çevrimdışı)'}</li>`;
-    }).join('');
-    
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>🎯 VIPCEP Server v2.0</title>
+            <title>🎯 VIPCEP Server</title>
             <meta charset="UTF-8">
             <style>
                 body { 
@@ -1165,52 +792,20 @@ app.get('/', (req, res) => {
                     margin-top: 20px;
                     font-weight: bold;
                 }
-                .new-features {
-                    background: linear-gradient(135deg, #fef3c7, #fde68a);
-                    padding: 20px;
-                    border-radius: 12px;
-                    border-left: 4px solid #f59e0b;
-                    margin-bottom: 20px;
-                }
-                .admin-status {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 12px;
-                    margin-bottom: 20px;
-                    border-left: 4px solid #8b5cf6;
-                }
             </style>
         </head>
         <body>
             <div class="header">
-                <h1>🎯 VIPCEP Server v2.0</h1>
+                <h1>🎯 VIPCEP Server</h1>
                 <p style="font-size: 18px; margin: 10px 0;">Voice IP Communication Emergency Protocol</p>
-                <p style="font-size: 14px; opacity: 0.9;">Çoklu Admin & Kuyruk Yönetim Sistemi</p>
-            </div>
-            
-            <div class="new-features">
-                <h3>🚀 Yeni Özellikler (v2.0)</h3>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>Çoklu Admin Sistemi:</strong> Cem Usta & Cenk Usta ile paralel görüşme</li>
-                    <li><strong>Akıllı Kuyruk:</strong> Tüm adminler meşgulken otomatik sıralama</li>
-                    <li><strong>Geri Arama:</strong> Admin'ler kuyruktan müşteri arayabilir</li>
-                    <li><strong>Real-time Bildirimler:</strong> Anlık kuyruk pozisyonu güncellemeleri</li>
-                    <li><strong>Gelişmiş Kredi Senkronizasyonu:</strong> Otomatik bakiye güncelleme</li>
-                </ul>
-            </div>
-            
-            <div class="admin-status">
-                <h3>👨‍💼 Admin Durumları</h3>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    ${adminStatusHTML}
-                </ul>
+                <p style="font-size: 14px; opacity: 0.9;">Mobil Cihaz Teknik Danışmanlık Sistemi</p>
             </div>
             
             <div class="links">
                 <div class="link-card">
                     <h3>👨‍💼 Admin Panel</h3>
-                    <p>Çoklu admin yönetim sistemi</p>
-                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, kuyruk kontrolü, kredi sistemi</p>
+                    <p>Teknik servis yönetim sistemi</p>
+                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü, kredi sistemi</p>
                     <a href="/admin-panel.html">Admin Panel'e Git →</a>
                 </div>
                 <div class="link-card">
@@ -1229,10 +824,6 @@ app.get('/', (req, res) => {
                         <div>Aktif Bağlantı</div>
                     </div>
                     <div class="status-item">
-                        <div class="status-value">${callQueue.length}</div>
-                        <div>Bekleyen Çağrı</div>
-                    </div>
-                    <div class="status-item">
                         <div class="status-value">✅</div>
                         <div>Sistem Durumu</div>
                     </div>
@@ -1240,10 +831,13 @@ app.get('/', (req, res) => {
                         <div class="status-value">${process.env.DATABASE_URL ? '✅' : '❌'}</div>
                         <div>Veritabanı</div>
                     </div>
+                    <div class="status-item">
+                        <div class="status-value">${PORT}</div>
+                        <div>Port</div>
+                    </div>
                 </div>
                 <p style="margin-top: 15px;"><strong>WebSocket URL:</strong> wss://${host}</p>
                 <p><strong>Railway Deploy:</strong> ${process.env.RAILWAY_ENVIRONMENT || 'Local'}</p>
-                <p><strong>Kuyruk Kapasitesi:</strong> Sınırsız | <strong>Admin Kapasitesi:</strong> 2 Paralel Görüşme</p>
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
@@ -1263,13 +857,7 @@ app.get('/', (req, res) => {
                 <ul style="margin: 10px 0; padding-left: 20px;">
                     <li><strong>ID:</strong> 1234 | <strong>Ad:</strong> Test Kullanıcı | <strong>Kredi:</strong> 10 dk</li>
                     <li><strong>ID:</strong> 0005 | <strong>Ad:</strong> VIP Müşteri | <strong>Kredi:</strong> 25 dk</li>
-                    <li><strong>ID:</strong> 0007 | <strong>Ad:</strong> Cenk Zortu | <strong>Kredi:</strong> 999 dk</li>
                     <li><strong>ID:</strong> 9999 | <strong>Ad:</strong> Demo User | <strong>Kredi:</strong> 5 dk</li>
-                </ul>
-                <h4>👨‍💼 Admin Giriş Kodları:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>ADMIN001:</strong> Cem Usta</li>
-                    <li><strong>ADMIN002:</strong> Cenk Usta</li>
                 </ul>
             </div>
         </body>
@@ -1296,7 +884,7 @@ app.use((req, res) => {
 
 // Server'ı başlat
 async function startServer() {
-    console.log('🚀 VIPCEP Server v2.0 Başlatılıyor...');
+    console.log('🚀 VIPCEP Server Başlatılıyor...');
     console.log('📍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
@@ -1304,7 +892,7 @@ async function startServer() {
     
     // HTTP Server'ı başlat
     server.listen(PORT, '0.0.0.0', () => {
-        console.log('🎯 VIPCEP Server v2.0 çalışıyor!');
+        console.log('🎯 VIPCEP Server çalışıyor!');
         console.log(`📍 Port: ${PORT}`);
         console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
         console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
@@ -1314,16 +902,9 @@ async function startServer() {
         console.log(` 👨‍💼 Admin paneli: /admin-panel.html`);
         console.log(` 📱 Müşteri uygulaması: /customer-app.html`);
         console.log('');
-        console.log('👨‍💼 Çoklu Admin Sistemi:');
-        console.log(`  ${ADMINS['ADMIN001'].name} (ADMIN001) - ${ADMINS['ADMIN001'].status}`);
-        console.log(`  ${ADMINS['ADMIN002'].name} (ADMIN002) - ${ADMINS['ADMIN002'].status}`);
-        console.log('');
-        console.log('📋 Kuyruk Sistemi: Aktif');
-        console.log('🔄 Real-time Güncellemeler: Her 5 saniyede bir');
-        console.log('');
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
-        console.log('✅ Sistem hazır - Çoklu görüşme kabul ediliyor!');
+        console.log('✅ Sistem hazır - Arama kabul ediliyor!');
         console.log('═══════════════════════════════════════════');
     });
 }
