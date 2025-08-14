@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPCEP Admin Panel v2.0</title>
+    <title>VIPCEP Admin Panel</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,7 @@
         }
         
         .container {
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -33,20 +33,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .admin-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .admin-badge {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
         }
         
         .status {
@@ -75,7 +61,7 @@
         
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 1fr 350px 300px;
+            grid-template-columns: 1fr 1fr 300px;
             gap: 20px;
         }
         
@@ -94,142 +80,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-        
-        /* Admin Status Panel */
-        .admin-status-panel {
-            background: linear-gradient(135deg, #eff6ff, #dbeafe);
-            border-left: 4px solid #3b82f6;
-        }
-        
-        .admin-status-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: white;
-            border-radius: 8px;
-            border-left: 3px solid transparent;
-        }
-        
-        .admin-status-item.idle {
-            border-left-color: #22c55e;
-        }
-        
-        .admin-status-item.busy {
-            border-left-color: #f59e0b;
-        }
-        
-        .admin-status-item.offline {
-            border-left-color: #ef4444;
-        }
-        
-        .admin-name {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        
-        .admin-current-status {
-            font-size: 13px;
-            color: #64748b;
-        }
-        
-        .admin-status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .status-idle { background: #dcfce7; color: #166534; }
-        .status-busy { background: #fef3c7; color: #92400e; }
-        .status-offline { background: #fee2e2; color: #991b1b; }
-        
-        /* Kuyruk Panel */
-        .queue-panel {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border-left: 4px solid #f59e0b;
-        }
-        
-        .queue-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .queue-stat {
-            background: rgba(255,255,255,0.8);
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .queue-stat-number {
-            font-size: 24px;
-            font-weight: 800;
-            color: #f59e0b;
-        }
-        
-        .queue-stat-label {
-            font-size: 11px;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-        
-        .queue-list {
-            max-height: 350px;
-            overflow-y: auto;
-        }
-        
-        .queue-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            margin-bottom: 8px;
-            background: white;
-            border-radius: 8px;
-            border-left: 3px solid #f59e0b;
-            transition: all 0.3s ease;
-        }
-        
-        .queue-item:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        
-        .queue-item.calling {
-            border-left-color: #2563eb;
-            background: #eff6ff;
-        }
-        
-        .queue-user-info {
-            flex: 1;
-        }
-        
-        .queue-user-name {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 14px;
-        }
-        
-        .queue-user-details {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 2px;
-        }
-        
-        .queue-actions {
-            display: flex;
-            gap: 6px;
-        }
-        
-        .queue-call-indicator {
-            font-size: 18px;
-            margin-right: 8px;
         }
         
         /* Arama Durumları */
@@ -343,14 +193,6 @@
             padding: 6px 12px;
             font-size: 12px;
             border-radius: 6px;
-        }
-        
-        .btn-remove {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            padding: 4px 8px;
-            font-size: 11px;
-            border-radius: 4px;
         }
         
         /* Kullanıcı Yönetimi */
@@ -611,9 +453,9 @@
         }
         
         /* Responsive */
-        @media (max-width: 1400px) {
+        @media (max-width: 1200px) {
             .main-content {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr;
                 gap: 20px;
             }
             
@@ -623,22 +465,24 @@
             }
         }
         
-        @media (max-width: 800px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
         }
         
-        /* Empty States */
-        .empty-state {
-            text-align: center;
-            color: #6b7280;
-            padding: 40px 20px;
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: white;
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
         }
         
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
         }
     </style>
 </head>
@@ -646,14 +490,9 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <div class="admin-info">
-                <div>
-                    <h1>🎯 VIPCEP Admin Panel v2.0</h1>
-                    <p style="font-size: 16px; opacity: 0.9;">Çoklu Admin & Kuyruk Yönetim Sistemi</p>
-                </div>
-                <div class="admin-badge" id="currentAdminBadge">
-                    👨‍💼 -
-                </div>
+            <div>
+                <h1>🎯 VIPCEP Admin Panel</h1>
+                <p style="font-size: 16px; opacity: 0.9;">Voice IP Communication Emergency Protocol</p>
             </div>
             <div class="status">
                 <div class="status-dot disconnected" id="statusDot"></div>
@@ -676,8 +515,8 @@
                 <div class="stat-label">Toplam Kredi</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="queueLength">0</div>
-                <div class="stat-label">Kuyruk</div>
+                <div class="stat-number" id="todayCalls">0</div>
+                <div class="stat-label">Bugün Arama</div>
             </div>
         </div>
         
@@ -782,56 +621,31 @@
                 
                 <!-- Onaylı Kullanıcılar -->
                 <div class="user-list" id="approvedUsersList">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">👥</div>
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
                         <div>Henüz onaylı kullanıcı yok</div>
                     </div>
                 </div>
             </div>
             
-            <!-- Kuyruk Panel -->
-            <div class="panel queue-panel">
-                <h3>📋 Bekleyen Çağrılar</h3>
-                
-                <div class="queue-stats">
-                    <div class="queue-stat">
-                        <div class="queue-stat-number" id="queueCount">0</div>
-                        <div class="queue-stat-label">Bekleyen</div>
-                    </div>
-                    <div class="queue-stat">
-                        <div class="queue-stat-number" id="avgWaitTime">0</div>
-                        <div class="queue-stat-label">Ort. Bekleme (dk)</div>
-                    </div>
-                </div>
-                
-                <div class="queue-list" id="queueList">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📞</div>
-                        <div>Bekleyen çağrı yok</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Sağ Panel - Admin Durumları ve Aktif Bağlantılar -->
+            <!-- Sağ Panel - Aktif Bağlantılar -->
             <div class="panel">
-                <!-- Admin Durumları -->
-                <div class="panel admin-status-panel" style="margin-bottom: 20px; padding: 20px;">
-                    <h3>👨‍💼 Admin Durumları</h3>
-                    <div id="adminStatusList">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">👨‍💼</div>
-                            <div>Admin durumu yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Aktif Bağlantılar -->
                 <h3>👥 Aktif Bağlantılar</h3>
                 <div id="userList" style="margin-top: 15px;">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🌐</div>
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
                         <div>Henüz kullanıcı bağlanmadı</div>
                     </div>
+                </div>
+                
+                <!-- Hızlı İşlemler -->
+                <div class="quick-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 Verileri Yenile
+                    </button>
+                    <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
+                        💬 WhatsApp Destek
+                    </button>
                 </div>
             </div>
         </div>
@@ -855,16 +669,8 @@
         let approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
         let filteredUsers = [];
         let outgoingCallInfo = null;
-        let currentAdminId = null;
-        let adminStatus = {};
-        let callQueue = [];
         
-        // Admin seçimi (dinamik olarak belirlenir)
-        const adminCredentials = {
-            'ADMIN001': 'Cem Usta',
-            'ADMIN002': 'Cenk Usta'
-        };
-        
+        const adminId = "ADMIN001";
         const serverUrl = window.location.hostname === 'localhost' 
             ? 'ws://localhost:8080'
             : `wss://vipcep-server-production.up.railway.app`;
@@ -881,8 +687,7 @@
 
         // Sayfa yüklendiğinde başlat
         window.onload = function() {
-            log('🚀 Admin panel v2.0 başlatılıyor...');
-            selectAdmin();
+            log('🚀 Admin panel başlatılıyor...');
             loadApprovedUsers();
             connectToServer();
             
@@ -891,37 +696,6 @@
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
             });
         };
-        
-        // Admin seçimi
-        function selectAdmin() {
-            const savedAdminId = localStorage.getItem('vipcep_current_admin');
-            
-            if (savedAdminId && adminCredentials[savedAdminId]) {
-                currentAdminId = savedAdminId;
-            } else {
-                // Admin seçimi popup'ı
-                const adminList = Object.keys(adminCredentials).map(id => 
-                    `${id}: ${adminCredentials[id]}`
-                ).join('\n');
-                
-                const selectedAdmin = prompt(
-                    `Admin kimliği seçin:\n\n${adminList}\n\nAdmin ID'nizi girin:`,
-                    'ADMIN001'
-                );
-                
-                if (selectedAdmin && adminCredentials[selectedAdmin]) {
-                    currentAdminId = selectedAdmin;
-                    localStorage.setItem('vipcep_current_admin', selectedAdmin);
-                } else {
-                    currentAdminId = 'ADMIN001'; // Default
-                }
-            }
-            
-            document.getElementById('currentAdminBadge').textContent = 
-                `👨‍💼 ${adminCredentials[currentAdminId]} (${currentAdminId})`;
-            
-            log(`👨‍💼 Admin seçildi: ${adminCredentials[currentAdminId]} (${currentAdminId})`);
-        }
         
         // Onaylı kullanıcıları yükle
         function loadApprovedUsers() {
@@ -1034,49 +808,14 @@
                 socket.send(JSON.stringify({
                     type: 'admin-call-request',
                     targetId: userId,
-                    adminId: currentAdminId,
-                    adminName: adminCredentials[currentAdminId]
+                    adminId: adminId,
+                    adminName: 'USTAM'
                 }));
                 
                 log(`📞 ${user.name} (${userId}) kullanıcısı aranıyor...`);
             } else {
                 alert('Sunucu bağlantısı yok!');
                 cancelOutgoingCall();
-            }
-        }
-
-        // Kuyruktan arama yap
-        function callFromQueue(queueId) {
-            if (currentCall || outgoingCallInfo) {
-                alert('Zaten bir aramada bulunuyorsunuz!');
-                return;
-            }
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'queue-call-request',
-                    queueId: queueId,
-                    adminId: currentAdminId
-                }));
-                
-                log(`📞 Kuyruktan arama başlatılıyor: ${queueId}`);
-            } else {
-                alert('Sunucu bağlantısı yok!');
-            }
-        }
-
-        // Kuyruktan çıkar
-        function removeFromQueue(queueId) {
-            if (confirm('Bu kullanıcıyı kuyruktan çıkarmak istediğinizden emin misiniz?')) {
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'remove-from-queue',
-                        queueId: queueId,
-                        adminId: currentAdminId
-                    }));
-                    
-                    log(`📋 Kuyruktan çıkarma talebi: ${queueId}`);
-                }
             }
         }
 
@@ -1154,7 +893,7 @@
                 socket.send(JSON.stringify({
                     type: 'admin-call-cancelled',
                     targetId: outgoingCallInfo.userId,
-                    adminId: currentAdminId,
+                    adminId: adminId,
                     reason: 'Admin aramayı iptal etti'
                 }));
                 
@@ -1403,15 +1142,15 @@
             if (usersToShow.length === 0) {
                 if (searchTerm) {
                     container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🔍</div>
+                        <div style="text-align: center; color: #6b7280; padding: 30px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🔍</div>
                             <div>Arama sonucu bulunamadı</div>
                         </div>
                     `;
                 } else {
                     container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">👥</div>
+                        <div style="text-align: center; color: #6b7280; padding: 30px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
                             <div>Henüz onaylı kullanıcı yok</div>
                         </div>
                     `;
@@ -1448,114 +1187,21 @@
                 `;
             }).join('');
         }
-
-        // Admin durumlarını render et
-        function renderAdminStatus() {
-            const container = document.getElementById('adminStatusList');
-            
-            const adminList = Object.keys(adminCredentials).map(adminId => {
-                const admin = adminStatus[adminId] || { status: 'offline', currentCall: null, online: false };
-                const isCurrentAdmin = adminId === currentAdminId;
-                const statusClass = admin.online ? (admin.status === 'idle' ? 'idle' : 'busy') : 'offline';
-                const statusBadge = admin.online ? (admin.status === 'idle' ? 'idle' : 'busy') : 'offline';
-                
-                let statusText = admin.status;
-                if (admin.currentCall) {
-                    statusText = `${admin.currentCall.userName} ile görüşüyor`;
-                }
-                
-                return `
-                    <div class="admin-status-item ${statusClass}">
-                        <div style="flex: 1;">
-                            <div class="admin-name">
-                                ${adminCredentials[adminId]}
-                                ${isCurrentAdmin ? ' (SİZ)' : ''}
-                            </div>
-                            <div class="admin-current-status">${statusText}</div>
-                        </div>
-                        <div class="admin-status-badge status-${statusBadge}">
-                            ${admin.online ? (admin.status === 'idle' ? 'Müsait' : 'Meşgul') : 'Çevrimdışı'}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            container.innerHTML = adminList || `
-                <div class="empty-state">
-                    <div class="empty-state-icon">👨‍💼</div>
-                    <div>Admin durumu yükleniyor...</div>
-                </div>
-            `;
-        }
-
-        // Kuyruk listesini render et
-        function renderQueue() {
-            const container = document.getElementById('queueList');
-            
-            if (callQueue.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📞</div>
-                        <div>Bekleyen çağrı yok</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = callQueue.map((item, index) => {
-                const callIndicator = item.callAttempts === 0 ? '🟢' : 
-                                    item.callAttempts === 1 ? '🔴①' :
-                                    item.callAttempts === 2 ? '🔴②' :
-                                    `🔴${item.callAttempts}`;
-                
-                const statusText = item.status === 'calling' ? 'Aranıyor...' : 
-                                 item.callAttempts === 0 ? 'Yeni' : 
-                                 `${item.callAttempts} deneme`;
-                
-                const isCurrentlyBeingCalled = item.status === 'calling';
-                const queueClass = isCurrentlyBeingCalled ? 'calling' : '';
-                
-                return `
-                    <div class="queue-item ${queueClass}">
-                        <div class="queue-call-indicator">${callIndicator}</div>
-                        <div class="queue-user-info">
-                            <div class="queue-user-name">${item.userName}</div>
-                            <div class="queue-user-details">
-                                ID: ${item.userId} | ${item.credits} dk | ${item.waitingMinutes} dk bekliyor | ${statusText}
-                            </div>
-                        </div>
-                        <div class="queue-actions">
-                            <button class="btn btn-call btn-small" 
-                                    onclick="callFromQueue(${item.id})" 
-                                    ${isCurrentlyBeingCalled ? 'disabled' : ''}
-                                    title="${isCurrentlyBeingCalled ? 'Aranıyor...' : 'Bu kullanıcıyı ara'}">
-                                📞 ${isCurrentlyBeingCalled ? '...' : 'Ara'}
-                            </button>
-                            <button class="btn btn-remove btn-small" 
-                                    onclick="removeFromQueue(${item.id})" 
-                                    title="Kuyruktan çıkar">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
         
         function updateStats() {
             document.getElementById('totalApproved').textContent = approvedUsers.length;
             document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
             document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
-            document.getElementById('queueLength').textContent = callQueue.length;
-            document.getElementById('queueCount').textContent = callQueue.length;
             
-            // Ortalama bekleme süresi hesapla
-            if (callQueue.length > 0) {
-                const avgWait = Math.round(callQueue.reduce((sum, item) => sum + item.waitingMinutes, 0) / callQueue.length);
-                document.getElementById('avgWaitTime').textContent = avgWait;
-            } else {
-                document.getElementById('avgWaitTime').textContent = '0';
-            }
+            // API'den güncel istatistik al
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('todayCalls').textContent = data.todayCalls || 0;
+                })
+                .catch(error => {
+                    console.log('İstatistik yükleme hatası:', error);
+                });
         }
         
         function isUserApproved(userId) {
@@ -1574,8 +1220,8 @@
                     
                     socket.send(JSON.stringify({
                         type: 'register',
-                        userId: currentAdminId,
-                        name: adminCredentials[currentAdminId],
+                        userId: adminId,
+                        name: 'Admin',
                         userType: 'admin'
                     }));
                 };
@@ -1661,15 +1307,6 @@
                     }
                     break;
 
-                case 'queue-call-timeout':
-                    log(`⏰ Kuyruk araması zaman aşımı: ${message.userName}`);
-                    showCallCancelled({
-                        userId: message.userId,
-                        userName: message.userName,
-                        reason: 'Müşteri aramayı cevaplamadı (30 saniye zaman aşımı)'
-                    });
-                    break;
-
                 case 'admin-call-timeout':
                     if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
                         log(`⏰ ${outgoingCallInfo.userName} aramayı cevaplamadı`);
@@ -1694,23 +1331,6 @@
                         userName: message.userName,
                         reason: message.reason
                     });
-                    break;
-
-                case 'admin-status-update':
-                    adminStatus = {};
-                    if (message.admins) {
-                        message.admins.forEach(admin => {
-                            adminStatus[admin.id] = admin;
-                        });
-                    }
-                    renderAdminStatus();
-                    break;
-
-                case 'queue-update':
-                    callQueue = message.queue || [];
-                    renderQueue();
-                    updateStats();
-                    log(`📋 Kuyruk güncellendi: ${callQueue.length} bekleyen`);
                     break;
                     
                 case 'offer':
@@ -2095,7 +1715,7 @@
             if (currentCall && socket) {
                 socket.send(JSON.stringify({
                     type: 'end-call',
-                    userId: currentAdminId,
+                    userId: adminId,
                     targetId: currentCall.userId,
                     duration: callDuration,
                     userType: 'admin',
@@ -2196,3 +1816,233 @@
                             console.log('📞 Admin WebRTC bağlantısı koptu');
                             endCall();
                             break;
+                    }
+                };
+
+                // ICE bağlantı durumu takibi
+                peerConnection.oniceconnectionstatechange = function() {
+                    console.log('🧊 Admin ICE Connection State:', peerConnection.iceConnectionState);
+                    switch (peerConnection.iceConnectionState) {
+                        case 'connected':
+                        case 'completed':
+                            console.log('✅ Admin ICE bağlantısı kuruldu');
+                            if (peerConnection.connectionState === 'connecting') {
+                                setTimeout(() => {
+                                    if (peerConnection.connectionState === 'connecting') {
+                                        console.log('🔄 Admin ICE connected oldu, call state güncelleniyor');
+                                        currentCall = outgoingCallInfo;
+                                        outgoingCallInfo = null;
+                                        
+                                        document.getElementById('activeCaller').textContent = currentCall.userName;
+                                        document.getElementById('activeCall').classList.remove('hidden');
+                                        startCallTimer();
+                                    }
+                                }, 1000);
+                            }
+                            break;
+                        case 'failed':
+                            console.log('❌ Admin ICE bağlantısı başarısız');
+                            endCall();
+                            break;
+                    }
+                };
+
+                // Offer oluştur ve gönder
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                console.log('📤 Admin offer oluşturuldu ve local description ayarlandı');
+                
+                socket.send(JSON.stringify({
+                    type: 'offer',
+                    offer: offer,
+                    targetId: outgoingCallInfo.userId,
+                    userId: adminId,
+                    userName: 'Teknik Destek'
+                }));
+                console.log('📨 Admin offer müşteriye gönderildi');
+                
+                log('🎤 Giden arama WebRTC hazır - Answer bekleniyor...');
+                
+            } catch (error) {
+                console.error('❌ Admin giden arama WebRTC hatası:', error);
+                log('❌ Giden arama WebRTC hatası: ' + error.message);
+                alert('Mikrofon erişimi gerekli!');
+                cancelOutgoingCall();
+            }
+        }
+        
+        async function handleOffer(message) {
+            if (peerConnection) {
+                try {
+                    console.log('📥 Admin offer alındı');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    console.log('✅ Admin remote description (offer) ayarlandı');
+                    
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    console.log('📤 Admin answer oluşturuldu ve local description ayarlandı');
+                    
+                    socket.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer,
+                        targetId: message.userId
+                    }));
+                    console.log('📞 Admin answer gönderildi');
+                    
+                } catch (error) {
+                    console.error('❌ Admin offer işleme hatası:', error);
+                    endCall();
+                }
+            }
+        }
+
+        async function handleAnswer(message) {
+            if (peerConnection) {
+                try {
+                    console.log('📥 Admin answer alındı');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                    console.log('✅ Admin remote description (answer) ayarlandı');
+                    console.log('⏳ Admin ICE bağlantısı bekleniyor...');
+                    
+                } catch (error) {
+                    console.error('❌ Admin answer işleme hatası:', error);
+                    endCall();
+                }
+            }
+        }
+        
+        async function handleIceCandidate(message) {
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    console.log('📡 Admin ICE candidate eklendi:', message.candidate.type);
+                } catch (error) {
+                    console.error('❌ Admin ICE candidate hatası:', error);
+                }
+            }
+        }
+        
+        function startCallTimer() {
+            callDuration = 0;
+            callTimer = setInterval(function() {
+                callDuration++;
+                const mins = Math.floor(callDuration / 60);
+                const secs = callDuration % 60;
+                document.getElementById('callTimer').textContent = 
+                    mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+            }, 1000);
+        }
+        
+        function updateUserList(users) {
+            connectedUsers = users;
+            const userListDiv = document.getElementById('userList');
+            
+            updateStats();
+            renderApprovedUsers();
+            
+            if (users.length === 0) {
+                userListDiv.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            userListDiv.innerHTML = '';
+            users.forEach(user => {
+                const userDiv = document.createElement('div');
+                const isApproved = isUserApproved(user.id);
+                userDiv.className = 'connected-user' + (isApproved ? ' online-user' : '');
+                userDiv.innerHTML = `
+                    <div class="${user.online ? 'user-online-dot' : 'user-offline-dot'}"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">${user.name} ${isApproved ? '✅' : '❌'}</div>
+                        <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
+                        <div style="font-size: 11px; color: #9ca3af;">${user.registeredAt}</div>
+                    </div>
+                `;
+                userListDiv.appendChild(userDiv);
+            });
+        }
+        
+        function updateStatus(status) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.className = 'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
+            statusText.textContent = status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
+        }
+        
+        function log(message) {
+            const logContainer = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${time}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Son 50 log'u tut
+            if (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        function downloadCustomerApp() {
+            const appUrl = `${window.location.origin}/customer-app.html`;
+            prompt('Müşteri Uygulaması URL\'si (kopyalayın):', appUrl);
+        }
+        
+        // Verileri API'den yenile
+        async function refreshData() {
+            log('🔄 Veriler API\'den yenileniyor...');
+            const refreshButton = document.querySelector('button[onclick="refreshData()"]');
+            const originalText = refreshButton.textContent;
+            
+            refreshButton.disabled = true;
+            refreshButton.textContent = '⏳ Yenileniyor...';
+            
+            try {
+                await loadUsersFromAPI();
+                showSuccessNotification('Veriler başarıyla yenilendi!');
+                log('✅ Tüm veriler API\'den güncellendi');
+            } catch (error) {
+                log('❌ Veri yenileme hatası: ' + error.message);
+                alert('Veri yenileme hatası: ' + error.message);
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.textContent = originalText;
+            }
+        }
+        
+        function testIncomingCall() {
+            console.log('🧪 TEST: Manual gelen arama tetikleniyor');
+            
+            const testUser = approvedUsers.find(u => u.id === '1234') || 
+                            approvedUsers.find(u => u.id === '0005') || 
+                            approvedUsers[0];
+            
+            if (!testUser) {
+                alert('Test için onaylı kullanıcı gerekli!');
+                return;
+            }
+            
+            console.log(`✅ TEST: Test kullanıcısı bulundu: ${testUser.name} (${testUser.id})`);
+            
+            // Manuel gelen arama simülasyonu
+            const testMessage = {
+                type: 'incoming-call',
+                userId: testUser.id,
+                userName: testUser.name,
+                credits: testUser.credits
+            };
+            
+            console.log('📨 TEST: Simüle incoming-call mesajı işleniyor');
+            handleMessage(testMessage);
+        }
+    </script>
+</body>
+</html>
