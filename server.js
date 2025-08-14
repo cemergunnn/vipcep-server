@@ -35,21 +35,23 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map();
 let callHistory = [];
 
-// Admin tanımlamaları - YENİ
+// Admin tanımlamaları - DÜZELTİLDİ
 const ADMINS = {
     'ADMIN001': { 
         name: 'Cem Usta', 
-        status: 'idle', // idle, calling, connected, busy
-        currentCall: null 
+        status: 'offline', // idle, calling, connected, busy, offline
+        currentCall: null,
+        online: false
     },
     'ADMIN002': { 
         name: 'Cenk Usta', 
-        status: 'idle',
-        currentCall: null 
+        status: 'offline',
+        currentCall: null,
+        online: false
     }
 };
 
-// Kuyruk yönetimi - YENİ
+// Kuyruk yönetimi - DÜZELTİLDİ
 let callQueue = [];
 let queueUpdateInterval = null;
 
@@ -98,7 +100,7 @@ async function initDatabase() {
             )
         `);
 
-        // Call queue tablosu - YENİ
+        // Call queue tablosu - DÜZELTİLDİ
         await pool.query(`
             CREATE TABLE IF NOT EXISTS call_queue (
                 id SERIAL PRIMARY KEY,
@@ -140,7 +142,7 @@ async function initDatabase() {
     }
 }
 
-// İlk müsait admin'i bul - YENİ
+// İlk müsait admin'i bul - DÜZELTİLDİ
 function findAvailableAdmin() {
     const adminIds = Object.keys(ADMINS);
     
@@ -149,6 +151,7 @@ function findAvailableAdmin() {
         const client = clients.get(adminId);
         
         if (admin.status === 'idle' && 
+            admin.online &&
             client && 
             client.ws.readyState === WebSocket.OPEN) {
             return adminId;
@@ -158,7 +161,7 @@ function findAvailableAdmin() {
     return null; // Hiç müsait admin yok
 }
 
-// Admin durumunu güncelle - YENİ
+// Admin durumunu güncelle - DÜZELTİLDİ
 function updateAdminStatus(adminId, status, currentCall = null) {
     if (ADMINS[adminId]) {
         ADMINS[adminId].status = status;
@@ -171,18 +174,26 @@ function updateAdminStatus(adminId, status, currentCall = null) {
     }
 }
 
-// Admin durumunu broadcast et - YENİ
+// Admin durumunu broadcast et - DÜZELTİLDİ
 function broadcastAdminStatus() {
     const adminStatus = {};
     
     Object.keys(ADMINS).forEach(adminId => {
         const client = clients.get(adminId);
+        const isOnline = client && client.ws.readyState === WebSocket.OPEN;
+        
         adminStatus[adminId] = {
             name: ADMINS[adminId].name,
-            status: ADMINS[adminId].status,
-            online: client && client.ws.readyState === WebSocket.OPEN,
+            status: isOnline ? ADMINS[adminId].status : 'offline',
+            online: isOnline,
             currentCall: ADMINS[adminId].currentCall
         };
+        
+        // Admin online durumunu güncelle
+        ADMINS[adminId].online = isOnline;
+        if (!isOnline) {
+            ADMINS[adminId].status = 'offline';
+        }
     });
 
     const message = JSON.stringify({
@@ -198,7 +209,7 @@ function broadcastAdminStatus() {
     });
 }
 
-// Kuyruğa ekle - YENİ
+// Kuyruğa ekle - DÜZELTİLDİ
 async function addToQueue(userId, userName) {
     try {
         // Zaten kuyrukta var mı kontrol et
@@ -225,10 +236,14 @@ async function addToQueue(userId, userName) {
         callQueue.push(queueItem);
         
         // Database'e de kaydet
-        await pool.query(`
-            INSERT INTO call_queue (user_id, user_name, queue_position) 
-            VALUES ($1, $2, $3)
-        `, [userId, userName, position]);
+        try {
+            await pool.query(`
+                INSERT INTO call_queue (user_id, user_name, queue_position) 
+                VALUES ($1, $2, $3)
+            `, [userId, userName, position]);
+        } catch (dbError) {
+            console.log('💾 Queue database kayıt hatası:', dbError.message);
+        }
         
         console.log(`📋 Kuyruğa eklendi: ${userName} (${userId}) - Pozisyon: ${position}`);
         
@@ -243,7 +258,7 @@ async function addToQueue(userId, userName) {
     }
 }
 
-// Kuyruktan çıkar - YENİ
+// Kuyruktan çıkar - DÜZELTİLDİ
 async function removeFromQueue(userId, reason = 'manual') {
     try {
         // Memory'den çıkar
@@ -261,7 +276,11 @@ async function removeFromQueue(userId, reason = 'manual') {
         });
         
         // Database'den de sil
-        await pool.query('DELETE FROM call_queue WHERE user_id = $1', [userId]);
+        try {
+            await pool.query('DELETE FROM call_queue WHERE user_id = $1', [userId]);
+        } catch (dbError) {
+            console.log('💾 Queue database silme hatası:', dbError.message);
+        }
         
         console.log(`📋 Kuyruktan çıkarıldı: ${removedItem.userName} (${userId}) - Sebep: ${reason}`);
         
@@ -276,7 +295,7 @@ async function removeFromQueue(userId, reason = 'manual') {
     }
 }
 
-// Kuyruk durumunu broadcast et - YENİ
+// Kuyruk durumunu broadcast et - DÜZELTİLDİ
 function broadcastQueueUpdate() {
     const queueData = callQueue.map(item => ({
         userId: item.userId,
@@ -314,7 +333,7 @@ function broadcastQueueUpdate() {
     });
 }
 
-// Kuyruktan arama yap - YENİ
+// Kuyruktan arama yap - DÜZELTİLDİ
 function callFromQueue(adminId, userId) {
     const queueItem = callQueue.find(q => q.userId === userId);
     if (!queueItem) {
@@ -429,7 +448,7 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
     }
 }
 
-// Arama kayıtlarını veritabanına kaydet ve kredi düş
+// Arama kayıtlarını veritabanına kaydet ve kredi düş - DÜZELTİLDİ
 async function saveCallToDatabase(callData) {
     try {
         console.log('💾 Arama veritabanına kaydediliyor:', callData);
@@ -478,7 +497,7 @@ async function saveCallToDatabase(callData) {
             
             await pool.query('COMMIT');
             
-            console.log(`✅ KREDİ BAŞARIYLA DÜŞTÜ: ${userId} -> ${oldCredits} -> ${newCredits} (${creditsUsed} düştü)`);
+            console.log(`✅ KREDİ BAŞARIYALA DÜŞTÜ: ${userId} -> ${oldCredits} -> ${newCredits} (${creditsUsed} düştü)`);
             return { success: true, newCredits, creditsUsed, oldCredits };
             
         } catch (error) {
@@ -492,7 +511,7 @@ async function saveCallToDatabase(callData) {
     }
 }
 
-// 5 saniye aralıklarla kuyruk güncelleme - YENİ
+// 5 saniye aralıklarla kuyruk güncelleme - DÜZELTİLDİ
 function startQueueUpdateInterval() {
     if (queueUpdateInterval) {
         clearInterval(queueUpdateInterval);
@@ -502,12 +521,14 @@ function startQueueUpdateInterval() {
         if (callQueue.length > 0) {
             broadcastQueueUpdate();
         }
+        // Admin durumlarını da güncelle
+        broadcastAdminStatus();
     }, 5000); // 5 saniye
     
     console.log('⏰ Kuyruk güncelleme interval başlatıldı (5 saniye)');
 }
 
-// WebSocket bağlantı işleyicisi
+// WebSocket bağlantı işleyicisi - DÜZELTİLDİ
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
     console.log('🔗 Yeni bağlantı:', clientIP);
@@ -532,6 +553,7 @@ wss.on('connection', (ws, req) => {
                     
                     // Admin kaydıysa durumunu güncelle
                     if (message.userType === 'admin' && ADMINS[message.userId]) {
+                        ADMINS[message.userId].online = true;
                         updateAdminStatus(message.userId, 'idle');
                     }
                     
@@ -541,7 +563,7 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'login-request':
-                    console.log('🔑 Giriş denemesi - ID:', message.userId, 'Ad:', message.userName);
+                    console.log('🔐 Giriş denemesi - ID:', message.userId, 'Ad:', message.userName);
                     
                     const approval = await isUserApproved(message.userId, message.userName);
                     
@@ -566,7 +588,7 @@ wss.on('connection', (ws, req) => {
                 case 'call-request':
                     console.log('📞 Müşteri → Admin arama talebi:', message.userId);
                     
-                    // İlk müsait admin'i bul
+                    // İlk müsait admin'i bul - DÜZELTİLDİ
                     const availableAdmin = findAvailableAdmin();
                     
                     if (availableAdmin) {
@@ -584,7 +606,7 @@ wss.on('connection', (ws, req) => {
                         console.log(`📞 Direkt bağlantı: ${message.userName} -> ${ADMINS[availableAdmin].name}`);
                         
                     } else {
-                        // Kuyruğa ekle
+                        // Kuyruğa ekle - DÜZELTİLDİ
                         const added = await addToQueue(message.userId, message.userName);
                         
                         if (added) {
@@ -855,7 +877,7 @@ wss.on('connection', (ws, req) => {
                             console.log(`   - Yeni Kredi: ${saveResult.newCredits}`);
                             console.log(`   - Düşen: ${saveResult.creditsUsed}`);
                             
-                            // Tüm admin client'lara kredi güncellemesi bildir
+                            // Tüm admin client'lara kredi güncellemesi bildir - DÜZELTİLDİ
                             const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
                             adminClients.forEach(client => {
                                 if (client.ws.readyState === WebSocket.OPEN) {
@@ -871,12 +893,14 @@ wss.on('connection', (ws, req) => {
                                 }
                             });
                             
-                            // Müşteriye de güncel kredi bilgisini gönder
+                            // Müşteriye de güncel kredi bilgisini gönder - DÜZELTİLDİ
                             const customerForUpdate = clients.get(message.userId);
                             if (customerForUpdate && customerForUpdate.ws.readyState === WebSocket.OPEN) {
                                 customerForUpdate.ws.send(JSON.stringify({
                                     type: 'credit-update',
-                                    credits: saveResult.newCredits
+                                    credits: saveResult.newCredits,
+                                    creditsUsed: creditsUsed,
+                                    duration: duration
                                 }));
                                 console.log(`📨 Müşteriye kredi güncellemesi gönderildi: ${message.userId}`);
                             }
@@ -927,8 +951,9 @@ wss.on('connection', (ws, req) => {
         const client = findClientById(ws);
         console.log('👋 Kullanıcı ayrıldı:', client?.name || 'unknown');
         
-        // Admin ayrılıyorsa durumunu güncelle
+        // Admin ayrılıyorsa durumunu güncelle - DÜZELTİLDİ
         if (client && client.userType === 'admin' && ADMINS[client.id]) {
+            ADMINS[client.id].online = false;
             updateAdminStatus(client.id, 'offline');
         }
         
@@ -1099,7 +1124,7 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Kuyruk durumunu getir - YENİ
+// Kuyruk durumunu getir - DÜZELTİLDİ
 app.get('/api/queue', async (req, res) => {
     try {
         const queueData = callQueue.map(item => ({
@@ -1135,7 +1160,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Ana sayfa
+// Ana sayfa - DÜZELTİLDİ
 app.get('/', (req, res) => {
     const host = req.get('host');
     res.send(`
@@ -1239,14 +1264,14 @@ app.get('/', (req, res) => {
                 <div class="link-card">
                     <h3>👨‍💼 Admin Panel</h3>
                     <p>Teknik servis yönetim sistemi</p>
-                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü, kredi sistemi</p>
-                    <a href="/admin-panel.html">Admin Panel'e Git →</a>
+                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü, kredi sistemi, kuyruk yönetimi</p>
+                    <a href="/admin-kuyruklu.html">Admin Panel'e Git →</a>
                 </div>
                 <div class="link-card">
                     <h3>📱 Müşteri Uygulaması</h3>
                     <p>Sesli danışmanlık uygulaması</p>
                     <p style="font-size: 12px; color: #64748b;">Teknik destek almak için</p>
-                    <a href="/customer-app.html">Müşteri Uygulaması →</a>
+                    <a href="/costomer-kuyruklu.html">Müşteri Uygulaması →</a>
                 </div>
             </div>
             
@@ -1304,13 +1329,13 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Static dosya route'ları
-app.get('/admin-panel.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin-panel.html'));
+// Static dosya route'ları - DÜZELTİLDİ
+app.get('/admin-kuyruklu.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-kuyruklu.html'));
 });
 
-app.get('/customer-app.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'customer-app.html'));
+app.get('/costomer-kuyruklu.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'costomer-kuyruklu.html'));
 });
 
 // 404 handler
@@ -1324,7 +1349,7 @@ app.use((req, res) => {
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('🔑 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    console.log('🔐 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -1336,13 +1361,13 @@ async function startServer() {
     server.listen(PORT, '0.0.0.0', () => {
         console.log('🎯 VIPCEP Server çalışıyor!');
         console.log(`🌍 Port: ${PORT}`);
-        console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
+        console.log(`🌍 URL: http://0.0.0.0:${PORT}`);
         console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
         console.log('');
         console.log('📱 Uygulamalar:');
-        console.log(` 👨‍💼 Admin paneli: /admin-panel.html`);
-        console.log(` 📱 Müşteri uygulaması: /customer-app.html`);
+        console.log(` 👨‍💼 Admin paneli: /admin-kuyruklu.html`);
+        console.log(` 📱 Müşteri uygulaması: /costomer-kuyruklu.html`);
         console.log('');
         console.log('👥 Adminler:');
         console.log(` 🔧 Cem Usta: ADMIN001`);
@@ -1351,7 +1376,7 @@ async function startServer() {
         console.log('🎯 Teknik Servis Danışmanlık Programı');
         console.log('📞 WhatsApp: +90 537 479 24 03');
         console.log('✅ Sistem hazır - Arama kabul ediliyor!');
-        console.log('╔══════════════════════════════════════════════════════════════╗');
+        console.log('╔═══════════════════════════════════════════════════════════╗');
     });
 }
 
