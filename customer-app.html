@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPCEP Müşteri Uygulaması</title>
+    <title>USTAMA SOR - VIPCEP v2.0</title>
     <style>
         * {
             margin: 0;
@@ -204,12 +204,6 @@
             color: white;
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
         }
-
-        .btn-leave-queue {
-            background: linear-gradient(135deg, #64748b, #475569);
-            color: white;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
-        }
         
         .user-info {
             background: #f8fafc;
@@ -267,6 +261,7 @@
             font-family: monospace;
         }
 
+        /* Gelen Arama Durumu */
         .incoming-call-status {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
             color: white;
@@ -289,12 +284,22 @@
             margin-bottom: 15px;
         }
 
+        .incoming-call-admin {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
         .incoming-call-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
 
+        /* Kuyruk Durumu */
         .queue-status {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
@@ -305,26 +310,43 @@
             animation: pulse 2s infinite;
         }
 
+        .queue-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
         .queue-position {
-            font-size: 48px;
-            font-weight: 800;
+            font-size: 36px;
+            font-weight: 900;
             margin: 15px 0;
             font-family: monospace;
         }
 
-        .queue-info {
+        .queue-details {
             font-size: 14px;
             opacity: 0.9;
-            margin-bottom: 15px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
-        .admin-info-box {
+        .queue-admins {
             background: rgba(255,255,255,0.2);
-            padding: 12px;
-            border-radius: 10px;
-            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
             font-size: 13px;
+        }
+
+        .queue-leave-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            margin-top: 15px;
+        }
+
+        .queue-leave-btn:hover {
+            background: rgba(255,255,255,0.3);
         }
         
         .error-message {
@@ -466,6 +488,39 @@
             background: #16a34a;
             transform: translateY(-2px);
         }
+
+        /* Notification system */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            max-width: 350px;
+            width: 90%;
+        }
+
+        .notification {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-left: 4px solid #22c55e;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .notification.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .notification.error {
+            border-left-color: #ef4444;
+        }
+
+        .notification.info {
+            border-left-color: #3b82f6;
+        }
         
         @keyframes fadeIn {
             from { opacity: 0; }
@@ -475,6 +530,11 @@
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-30px) scale(0.9); }
             to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes pulse {
@@ -491,12 +551,25 @@
             color: white;
             animation: pulse 1.5s infinite;
         }
+
+        /* Version badge */
+        .version-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <div class="app-header">
+            <div class="version-badge">v2.0</div>
             <div class="connection-status">
                 <div class="status-dot" id="connectionDot"></div>
                 <span id="connectionText">Bağlanıyor...</span>
@@ -507,7 +580,7 @@
                 </svg>
             </div>
             <div class="app-title">USTAMA SOR</div>
-            <div class="app-subtitle">Teknik Servis Danışmanlığı</div>
+            <div class="app-subtitle">Teknik Servis Danışmanlığı v2.0</div>
         </div>
         
         <div class="app-content">
@@ -578,17 +651,31 @@
                     </div>
                 </div>
 
+                <!-- Kuyruk Durumu -->
+                <div id="queueState" class="hidden">
+                    <div class="queue-status">
+                        <div class="queue-title">📋 SIRA BEKLİYORSUNUZ</div>
+                        <div class="queue-position" id="queuePosition">-</div>
+                        <div class="queue-details">
+                            <div>Toplam <span id="totalWaiting">-</span> kişi bekliyor</div>
+                            <div>Tahmini bekleme: <span id="estimatedWait">-</span> dakika</div>
+                        </div>
+                        <div class="queue-admins">
+                            <div style="font-weight: 600; margin-bottom: 5px;">Müsait Uzmanlar:</div>
+                            <div>🔧 Cem Usta & Cenk Usta</div>
+                        </div>
+                        <button class="btn queue-leave-btn" id="leaveQueueButton">
+                            ❌ Beklemekten Vazgeç
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Gelen Arama Ekranı -->
                 <div id="incomingCallState" class="hidden">
                     <div class="incoming-call-status">
                         <div class="incoming-call-title">📞 GELEN ARAMA</div>
-                        <div class="incoming-call-subtitle" id="incomingAdminName">🔧 USTAM ARIYOR</div>
-                        <div class="admin-info-box" id="adminInfoBox">
-                            Admin sizinle görüşmek istiyor
-                        </div>
-                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;">
-                            Aramayı kabul ediyor musunuz?
-                        </div>
+                        <div class="incoming-call-admin" id="incomingAdminName">🔧 USTAM ARIYOR</div>
+                        <div class="incoming-call-subtitle">Aramayı kabul ediyor musunuz?</div>
                         <div class="incoming-call-buttons">
                             <button class="btn btn-accept" id="acceptCallButton">
                                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
@@ -603,23 +690,6 @@
                                 Reddet
                             </button>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Kuyruk Bekleme Ekranı -->
-                <div id="queueState" class="hidden">
-                    <div class="queue-status">
-                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 10px;">⏱️ SIRA BEKLİYORSUNUZ</div>
-                        <div class="queue-position" id="queuePosition">1</div>
-                        <div style="font-size: 14px; margin-bottom: 15px;">SIRADAKİSİNİZ</div>
-                        <div class="queue-info" id="queueInfo">
-                            Tüm ustalarımız şu anda meşgul.<br>
-                            Tahmini bekleme süresi: 2-3 dakika<br>
-                            📞 Cem Usta ve Cenk Usta ile görüşebilirsiniz
-                        </div>
-                        <button class="btn btn-leave-queue" id="leaveQueueButton">
-                            ❌ Beklemekten Vazgeç
-                        </button>
                     </div>
                 </div>
                 
@@ -674,7 +744,8 @@
                 <!-- Aktif Görüşme -->
                 <div id="connectedState" class="hidden">
                     <div class="call-status">
-                        <div style="color: #22c55e; font-weight: 700; font-size: 18px;" id="connectedAdminName">📊 Görüşme Aktif</div>
+                        <div style="color: #22c55e; font-weight: 700; font-size: 18px;">🔊 Görüşme Aktif</div>
+                        <div style="font-size: 16px; margin: 10px 0; font-weight: 600;" id="connectedAdminName">🔧 Uzman ile konuşuyorsunuz</div>
                         <div class="call-timer" id="callTimer">00:00</div>
                     </div>
                     <button class="btn btn-end" id="endCallButton">
@@ -690,9 +761,12 @@
         <!-- Footer -->
         <div class="footer">
             <div>VIPCEP Teknik Servis © 2025</div>
-            <div style="margin-top: 5px;">Mobil Cihaz Teknik Danışmanlığı</div>
+            <div style="margin-top: 5px;">Çoklu Admin & Kuyruk Yönetim Sistemi</div>
         </div>
     </div>
+    
+    <!-- Bildirim Konteyner -->
+    <div id="notificationContainer" class="notification-container"></div>
     
     <!-- Kredi Bildirimi Modal -->
     <div id="creditModalOverlay" class="credit-modal-overlay hidden">
@@ -731,19 +805,18 @@
         let callDuration = 0;
         let callStartTime = null;
         let isLoggedIn = false;
-        let serverUrl = window.location.hostname === 'localhost' 
-            ? 'ws://localhost:8080'
-            : `wss://vipcep-server-production.up.railway.app`;
+        let serverUrl = 'wss://vipcep-server-production.up.railway.app';
         let ringbackAudio = null;
         let incomingCallInfo = null;
-        let currentQueuePosition = 0;
-        let isInQueue = false;
+        let currentAdminName = '';
+        let queuePosition = 0;
         
         // Kullanıcı bilgileri
         let userInfo = {
             id: '',
             name: '',
-            credits: 0
+            credits: 0,
+            adminId: "ADMIN001"
         };
         
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -781,11 +854,11 @@
                 document.getElementById('endCallButton').addEventListener('click', () => this.endCall());
                 document.getElementById('acceptCallButton').addEventListener('click', () => this.acceptIncomingCall());
                 document.getElementById('rejectCallButton').addEventListener('click', () => this.rejectIncomingCall());
-                document.getElementById('leaveQueueButton').addEventListener('click', () => this.leaveQueue());
                 document.getElementById('logoutButton').addEventListener('click', () => this.logoutUser());
                 document.getElementById('requestCreditButton').addEventListener('click', () => this.requestCreditWhatsApp());
                 document.getElementById('requestCreditButtonMain').addEventListener('click', () => this.requestCreditWhatsApp());
                 document.getElementById('closeCreditModalButton').addEventListener('click', () => this.closeCreditModal());
+                document.getElementById('leaveQueueButton').addEventListener('click', () => this.leaveQueue());
             }
             
             loadSavedUserInfo() {
@@ -894,6 +967,30 @@
                 }, 5000);
             }
             
+            showNotification(message, type = 'info', duration = 5000) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="font-weight: 600;">${message}</div>
+                    </div>
+                `;
+                
+                const container = document.getElementById('notificationContainer');
+                container.appendChild(notification);
+                
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.style.animation = 'slideDown 0.3s ease-in reverse';
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.parentNode.removeChild(notification);
+                            }
+                        }, 300);
+                    }
+                }, duration);
+            }
+            
             updateCreditsDisplay() {
                 const creditsElement = document.getElementById('displayUserCredits');
                 creditsElement.textContent = userInfo.credits + ' dk';
@@ -908,221 +1005,41 @@
                     this.hideError();
                 }
             }
-            
-            showError(message) {
-                const errorDiv = document.getElementById('errorMessage');
-                errorDiv.textContent = message;
-                errorDiv.classList.remove('hidden');
+
+            showQueueStatus(position, totalWaiting, estimatedWait) {
+                queuePosition = position;
+                
+                document.getElementById('queuePosition').textContent = position + '.';
+                document.getElementById('totalWaiting').textContent = totalWaiting;
+                document.getElementById('estimatedWait').textContent = estimatedWait || Math.max(1, position * 3);
+                
+                this.setState('queue');
+                this.showNotification(`Sıraya alındınız! ${position}. sıradasınız.`, 'warning', 8000);
             }
-            
-            hideError() {
-                const errorDiv = document.getElementById('errorMessage');
-                errorDiv.classList.add('hidden');
-            }
-            
-            startCall() {
-                if (userInfo.credits <= 0) {
-                    this.showError('Yetersiz kredi! Lütfen kredi yükleyin.');
-                    return;
-                }
-                
-                this.setState('calling');
-                this.playRingbackTone();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'call-request',
-                        userId: userInfo.id,
-                        userName: userInfo.name,
-                        credits: userInfo.credits
-                    }));
-                    console.log('📞 Arama talebi gönderildi');
-                } else {
-                    this.showError('Bağlantı problemi! Lütfen sayfayı yenileyin.');
-                    this.setState('idle');
-                }
-            }
-            
-            cancelCall() {
-                console.log('📞 Arama iptal ediliyor');
-                this.stopRingbackTone();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'call-cancelled',
-                        userId: userInfo.id,
-                        userName: userInfo.name,
-                        reason: 'Müşteri aramayı iptal etti'
-                    }));
-                }
-                
-                this.setState('idle');
-            }
-            
-            endCall() {
-                console.log('📞 Görüşme sonlandırılıyor');
-                
-                if (callTimer) {
-                    clearInterval(callTimer);
-                    callTimer = null;
-                }
-                
-                if (peerConnection) {
-                    peerConnection.close();
-                    peerConnection = null;
-                }
-                
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                    localStream = null;
-                }
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'end-call',
-                        userId: userInfo.id,
-                        duration: callDuration,
-                        userType: 'customer'
-                    }));
-                }
-                
-                this.setState('idle');
-                callDuration = 0;
-                callStartTime = null;
-            }
-            
-            logoutUser() {
-                if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                    isLoggedIn = false;
-                    document.getElementById('mainApp').classList.add('hidden');
-                    document.getElementById('loginScreen').classList.remove('hidden');
+
+            updateQueuePosition(position, totalWaiting, estimatedWait) {
+                if (callState === 'queue') {
+                    queuePosition = position;
+                    document.getElementById('queuePosition').textContent = position + '.';
+                    document.getElementById('totalWaiting').textContent = totalWaiting;
+                    document.getElementById('estimatedWait').textContent = estimatedWait || Math.max(1, position * 3);
                     
-                    // Clear form
-                    document.getElementById('userIdInput').value = '';
-                    document.getElementById('userNameInput').value = '';
-                    document.getElementById('rememberMe').checked = false;
-                    
-                    // Clear saved info
-                    localStorage.removeItem('vipcep_user_id');
-                    localStorage.removeItem('vipcep_user_name');
-                    localStorage.removeItem('vipcep_remember_me');
-                    
-                    // Reset state
-                    this.setState('idle');
-                    userInfo = { id: '', name: '', credits: 0 };
-                    
-                    console.log('👋 Kullanıcı çıkış yaptı');
-                }
-            }
-            
-            requestCreditWhatsApp() {
-                const message = encodeURIComponent(`VIPCEP Kredi Talebi - ID: ${userInfo.id || 'Henüz giriş yapılmadı'} - İsim: ${userInfo.name || 'Henüz giriş yapılmadı'} - Lütfen bana kredi yükleyin`);
-                const whatsappUrl = `https://wa.me/905374792403?text=${message}`;
-                window.open(whatsappUrl, '_blank');
-            }
-            
-            setState(newState) {
-                callState = newState;
-                
-                // Hide all states first
-                document.getElementById('idleState').classList.add('hidden');
-                document.getElementById('callingState').classList.add('hidden');
-                document.getElementById('connectingState').classList.add('hidden');
-                document.getElementById('connectedState').classList.add('hidden');
-                document.getElementById('incomingCallState').classList.add('hidden');
-                document.getElementById('queueState').classList.add('hidden');
-                
-                // Show current state
-                switch (newState) {
-                    case 'idle':
-                        document.getElementById('idleState').classList.remove('hidden');
-                        document.getElementById('displayUserStatus').textContent = 'Hazır';
-                        break;
-                    case 'calling':
-                        document.getElementById('callingState').classList.remove('hidden');
-                        document.getElementById('displayUserStatus').textContent = 'Aranıyor';
-                        break;
-                    case 'connecting':
-                        document.getElementById('connectingState').classList.remove('hidden');
-                        document.getElementById('displayUserStatus').textContent = 'Bağlanıyor';
-                        break;
-                    case 'connected':
-                        document.getElementById('connectedState').classList.remove('hidden');
-                        document.getElementById('displayUserStatus').textContent = 'Görüşmede';
-                        this.startCallTimer();
-                        break;
-                    case 'incoming':
-                        document.getElementById('incomingCallState').classList.remove('hidden');
-                        document.getElementById('displayUserStatus').textContent = 'Gelen Arama';
-                        break;
-                    case 'queue':
-                        document.getElementById('queueState').classList.remove('hidden');
-                        break;
-                }
-                
-                console.log('🔄 State değişti:', newState);
-            }
-            
-            startCallTimer() {
-                callDuration = 0;
-                callStartTime = Date.now();
-                
-                callTimer = setInterval(() => {
-                    callDuration++;
-                    const mins = Math.floor(callDuration / 60);
-                    const secs = callDuration % 60;
-                    document.getElementById('callTimer').textContent = 
-                        mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
-                }, 1000);
-            }
-            
-            playRingbackTone() {
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    const playTone = () => {
-                        if (callState !== 'calling') return;
-                        
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(425, audioContext.currentTime);
-                        oscillator.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
-                        gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.1);
-                        gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
-                        
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 1.0);
-                        
-                        setTimeout(playTone, 4000);
-                    };
-                    
-                    playTone();
-                    ringbackAudio = { audioContext, stop: () => {} };
-                    
-                    console.log('🔊 Çeviri sesi başlatıldı');
-                } catch (error) {
-                    console.log('Çeviri sesi çalınamadı:', error);
-                }
-            }
-            
-            stopRingbackTone() {
-                if (ringbackAudio) {
-                    try {
-                        if (ringbackAudio.audioContext && ringbackAudio.audioContext.state === 'running') {
-                            ringbackAudio.audioContext.suspend();
-                        }
-                    } catch (error) {
-                        console.log('Çeviri sesi durdurma hatası:', error);
+                    if (position <= 2) {
+                        this.showNotification(`Sıranız yaklaştı! ${position}. sıradasınız.`, 'info', 3000);
                     }
-                    ringbackAudio = null;
-                    console.log('🔇 Çeviri sesi durduruldu');
                 }
+            }
+
+            leaveQueue() {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'leave-queue',
+                        userId: userInfo.id
+                    }));
+                }
+                
+                this.setState('idle');
+                this.showNotification('Kuyruktan ayrıldınız.', 'info', 3000);
             }
             
             connectToServer() {
@@ -1158,21 +1075,8 @@
                 }
             }
             
-            updateConnectionStatus(status) {
-                const dot = document.getElementById('connectionDot');
-                const text = document.getElementById('connectionText');
-                
-                if (status === 'connected') {
-                    dot.className = 'status-dot status-connected';
-                    text.textContent = 'Bağlı';
-                } else {
-                    dot.className = 'status-dot status-disconnected';
-                    text.textContent = 'Bağlantı Yok';
-                }
-            }
-            
             handleMessage(message) {
-                console.log('📨 Mesaj alındı:', message.type);
+                console.log('Mesaj alındı:', message.type);
                 
                 switch (message.type) {
                     case 'login-response':
@@ -1184,14 +1088,33 @@
                         }
                         break;
 
+                    case 'added-to-queue':
+                        console.log('📋 Kuyruğa eklendi:', message);
+                        this.showQueueStatus(message.position, message.totalWaiting, message.estimatedWait);
+                        break;
+
+                    case 'queue-position-update':
+                        console.log('📋 Kuyruk pozisyonu güncellendi:', message);
+                        this.updateQueuePosition(message.position, message.totalWaiting, message.estimatedWait);
+                        break;
+
+                    case 'removed-from-queue':
+                        console.log('📋 Kuyruktan çıkarıldı:', message);
+                        this.setState('idle');
+                        this.showNotification(message.message || 'Kuyruktan çıkarıldınız.', 'warning', 5000);
+                        break;
+
                     case 'admin-call-request':
-                        console.log('📞 Admin araması alındı:', message);
+                        console.log('🔔 Admin araması alındı:', message);
                         
                         incomingCallInfo = {
                             adminId: message.adminId,
                             adminName: message.adminName || 'Teknik Destek',
-                            startTime: Date.now()
+                            startTime: Date.now(),
+                            fromQueue: message.fromQueue || false
                         };
+                        
+                        currentAdminName = incomingCallInfo.adminName;
                         
                         this.showIncomingCall();
                         this.playIncomingCallSound();
@@ -1211,27 +1134,6 @@
                             this.showError('Teknik destek aramayı iptal etti.');
                             this.stopIncomingCallSound();
                         }
-                        break;
-
-                    case 'call-queued':
-                        console.log('📋 Kuyruğa eklendi:', message.position);
-                        isInQueue = true;
-                        currentQueuePosition = message.position;
-                        this.showQueueState(message);
-                        break;
-
-                    case 'queue-position-update':
-                        console.log('📋 Kuyruk pozisyonu güncellendi:', message.position);
-                        if (isInQueue) {
-                            currentQueuePosition = message.position;
-                            this.updateQueuePosition(message);
-                        }
-                        break;
-
-                    case 'queue-removed':
-                        console.log('📋 Kuyruktan çıkarıldı:', message.reason);
-                        this.hideQueueState();
-                        this.showError(message.message || 'Kuyruktan çıkarıldınız.');
                         break;
                         
                     case 'call-accepted':
@@ -1289,17 +1191,25 @@
                     case 'credit-update':
                         userInfo.credits = message.credits;
                         this.updateCreditsDisplay();
+                        if (message.message) {
+                            this.showNotification(message.message, 'info', 3000);
+                        }
                         break;
                 }
             }
 
             showIncomingCall() {
                 callState = 'incoming';
-                this.setState('incoming');
                 
-                // Admin bilgisini göster
-                document.getElementById('incomingAdminName').textContent = `🔧 ${incomingCallInfo.adminName.toUpperCase()} ARIYOR`;
-                document.getElementById('adminInfoBox').textContent = `${incomingCallInfo.adminName} sizinle görüşmek istiyor`;
+                document.getElementById('idleState').classList.add('hidden');
+                document.getElementById('callingState').classList.add('hidden');
+                document.getElementById('connectingState').classList.add('hidden');
+                document.getElementById('connectedState').classList.add('hidden');
+                document.getElementById('queueState').classList.add('hidden');
+                
+                document.getElementById('incomingCallState').classList.remove('hidden');
+                document.getElementById('displayUserStatus').textContent = 'Gelen Arama';
+                document.getElementById('incomingAdminName').textContent = `🔧 ${currentAdminName}`;
                 
                 console.log('📱 Gelen arama UI gösterildi');
             }
@@ -1309,57 +1219,6 @@
                 incomingCallInfo = null;
                 callState = 'idle';
                 this.setState('idle');
-            }
-
-            showQueueState(message) {
-                isInQueue = true;
-                currentQueuePosition = message.position;
-                
-                this.setState('queue');
-                document.getElementById('queuePosition').textContent = message.position;
-                
-                const estimatedTime = message.estimatedWaitTime || (message.position * 2);
-                document.getElementById('queueInfo').innerHTML = `
-                    ${message.message}<br>
-                    Tahmini bekleme süresi: ${estimatedTime} dakika<br>
-                    📞 Cem Usta ve Cenk Usta ile görüşebilirsiniz
-                `;
-                
-                console.log(`📋 Kuyruk durumu gösterildi: ${message.position}. sıra`);
-            }
-
-            updateQueuePosition(message) {
-                if (isInQueue && !document.getElementById('queueState').classList.contains('hidden')) {
-                    document.getElementById('queuePosition').textContent = message.position;
-                    document.getElementById('displayUserStatus').textContent = `Kuyrukta (${message.position}.)`;
-                    
-                    const estimatedTime = message.position * 2;
-                    document.getElementById('queueInfo').innerHTML = `
-                        Görüşme için ${message.position}. sıradasınız<br>
-                        Tahmini bekleme süresi: ${estimatedTime} dakika<br>
-                        📞 Cem Usta ve Cenk Usta ile görüşebilirsiniz
-                    `;
-                }
-            }
-
-            hideQueueState() {
-                isInQueue = false;
-                currentQueuePosition = 0;
-                document.getElementById('queueState').classList.add('hidden');
-                this.setState('idle');
-            }
-
-            leaveQueue() {
-                if (confirm('Kuyruktan çıkmak istediğinizden emin misiniz?')) {
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'leave-queue',
-                            userId: userInfo.id
-                        }));
-                    }
-                    this.hideQueueState();
-                    console.log('📋 Kuyruktan ayrıldı');
-                }
             }
 
             acceptIncomingCall() {
@@ -1470,7 +1329,6 @@
                                 this.setState('connected');
                                 callStartTime = Date.now();
                                 incomingCallInfo = null;
-                                document.getElementById('connectedAdminName').textContent = `📊 ${incomingCallInfo?.adminName || 'Usta'} ile Görüşme`;
                                 break;
                             case 'connecting':
                                 console.log('🔗 WebRTC bağlanıyor...');
@@ -1531,13 +1389,16 @@
                 try {
                     console.log('📥 Admin\'den offer alındı');
                     
+                    // Remote description ayarla
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     console.log('✅ Remote description (offer) ayarlandı');
                     
+                    // Answer oluştur
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
                     console.log('📤 Answer oluşturuldu ve local description ayarlandı');
                     
+                    // Answer'ı gönder
                     socket.send(JSON.stringify({
                         type: 'answer',
                         answer: answer,
@@ -1587,7 +1448,7 @@
                     };
                     
                     playRing();
-                    console.log('📞 Gelen arama zil sesi başlatıldı');
+                    console.log('🔔 Gelen arama zil sesi başlatıldı');
                     
                 } catch (error) {
                     console.log('🔇 Zil sesi çalınamadı:', error);
@@ -1597,25 +1458,145 @@
             stopIncomingCallSound() {
                 console.log('🔇 Gelen arama zil sesi durduruldu');
             }
-
+            
+            createRingbackTone() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    const sampleRate = audioContext.sampleRate;
+                    const duration = 1.0;
+                    const frameCount = sampleRate * duration;
+                    const arrayBuffer = audioContext.createBuffer(1, frameCount, sampleRate);
+                    const channelData = arrayBuffer.getChannelData(0);
+                    
+                    for (let i = 0; i < frameCount; i++) {
+                        const t = i / sampleRate;
+                        if (t < 1.0) {
+                            channelData[i] = Math.sin(2 * Math.PI * 425 * t) * 0.3;
+                        }
+                    }
+                    
+                    return arrayBuffer;
+                } catch (error) {
+                    console.log('Çeviri sesi oluşturulamadı:', error);
+                    return null;
+                }
+            }
+            
+            playRingbackTone() {
+                try {
+                    if (ringbackAudio) {
+                        this.stopRingbackTone();
+                    }
+                    
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const buffer = this.createRingbackTone();
+                    
+                    if (!buffer) return;
+                    
+                    const playTone = () => {
+                        if (callState !== 'calling') return;
+                        
+                        const source = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(audioContext.destination);
+                        source.start();
+                        
+                        setTimeout(playTone, 4000);
+                    };
+                    
+                    playTone();
+                    ringbackAudio = { audioContext, stop: () => {} };
+                    
+                    console.log('🔊 Çeviri sesi başlatıldı');
+                } catch (error) {
+                    console.log('Çeviri sesi çalınamadı:', error);
+                    this.playSimpleRingback();
+                }
+            }
+            
+            playSimpleRingback() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    const playBeep = () => {
+                        if (callState !== 'calling') return;
+                        
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                        
+                        setTimeout(playBeep, 2000);
+                    };
+                    
+                    playBeep();
+                    ringbackAudio = { audioContext, stop: () => {} };
+                    
+                    console.log('🔊 Basit çeviri sesi başlatıldı');
+                } catch (error) {
+                    console.log('Ses çalınamadı:', error);
+                }
+            }
+            
+            stopRingbackTone() {
+                if (ringbackAudio) {
+                    try {
+                        if (ringbackAudio.audioContext && ringbackAudio.audioContext.state === 'running') {
+                            ringbackAudio.audioContext.suspend();
+                        }
+                    } catch (error) {
+                        console.log('Çeviri sesi durdurma hatası:', error);
+                    }
+                    ringbackAudio = null;
+                    console.log('🔇 Çeviri sesi durduruldu');
+                }
+            }
+            
+            showCreditModal(duration, creditsUsed, remainingCredits) {
+                const mins = Math.floor(duration / 60);
+                const secs = duration % 60;
+                const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
+                
+                document.getElementById('modalDuration').textContent = durationText;
+                document.getElementById('modalCreditsUsed').textContent = creditsUsed + ' dakika';
+                document.getElementById('modalRemainingCredits').textContent = remainingCredits + ' dakika';
+                
+                document.getElementById('creditModalOverlay').classList.remove('hidden');
+                
+                console.log(`💳 Kredi modal gösterildi: ${durationText} / ${creditsUsed} kredi / ${remainingCredits} kalan`);
+            }
+            
+            closeCreditModal() {
+                document.getElementById('creditModalOverlay').classList.add('hidden');
+            }
+            
             async setupPeerConnection() {
                 try {
-                    console.log('🔗 WebRTC kuruluyor...');
+                    console.log('🔗 Normal arama için WebRTC kuruluyor...');
                     
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
                         audio: {
                             echoCancellation: true,
                             noiseSuppression: true,
                             autoGainControl: true
                         } 
                     });
-                    localStream = stream;
-                    
                     peerConnection = new RTCPeerConnection(rtcConfig);
                     
                     // Local stream'i ekle
-                    stream.getTracks().forEach(track => {
-                        peerConnection.addTrack(track, stream);
+                    localStream.getTracks().forEach(track => {
+                        peerConnection.addTrack(track, localStream);
                         console.log('🎤 Local track eklendi:', track.kind);
                     });
                     
@@ -1641,8 +1622,7 @@
                             socket.send(JSON.stringify({
                                 type: 'ice-candidate',
                                 candidate: event.candidate,
-                                targetId: 'ADMIN001', // Default admin
-                                userId: userInfo.id
+                                targetId: userInfo.adminId
                             }));
                             console.log('📡 ICE candidate gönderildi:', event.candidate.type);
                         } else if (!event.candidate) {
@@ -1661,6 +1641,7 @@
                                 break;
                             case 'connecting':
                                 console.log('🔗 WebRTC bağlanıyor...');
+                                this.setState('connecting');
                                 break;
                             case 'failed':
                                 console.log('❌ WebRTC bağlantısı başarısız');
@@ -1696,7 +1677,7 @@
                                 break;
                         }
                     };
-
+                    
                     // Offer oluştur ve gönder
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -1705,7 +1686,7 @@
                     socket.send(JSON.stringify({
                         type: 'offer',
                         offer: offer,
-                        targetId: 'ADMIN001', // Default admin
+                        targetId: userInfo.adminId,
                         userId: userInfo.id,
                         userName: userInfo.name
                     }));
@@ -1713,32 +1694,250 @@
                     
                 } catch (error) {
                     console.error('❌ WebRTC kurulum hatası:', error);
-                    this.showError('Mikrofon erişimi gerekli!');
+                    this.showError('Mikrofon erişimi gerekli.');
                     this.setState('idle');
                 }
             }
-
-            showCreditModal(duration, creditsUsed, remainingCredits) {
-                const mins = Math.floor(duration / 60);
-                const secs = duration % 60;
-                const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            startCall() {
+                if (!isLoggedIn) {
+                    this.showError('Lütfen önce giriş yapın!');
+                    return;
+                }
                 
-                document.getElementById('modalDuration').textContent = durationText;
-                document.getElementById('modalCreditsUsed').textContent = `${creditsUsed} dakika`;
-                document.getElementById('modalRemainingCredits').textContent = `${remainingCredits} dakika`;
+                if (userInfo.credits <= 0) {
+                    this.showError('Yetersiz kredi! Kredi talep etmek için "Kredi Talep Et" butonunu kullanın.');
+                    return;
+                }
                 
-                document.getElementById('creditModalOverlay').classList.remove('hidden');
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    this.showError('Sunucu bağlantısı yok. Lütfen bekleyin...');
+                    return;
+                }
+                
+                this.setState('calling');
+                this.hideError();
+                
+                this.playRingbackTone();
+                
+                socket.send(JSON.stringify({
+                    type: 'call-request',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    credits: userInfo.credits,
+                    targetId: userInfo.adminId
+                }));
+                
+                setTimeout(() => {
+                    if (callState === 'calling') {
+                        this.setState('idle');
+                        this.showError('Arama zaman aşımına uğradı.');
+                    }
+                }, 30000);
             }
-
-            closeCreditModal() {
-                document.getElementById('creditModalOverlay').classList.add('hidden');
+            
+            cancelCall() {
+                if (socket && callState === 'calling') {
+                    socket.send(JSON.stringify({
+                        type: 'call-cancelled',
+                        userId: userInfo.id,
+                        userName: userInfo.name,
+                        reason: 'Müşteri aramayı iptal etti'
+                    }));
+                }
+                
+                this.endCall();
+            }
+            
+            endCall() {
+                this.stopRingbackTone();
+                this.stopIncomingCallSound();
+                
+                if (callTimer) {
+                    clearInterval(callTimer);
+                    callTimer = null;
+                }
+                
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
+                
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                }
+                
+                if (socket && callState === 'connected' && callStartTime) {
+                    const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
+                    const creditsUsed = Math.ceil(actualDuration / 60);
+                    
+                    socket.send(JSON.stringify({
+                        type: 'end-call',
+                        userId: userInfo.id,
+                        duration: actualDuration,
+                        creditsUsed: creditsUsed,
+                        targetId: userInfo.adminId
+                    }));
+                    
+                    console.log(`Görüşme sona erdi: ${actualDuration} saniye, ${creditsUsed} kredi`);
+                }
+                
+                if (incomingCallInfo) {
+                    incomingCallInfo = null;
+                }
+                
+                currentAdminName = '';
+                this.setState('idle');
+                callDuration = 0;
+                callStartTime = null;
+            }
+            
+            setState(newState) {
+                callState = newState;
+                
+                document.getElementById('idleState').classList.add('hidden');
+                document.getElementById('callingState').classList.add('hidden');
+                document.getElementById('connectingState').classList.add('hidden');
+                document.getElementById('connectedState').classList.add('hidden');
+                document.getElementById('incomingCallState').classList.add('hidden');
+                document.getElementById('queueState').classList.add('hidden');
+                
+                const statusElement = document.getElementById('displayUserStatus');
+                
+                switch (newState) {
+                    case 'idle':
+                        document.getElementById('idleState').classList.remove('hidden');
+                        statusElement.textContent = 'Hazır';
+                        break;
+                    case 'calling':
+                        document.getElementById('callingState').classList.remove('hidden');
+                        statusElement.textContent = 'Aranıyor...';
+                        break;
+                    case 'connecting':
+                        document.getElementById('connectingState').classList.remove('hidden');
+                        statusElement.textContent = 'Bağlanıyor...';
+                        break;
+                    case 'connected':
+                        document.getElementById('connectedState').classList.remove('hidden');
+                        document.getElementById('connectedAdminName').textContent = `🔧 ${currentAdminName} ile konuşuyorsunuz`;
+                        statusElement.textContent = 'Görüşmede';
+                        this.startCallTimer();
+                        break;
+                    case 'incoming':
+                        break;
+                    case 'queue':
+                        document.getElementById('queueState').classList.remove('hidden');
+                        statusElement.textContent = 'Sırada Bekliyor';
+                        break;
+                }
+            }
+            
+            startCallTimer() {
+                callDuration = 0;
+                callTimer = setInterval(() => {
+                    callDuration++;
+                    const mins = Math.floor(callDuration / 60);
+                    const secs = callDuration % 60;
+                    document.getElementById('callTimer').textContent = 
+                        mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+                }, 1000);
+            }
+            
+            updateConnectionStatus(status) {
+                const connectionDot = document.getElementById('connectionDot');
+                const connectionText = document.getElementById('connectionText');
+                
+                switch (status) {
+                    case 'connected':
+                        connectionDot.className = 'status-dot status-connected';
+                        connectionText.textContent = 'Bağlı';
+                        break;
+                    case 'disconnected':
+                        connectionDot.className = 'status-dot status-disconnected';
+                        connectionText.textContent = 'Bağlantı Yok';
+                        break;
+                }
+            }
+            
+            showError(message) {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.textContent = message;
+                errorElement.classList.remove('hidden');
+            }
+            
+            hideError() {
+                document.getElementById('errorMessage').classList.add('hidden');
+            }
+            
+            logoutUser() {
+                if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                    localStorage.removeItem('vipcep_user_id');
+                    localStorage.removeItem('vipcep_user_name');
+                    localStorage.removeItem('vipcep_remember_me');
+                    
+                    if (callState !== 'idle') {
+                        this.endCall();
+                    }
+                    
+                    if (socket) {
+                        socket.close();
+                    }
+                    
+                    isLoggedIn = false;
+                    userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
+                    
+                    document.getElementById('mainApp').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.remove('hidden');
+                    
+                    document.getElementById('userIdInput').value = '';
+                    document.getElementById('userNameInput').value = '';
+                    document.getElementById('rememberMe').checked = false;
+                    
+                    document.getElementById('loginButton').disabled = false;
+                    document.getElementById('loginButton').innerHTML = `
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Giriş Yap
+                    `;
+                    
+                    this.showLoginMessage('Başarıyla çıkış yaptınız!', 'success');
+                    
+                    setTimeout(() => {
+                        this.connectToServer();
+                    }, 1000);
+                }
+            }
+            
+            requestCreditWhatsApp() {
+                const phoneNumber = '905374792403';
+                const message = encodeURIComponent(
+                    `🎯 VIPCEP Kredi Talebi v2.0\n\n` +
+                    `👤 Ad: ${userInfo.name || document.getElementById('userNameInput').value || 'Belirtilmedi'}\n` +
+                    `🆔 ID: ${userInfo.id || document.getElementById('userIdInput').value || 'Belirtilmedi'}\n` +
+                    `💳 Kredi talep ediyorum\n\n` +
+                    `Çoklu admin sistemi ile artık daha hızlı hizmet alabiliyorum.\n` +
+                    `Lütfen bana kredi yükleyip arama yapmamı sağlayın. Teşekkürler.`
+                );
+                
+                const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+                window.open(whatsappUrl, '_blank');
             }
         }
-
-        // Uygulamayı başlat
-        window.onload = function() {
+        
+        // Initialize the application when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
             new VIPCEPApp();
-        };
+        });
+        
+        console.log('🎯 VIPCEP Müşteri Uygulaması v2.0 yüklendi!');
+        console.log('🚀 Yeni Özellikler:');
+        console.log('  • Çoklu admin sistemi desteği');
+        console.log('  • Akıllı kuyruk yönetimi');
+        console.log('  • Real-time pozisyon güncellemeleri');
+        console.log('  • Admin kimlik gösterimi');
+        console.log('  • Gelişmiş bildirim sistemi');
     </script>
 </body>
 </html>
