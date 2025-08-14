@@ -1,23 +1,13 @@
 {
   "name": "vipcep-server",
-  "version": "2.0.0",
-  "description": "VIPCEP Voice Communication Server - Çoklu Admin & Kuyruk Sistemli",
+  "version": "1.0.0",
+  "description": "VIPCEP Voice Communication Server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "voice", 
-    "communication", 
-    "websocket", 
-    "webrtc", 
-    "queue-system", 
-    "multi-admin", 
-    "technical-support",
-    "vipcep"
-  ],
+  "keywords": ["voice", "communication", "websocket"],
   "author": "VIPCEP Team",
   "license": "ISC",
   "dependencies": {
@@ -28,10 +18,5 @@
   },
   "engines": {
     "node": "18.x"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vipcep/vipcep-server"
-  },
-  "homepage": "https://vipcep-server-production.up.railway.app"
+  }
 }
