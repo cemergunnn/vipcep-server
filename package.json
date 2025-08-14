@@ -1,16 +1,22 @@
 {
-  "name": "vipcep-teknik-servis",
+  "name": "vipcep-server",
   "version": "1.0.0",
-  "description": "Teknik servis danışmanlık programı",
+  "description": "VIPCEP Voice Communication Server",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": ["voice", "communication", "websocket"],
+  "author": "VIPCEP Team",
+  "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
-    "ws": "^7.5.3",
     "cors": "^2.8.5",
-    "uuid": "^8.3.2",
-    "pg": "^8.7.1"
+    "express": "^5.1.0",
+    "pg": "^8.16.3",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
