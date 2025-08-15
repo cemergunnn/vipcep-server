@@ -14,7 +14,7 @@ const pool = new Pool({
 });
 
 console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
-console.log('🌐 Environment:', process.env.NODE_ENV || 'development');
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
 
 // Express app oluştur
 const app = express();
@@ -66,13 +66,14 @@ async function initDatabase() {
             )
         `);
 
-        // Credit transactions tablosu - SADECE BALANCE_AFTER KALDIRILDI
+        // Credit transactions tablosu
         await pool.query(`
             CREATE TABLE IF NOT EXISTS credit_transactions (
                 id SERIAL PRIMARY KEY,
                 user_id VARCHAR(10),
                 transaction_type VARCHAR(20),
                 amount INTEGER,
+                balance_after INTEGER,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -95,7 +96,7 @@ async function initDatabase() {
                     INSERT INTO approved_users (id, name, credits) 
                     VALUES ($1, $2, $3)
                 `, [id, name, credits]);
-                console.log(`🆔 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
+                console.log(`📝 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
             }
         }
 
@@ -157,7 +158,7 @@ async function saveApprovedUser(userId, userName, credits = 0) {
     }
 }
 
-// Kredi güncelleme - SADECE BALANCE_AFTER KALDIRILDI
+// Kredi güncelleme
 async function updateUserCredits(userId, newCredits, reason = 'Manuel güncelleme') {
     try {
         const user = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
@@ -169,10 +170,10 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
         
         await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
         
-        // Transaction kaydı - BALANCE_AFTER KALDIRILDI
+        // Transaction kaydı
         await pool.query(`
-            INSERT INTO credit_transactions (user_id, transaction_type, amount, description)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+            VALUES ($1, $2, $3, $4, $5)
         `, [userId, 'update', newCredits - oldCredits, reason]);
         
         console.log(`💳 Kredi güncellendi: ${userId} -> ${newCredits} (${reason})`);
@@ -222,12 +223,12 @@ async function saveCallToDatabase(callData) {
                 WHERE id = $3
             `, [newCredits, newTotalCalls, userId]);
             
-            // Credit transaction kaydet - BALANCE_AFTER KALDIRILDI
+            // Credit transaction kaydet
             if (creditsUsed > 0) {
                 await pool.query(`
-                    INSERT INTO credit_transactions (user_id, transaction_type, amount, description)
-                    VALUES ($1, $2, $3, $4)
-                `, [userId, 'call', -creditsUsed, `Görüşme: ${Math.floor(duration/60)}:${(duration%60).toString().padStart(2,'0')}`]);
+                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                    VALUES ($1, $2, $3, $4, $5)
+                `, [userId, 'call', -creditsUsed, newCredits, `Görüşme: ${Math.floor(duration/60)}:${(duration%60).toString().padStart(2,'0')}`]);
             }
             
             await pool.query('COMMIT');
@@ -637,43 +638,297 @@ app.delete('/api/approved-users/:id', async (req, res) => {
     }
 });
 
-// Kullanıcı kredisini güncelle - REAL-TIME BROADCAST İLE
+// Kullanıcı kredisini güncelle
 app.post('/api/approved-users/:id/credits', async (req, res) => {
     try {
         const { id } = req.params;
         const { credits, reason } = req.body;
         
         const newCredits = await updateUserCredits(id, credits, reason);
-        
-        // ✅ REAL-TIME BROADCAST
-        const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
-        adminClients.forEach(client => {
-            if (client.ws.readyState === WebSocket.OPEN) {
-                client.ws.send(JSON.stringify({
-                    type: 'credit-updated',
-                    userId: id,
-                    newCredits: newCredits,
-                    oldCredits: newCredits, // Bu API'de eski kredi bilgisi yok
-                    updatedBy: 'admin-panel',
-                    reason: reason || 'Manuel güncelleme'
-                }));
-                console.log(`📨 Admin'e kredi güncelleme gönderildi: ${client.id}`);
-            }
-        });
-        
-        // Müşteriye de bildir (eğer online ise)
-        const customerClient = clients.get(id);
-        if (customerClient && customerClient.userType === 'customer' && customerClient.ws.readyState === WebSocket.OPEN) {
-            customerClient.ws.send(JSON.stringify({
-                type: 'credit-update',
-                credits: newCredits,
-                updatedBy: 'admin',
-                message: 'Krediniz güncellendi!'
-            }));
-            console.log(`📱 Müşteriye kredi güncelleme bildirildi: ${id} -> ${newCredits} dk`);
-        }
-        
         res.json({ success: true, credits: newCredits });
     } catch (error) {
-        console.log('Database ready');
+        console.log('💾 PostgreSQL kredi güncelleme hatası:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
+// Arama geçmişini getir
+app.get('/api/calls', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT ch.*, au.name as user_name 
+            FROM call_history ch
+            LEFT JOIN approved_users au ON ch.user_id = au.id
+            ORDER BY ch.call_time DESC 
+            LIMIT 100
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        console.log('💾 PostgreSQL arama geçmişi hatası:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// İstatistikleri getir
+app.get('/api/stats', async (req, res) => {
+    try {
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
+        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
+        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
+        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
+        
+        res.json({
+            totalUsers: parseInt(totalUsers.rows[0].count),
+            totalCalls: parseInt(totalCalls.rows[0].count),
+            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
+            todayCalls: parseInt(todayCalls.rows[0].count),
+            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length
+        });
+    } catch (error) {
+        console.log('💾 PostgreSQL istatistik hatası:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        clients: clients.size,
+        database: process.env.DATABASE_URL ? 'Connected' : 'Offline'
+    });
+});
+
+// Ana sayfa
+app.get('/', (req, res) => {
+    const host = req.get('host');
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🎯 VIPCEP Server</title>
+            <meta charset="UTF-8">
+            <style>
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+                    max-width: 900px; 
+                    margin: 50px auto; 
+                    padding: 20px;
+                    background: #f8fafc;
+                }
+                .header { 
+                    background: linear-gradient(135deg, #22c55e, #16a34a); 
+                    color: white; 
+                    padding: 30px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    margin-bottom: 30px;
+                    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
+                }
+                .links { 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr; 
+                    gap: 20px; 
+                    margin: 30px 0; 
+                }
+                .link-card { 
+                    background: white; 
+                    padding: 25px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    border: 1px solid #e2e8f0;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    transition: transform 0.3s ease;
+                }
+                .link-card:hover {
+                    transform: translateY(-5px);
+                }
+                .link-card a { 
+                    color: #2563eb; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                    background: #eff6ff;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    display: inline-block;
+                    margin-top: 10px;
+                }
+                .link-card a:hover {
+                    background: #dbeafe;
+                }
+                .stats { 
+                    background: linear-gradient(135deg, #eff6ff, #dbeafe); 
+                    padding: 20px; 
+                    border-radius: 12px; 
+                    border-left: 4px solid #3b82f6; 
+                    margin-bottom: 20px;
+                }
+                .status-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                .status-item {
+                    background: rgba(255,255,255,0.8);
+                    padding: 15px;
+                    border-radius: 8px;
+                    text-align: center;
+                }
+                .status-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #059669;
+                }
+                .whatsapp-link {
+                    background: #25d366;
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 10px;
+                    text-decoration: none;
+                    display: inline-block;
+                    margin-top: 20px;
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🎯 VIPCEP Server</h1>
+                <p style="font-size: 18px; margin: 10px 0;">Voice IP Communication Emergency Protocol</p>
+                <p style="font-size: 14px; opacity: 0.9;">Mobil Cihaz Teknik Danışmanlık Sistemi</p>
+            </div>
+            
+            <div class="links">
+                <div class="link-card">
+                    <h3>👨‍💼 Admin Panel</h3>
+                    <p>Teknik servis yönetim sistemi</p>
+                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü, kredi sistemi</p>
+                    <a href="/admin-panel.html">Admin Panel'e Git →</a>
+                </div>
+                <div class="link-card">
+                    <h3>📱 Müşteri Uygulaması</h3>
+                    <p>Sesli danışmanlık uygulaması</p>
+                    <p style="font-size: 12px; color: #64748b;">Teknik destek almak için</p>
+                    <a href="/customer-app.html">Müşteri Uygulaması →</a>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <h3>📊 Server Durumu</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-value">${clients.size}</div>
+                        <div>Aktif Bağlantı</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">✅</div>
+                        <div>Sistem Durumu</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${process.env.DATABASE_URL ? '✅' : '❌'}</div>
+                        <div>Veritabanı</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-value">${PORT}</div>
+                        <div>Port</div>
+                    </div>
+                </div>
+                <p style="margin-top: 15px;"><strong>WebSocket URL:</strong> wss://${host}</p>
+                <p><strong>Railway Deploy:</strong> ${process.env.RAILWAY_ENVIRONMENT || 'Local'}</p>
+            </div>
+
+            <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <h3>💳 Kredi Talebi</h3>
+                <p style="color: #64748b; margin-bottom: 15px;">Sistemimizi kullanmak için kredi satın alın</p>
+                <a href="https://wa.me/905374792403?text=VIPCEP%20Kredi%20Talebi%20-%20Lütfen%20bana%20kredi%20yükleyin" 
+                   target="_blank" class="whatsapp-link">
+                    📞 WhatsApp ile Kredi Talep Et
+                </a>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                    Telefon: +90 537 479 24 03
+                </p>
+            </div>
+
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f59e0b;">
+                <h4>📋 Test Kullanıcıları:</h4>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li><strong>ID:</strong> 1234 | <strong>Ad:</strong> Test Kullanıcı | <strong>Kredi:</strong> 10 dk</li>
+                    <li><strong>ID:</strong> 0005 | <strong>Ad:</strong> VIP Müşteri | <strong>Kredi:</strong> 25 dk</li>
+                    <li><strong>ID:</strong> 9999 | <strong>Ad:</strong> Demo User | <strong>Kredi:</strong> 5 dk</li>
+                </ul>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// Static dosya route'ları
+app.get('/admin-panel.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
+});
+
+app.get('/customer-app.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'customer-app.html'));
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).send(`
+        <h1>404 - Sayfa Bulunamadı</h1>
+        <p><a href="/">Ana sayfaya dön</a></p>
+    `);
+});
+
+// Server'ı başlat
+async function startServer() {
+    console.log('🚀 VIPCEP Server Başlatılıyor...');
+    console.log('📍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    
+    // Veritabanını başlat
+    await initDatabase();
+    
+    // HTTP Server'ı başlat
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log('🎯 VIPCEP Server çalışıyor!');
+        console.log(`📍 Port: ${PORT}`);
+        console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
+        console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
+        console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
+        console.log('');
+        console.log('📱 Uygulamalar:');
+        console.log(` 👨‍💼 Admin paneli: /admin-panel.html`);
+        console.log(` 📱 Müşteri uygulaması: /customer-app.html`);
+        console.log('');
+        console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
+        console.log('📞 WhatsApp: +90 537 479 24 03');
+        console.log('✅ Sistem hazır - Arama kabul ediliyor!');
+        console.log('═══════════════════════════════════════════');
+    });
+}
+
+// Hata yakalama
+process.on('uncaughtException', (error) => {
+    console.log('❌ Yakalanmamış hata:', error.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.log('❌ İşlenmemiş promise reddi:', reason);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('📴 Server kapatılıyor...');
+    server.close(() => {
+        console.log('✅ Server başarıyla kapatıldı');
+        process.exit(0);
+    });
+});
+
+// Server'ı başlat
+startServer().catch(error => {
+    console.log('❌ Server başlatma hatası:', error.message);
+    process.exit(1);
+});
