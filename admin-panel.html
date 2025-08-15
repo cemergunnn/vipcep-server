@@ -857,36 +857,70 @@
         
         // Login event listeners
         function setupLoginEventListeners() {
-            document.getElementById('loginButton').addEventListener('click', adminLogin);
-            document.getElementById('adminPassword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') adminLogin();
-            });
-            document.getElementById('logoutButton').addEventListener('click', adminLogout);
+            const loginButton = document.getElementById('loginButton');
+            const passwordInput = document.getElementById('adminPassword');
+            const logoutButton = document.getElementById('logoutButton');
+            
+            if (loginButton) {
+                loginButton.addEventListener('click', adminLogin);
+                console.log('✅ Login button event listener eklendi');
+            }
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') adminLogin();
+                });
+                console.log('✅ Password enter listener eklendi');
+            }
+            
+            if (logoutButton) {
+                logoutButton.addEventListener('click', adminLogout);
+                console.log('✅ Logout button listener eklendi');
+            }
         }
         
         // Admin giriş fonksiyonu
         function adminLogin() {
+            console.log('🔐 adminLogin fonksiyonu çağrıldı');
+            
             const selectedAdmin = document.getElementById('adminSelect').value;
             const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('loginError');
             
+            console.log('Seçilen admin:', selectedAdmin);
+            console.log('Girilen şifre:', password);
+            console.log('Admin credentials:', adminCredentials);
+            
             // Validasyonlar
             if (!selectedAdmin) {
+                console.log('❌ Admin seçilmedi');
                 showLoginError('Lütfen bir admin seçin!');
                 return;
             }
             
             if (!password) {
+                console.log('❌ Şifre girilmedi');
                 showLoginError('Lütfen şifrenizi girin!');
                 return;
             }
             
             // Şifre kontrolü
             const adminData = adminCredentials[selectedAdmin];
-            if (!adminData || adminData.password !== password) {
+            console.log('Admin data:', adminData);
+            
+            if (!adminData) {
+                console.log('❌ Admin data bulunamadı');
+                showLoginError('Geçersiz admin seçimi!');
+                return;
+            }
+            
+            if (adminData.password !== password) {
+                console.log('❌ Şifre yanlış:', adminData.password, '!=', password);
                 showLoginError('Hatalı şifre! Lütfen tekrar deneyin.');
                 return;
             }
+            
+            console.log('✅ Giriş başarılı!');
             
             // Giriş başarılı
             currentAdmin = {
@@ -894,6 +928,8 @@
                 name: adminData.name,
                 avatar: adminData.avatar
             };
+            
+            console.log('Current admin set:', currentAdmin);
             
             // UI'ı güncelle
             document.getElementById('adminName').textContent = currentAdmin.name;
