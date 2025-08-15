@@ -456,7 +456,7 @@
                 <input type="password" class="form-input" id="adminPassword" placeholder="Şifrenizi girin">
             </div>
             
-            <button class="btn-login" id="loginButton">🔐 Giriş Yap</button>
+            <button class="btn-login" onclick="adminLogin()">🔐 Giriş Yap</button>
             
             <div id="loginError" class="login-error hidden"></div>
         </div>
@@ -477,7 +477,7 @@
                 <div class="status-dot disconnected" id="statusDot"></div>
                 <span id="statusText">Bağlanıyor...</span>
             </div>
-            <button class="btn-logout" id="logoutButton">🚪 Çıkış</button>
+            <button class="btn-logout" onclick="adminLogout()">🚪 Çıkış</button>
         </div>
         
         <!-- İstatistikler -->
@@ -607,30 +607,17 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Admin panel başlatılıyor...');
             document.body.classList.add('login-active');
-            setupEventListeners();
-        });
-        
-        // Event listener'ları kur
-        function setupEventListeners() {
-            console.log('Event listener kurulumu başlıyor...');
             
-            // Login button
-            document.getElementById('loginButton').onclick = adminLogin;
-            console.log('✅ Login button onclick atandı');
-            
-            // Password input
+            // Password input enter tuşu
             document.getElementById('adminPassword').onkeypress = function(e) {
                 if (e.key === 'Enter') adminLogin();
             };
-            console.log('✅ Password enter atandı');
-            
-            // Logout button  
-            document.getElementById('logoutButton').onclick = adminLogout;
-            console.log('✅ Logout button onclick atandı');
-        }
+            console.log('✅ Password enter hazır');
+        });
         
         // Admin giriş fonksiyonu
         function adminLogin() {
+            console.log('🔐 adminLogin çağrıldı!');
             console.log('🔐 Admin login başlıyor...');
             
             const selectedAdmin = document.getElementById('adminSelect').value;
