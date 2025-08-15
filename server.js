@@ -675,4 +675,5 @@ app.post('/api/approved-users/:id/credits', async (req, res) => {
         
         res.json({ success: true, credits: newCredits });
     } catch (error) {
-        console.log('
+        console.log('Database ready');
+
