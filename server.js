@@ -66,20 +66,16 @@ async function initDatabase() {
             )
         `);
 
-        // Credit transactions tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS credit_transactions (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10),
-                transaction_type VARCHAR(20),
-                amount INTEGER,
-                balance_after INTEGER,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        console.log('✅ PostgreSQL tabloları kontrol edildi');
+// Credit transactions tablosu - balance_after kaldırıldı
+        await pool.query(`DROP TABLE IF EXISTS credit_transactions`);
+        await pool.query(`CREATE TABLE credit_transactions (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(10),
+            transaction_type VARCHAR(20),
+            amount INTEGER,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
         
         // Test kullanıcılarını kontrol et ve ekle
         const testUsers = [
@@ -948,3 +944,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
