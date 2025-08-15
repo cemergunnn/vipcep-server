@@ -177,7 +177,7 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
         `, [userId, 'update', newCredits - oldCredits, reason]);
         
         console.log(`💳 Kredi güncellendi: ${userId} -> ${newCredits} (${reason})`);
-        return newCredits;
+        return { newCredits, oldCredits };
     } catch (error) {
         console.log('💾 PostgreSQL kredi güncelleme hatası:', error.message);
         throw error;
@@ -932,3 +932,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
