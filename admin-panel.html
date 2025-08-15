@@ -1368,40 +1368,6 @@
                     break;
                     
                 case 'credit-updated':
-                    // Sunucudan gelen tutarlı güncelleme
-                    console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
-                    { const updatedUser = approvedUsers.find(u => u.id === message.userId);
-                      if (updatedUser) {
-                        updatedUser.credits = message.newCredits ?? message.credits ?? updatedUser.credits;
-                        updatedUser.totalCalls = (updatedUser.totalCalls || 0) + (message.duration ? 1 : 0);
-                        updatedUser.lastCall = new Date().toLocaleString();
-                        saveApprovedUsers();
-                        renderApprovedUsers();
-                        updateStats();
-                        if (message.creditsUsed && message.duration) {
-                          showCreditNotification(message.userId, message.creditsUsed, message.duration);
-                        }
-                        log(`💳 ${updatedUser.name} kredi güncellendi: ${updatedUser.credits} dk`);
-                      }
-                    }
-                    break;
-
-                case 'credit-update':
-                    // Bazı sürümlerde type 'credit-update' ve alan adı 'credits' olabilir
-                    // Bu durumda, aktif çağrıdaki kullanıcıyı bularak güncelliyoruz.
-                    { let targetId = (currentCall && currentCall.userId) || (outgoingCallInfo && outgoingCallInfo.userId);
-                      const uid = message.userId || targetId; 
-                      const updatedUser = uid ? approvedUsers.find(u => u.id === uid) : null;
-                      if (updatedUser) {
-                        updatedUser.credits = message.newCredits ?? message.credits ?? updatedUser.credits;
-                        updatedUser.lastCall = new Date().toLocaleString();
-                        saveApprovedUsers();
-                        renderApprovedUsers();
-                        updateStats();
-                        log(`💳 (compat) ${updatedUser.name} kredi güncellendi: ${updatedUser.credits} dk`);
-                      }
-                    }
-                    break;
                     console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
                     const updatedUser = approvedUsers.find(u => u.id === message.userId);
                     if (updatedUser) {
