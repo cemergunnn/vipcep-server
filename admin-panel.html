@@ -688,7 +688,19 @@
         // Sayfa yüklendiğinde başlat
         window.onload = function() {
             log('🚀 Admin panel başlatılıyor...');
-            loadApprovedUsers();
+            console.log('📍 Current URL:', window.location.href);
+            console.log('📍 Origin:', window.location.origin);
+            console.log('📍 WebSocket URL:', serverUrl);
+            
+            // Önce localStorage'dan yükle (hızlı görüntüleme için)
+            approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
+            renderApprovedUsers();
+            updateStats();
+            
+            // Sonra API'den güncel veriyi çek
+            loadUsersFromAPI();
+            
+            // WebSocket bağlantısını kur
             connectToServer();
             
             // ID input sadece sayı kabul etsin
@@ -709,9 +721,14 @@
             try {
                 log('📡 API\'den kullanıcılar yükleniyor...');
                 const apiUrl = window.location.origin + '/api/approved-users';
+                console.log('🔗 API URL:', apiUrl);
+                
                 const response = await fetch(apiUrl);
+                console.log('📡 API Response Status:', response.status);
+                
                 if (response.ok) {
                     const apiUsers = await response.json();
+                    console.log('📦 API\'den gelen kullanıcılar:', apiUsers);
                     
                     // API'den gelen kullanıcıları local format'a çevir
                     approvedUsers = apiUsers.map(user => ({
@@ -730,10 +747,20 @@
                     
                     log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
                 } else {
+                    console.error('❌ API Error:', response.status, response.statusText);
                     log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
+                    // LocalStorage'dan yükle
+                    approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
+                    renderApprovedUsers();
+                    updateStats();
                 }
             } catch (error) {
+                console.error('❌ API bağlantı hatası:', error);
                 log('⚠️ API bağlantı hatası: ' + error.message);
+                // LocalStorage'dan yükle
+                approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
+                renderApprovedUsers();
+                updateStats();
             }
         }
         
