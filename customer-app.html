@@ -673,7 +673,9 @@
         let callDuration = 0;
         let callStartTime = null;
         let isLoggedIn = false;
-        let serverUrl = 'wss://vipcep-server-production.up.railway.app';
+        let serverUrl = window.location.hostname === 'localhost' 
+    ? 'ws://localhost:8080'
+    : `wss://vipcep-server-production.up.railway.app`;
         let ringbackAudio = null;
         let incomingCallInfo = null;
         
@@ -849,7 +851,7 @@
             
             connectToServer() {
                 try {
-                    console.log('Bağlanıyor:', serverUrl);
+                    console.log('🔗 Customer WebSocket URL:', serverUrl);
                     socket = new WebSocket(serverUrl);
                     
                     socket.onopen = () => {
@@ -1712,3 +1714,4 @@
     </script>
 </body>
 </html>
+
