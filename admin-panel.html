@@ -14,22 +14,34 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            padding: 20px;
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        body.login-active {
+            overflow: hidden;
         }
         
         .container {
             max-width: 1400px;
             margin: 0 auto;
+            padding: 20px;
         }
         
         /* Admin Login Ekranı */
         .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 9999;
         }
         
         .login-box {
@@ -599,6 +611,10 @@
         // Sayfa yüklendiğinde başlat
         window.onload = function() {
             console.log('🚀 Admin panel başlatılıyor...');
+            
+            // Login ekranında body scroll'u engelle
+            document.body.classList.add('login-active');
+            
             setupLoginEventListeners();
         };
         
@@ -684,6 +700,9 @@
             // Login ekranını gizle, admin paneli göster
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('adminPanel').classList.remove('hidden');
+            
+            // Body scroll'u tekrar aktif et
+            document.body.classList.remove('login-active');
             
             isLoggedIn = true;
             
@@ -896,6 +915,9 @@
                 // Login ekranını göster
                 document.getElementById('adminPanel').classList.add('hidden');
                 document.getElementById('loginScreen').classList.remove('hidden');
+                
+                // Body scroll'u tekrar engelle
+                document.body.classList.add('login-active');
                 
                 // Login formunu temizle
                 document.getElementById('adminSelect').value = '';
