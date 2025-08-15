@@ -490,15 +490,7 @@ wss.on('connection', (ws, req) => {
                             if (customerForUpdate && customerForUpdate.ws.readyState === WebSocket.OPEN) {
                                 customerForUpdate.ws.send(JSON.stringify({
                                     type: 'credit-update',
-                                    credits: saveResult.newCredits,
-                                    newCredits: saveResult.newCredits,
-                                    userId: message.userId
-                                }));
-                                // Backward-compat: bazı istemciler 'credit-updated' bekliyor olabilir
-                                customerForUpdate.ws.send(JSON.stringify({
-                                    type: 'credit-updated',
-                                    userId: message.userId,
-                                    newCredits: saveResult.newCredits
+                                    credits: saveResult.newCredits
                                 }));
                                 console.log(`📨 Müşteriye kredi güncellemesi gönderildi: ${message.userId}`);
                             }
@@ -519,16 +511,8 @@ wss.on('connection', (ws, req) => {
                         updatedUserClient.ws.send(JSON.stringify({
                             type: 'credit-update',
                             credits: message.newCredits,
-                            newCredits: message.newCredits,
-                            userId: message.userId,
                             updatedBy: message.updatedBy || 'admin',
                             message: 'Krediniz güncellendi!'
-                        }));
-                        // Backward-compat: ek olarak 'credit-updated' mesajını da gönder
-                        updatedUserClient.ws.send(JSON.stringify({
-                            type: 'credit-updated',
-                            userId: message.userId,
-                            newCredits: message.newCredits
                         }));
                         console.log(`📱 Müşteriye kredi güncelleme bildirildi: ${message.userId} -> ${message.newCredits} dk`);
                     }
