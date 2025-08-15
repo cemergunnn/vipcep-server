@@ -74,11 +74,22 @@ wss.on('connection', (ws) => {
                     });
                     break;
                     
-                default:
-                    if (message.targetId && clients.has(message.targetId)) {
-                        clients.get(message.targetId).ws.send(JSON.stringify(message));
-                    }
-                    break;
+default:
+    // Login request için özel işlem
+    if (message.type === 'login-request') {
+        console.log('🔍 Login request:', message.userId, message.userName);
+        ws.send(JSON.stringify({
+            type: 'login-response',
+            success: true,
+            credits: 10,
+            user: { id: message.userId, name: message.userName, credits: 10 }
+        }));
+    }
+    // Diğer mesajları hedef client'a ilet
+    else if (message.targetId && clients.has(message.targetId)) {
+        clients.get(message.targetId).ws.send(JSON.stringify(message));
+    }
+    break;
             }
         } catch (error) {
             console.log('Message error:', error.message);
@@ -178,3 +189,4 @@ server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     initDatabase();
 });
+
