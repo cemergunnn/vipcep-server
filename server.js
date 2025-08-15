@@ -1,4 +1,8 @@
-const WebSocket = require('ws');
+// Server'ı başlat
+startServer().catch(error => {
+    console.log('❌ Server başlatma hatası:', error.message);
+    process.exit(1);
+});const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
@@ -14,7 +18,7 @@ const pool = new Pool({
 });
 
 console.log('🔗 Database URL:', process.env.DATABASE_URL ? 'FOUND' : 'NOT FOUND');
-console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+console.log('🌎 Environment:', process.env.NODE_ENV || 'development');
 
 // Express app oluştur
 const app = express();
@@ -96,7 +100,7 @@ async function initDatabase() {
                     INSERT INTO approved_users (id, name, credits) 
                     VALUES ($1, $2, $3)
                 `, [id, name, credits]);
-                console.log(`📝 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
+                console.log(`🔄 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
             }
         }
 
@@ -273,7 +277,7 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'login-request':
-                    console.log('🔍 Giriş denemesi - ID:', message.userId, 'Ad:', message.userName);
+                    console.log('🔑 Giriş denemesi - ID:', message.userId, 'Ad:', message.userName);
                     
                     const approval = await isUserApproved(message.userId, message.userName);
                     
@@ -469,10 +473,10 @@ wss.on('connection', (ws, req) => {
                             console.log(`   - Yeni Kredi: ${saveResult.newCredits}`);
                             console.log(`   - Düşen: ${saveResult.creditsUsed}`);
                             
-                            // Tüm admin client'lara kredi güncellemesi bildir
+                            // TÜM admin client'lara kredi güncellemesi bildir
                             const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
                             adminClients.forEach(client => {
-                                if (client.ws.readyState === WebSocket.OPEN) {
+                                if (client.ws && client.ws.readyState === WebSocket.OPEN) {
                                     client.ws.send(JSON.stringify({
                                         type: 'credit-updated',
                                         userId: message.userId,
@@ -487,7 +491,7 @@ wss.on('connection', (ws, req) => {
                             
                             // Müşteriye de güncel kredi bilgisini gönder
                             const customerForUpdate = clients.get(message.userId);
-                            if (customerForUpdate && customerForUpdate.ws.readyState === WebSocket.OPEN) {
+                            if (customerForUpdate && customerForUpdate.ws && customerForUpdate.ws.readyState === WebSocket.OPEN) {
                                 customerForUpdate.ws.send(JSON.stringify({
                                     type: 'credit-update',
                                     credits: saveResult.newCredits
@@ -495,7 +499,7 @@ wss.on('connection', (ws, req) => {
                                 console.log(`📨 Müşteriye kredi güncellemesi gönderildi: ${message.userId}`);
                             }
                         } else {
-                            console.log(`❌ KREDİ DÜŞÜRME HATASI: ${saveResult.error}`);
+                            console.log(`❌ KREDİ DÜŞÜRME HATASI: ${saveResult.error || 'Bilinmeyen hata'}`);
                         }
                     } else {
                         console.log(`ℹ️ Kredi düşürülmedi: duration=${duration}, userId=${message.userId}`);
@@ -843,7 +847,7 @@ app.get('/', (req, res) => {
             <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <h3>💳 Kredi Talebi</h3>
                 <p style="color: #64748b; margin-bottom: 15px;">Sistemimizi kullanmak için kredi satın alın</p>
-                <a href="https://wa.me/905374792403?text=VIPCEP%20Kredi%20Talebi%20-%20Lütfen%20bana%20kredi%20yükleyin" 
+                <a href="https://wa.me/905374792403?text=VIPCEP%20Kredi%20Talebi%20-%20L%C3%BCtfen%20bana%20kredi%20y%C3%BCkleyin" 
                    target="_blank" class="whatsapp-link">
                     📞 WhatsApp ile Kredi Talep Et
                 </a>
@@ -885,7 +889,7 @@ app.use((req, res) => {
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('📍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    console.log('🔄 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -893,8 +897,8 @@ async function startServer() {
     // HTTP Server'ı başlat
     server.listen(PORT, '0.0.0.0', () => {
         console.log('🎯 VIPCEP Server çalışıyor!');
-        console.log(`📍 Port: ${PORT}`);
-        console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
+        console.log(`🔌 Port: ${PORT}`);
+        console.log(`🌎 URL: http://0.0.0.0:${PORT}`);
         console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
         console.log('');
@@ -905,7 +909,7 @@ async function startServer() {
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
         console.log('✅ Sistem hazır - Arama kabul ediliyor!');
-        console.log('═══════════════════════════════════════════');
+        console.log('▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬');
     });
 }
 
@@ -920,15 +924,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('📴 Server kapatılıyor...');
+    console.log('🔴 Server kapatılıyor...');
     server.close(() => {
         console.log('✅ Server başarıyla kapatıldı');
         process.exit(0);
     });
-});
-
-// Server'ı başlat
-startServer().catch(error => {
-    console.log('❌ Server başlatma hatası:', error.message);
-    process.exit(1);
 });
