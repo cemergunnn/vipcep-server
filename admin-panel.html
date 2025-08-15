@@ -376,12 +376,20 @@
         // Global değişkenler
         let isLoggedIn = false;
         let currentAdmin = { id: '', name: '', avatar: '' };
+        let socket = null;
+        let approvedUsers = [];
+        let connectedUsers = [];
         
         // Admin şifreleri
         const adminCredentials = {
             'ADMIN001': { name: 'Cem Usta', password: 'cem2025', avatar: 'CU' },
             'ADMIN002': { name: 'Cenk Usta', password: 'cenk2025', avatar: 'CZ' }
         };
+        
+        // Server URL
+        const serverUrl = window.location.hostname === 'localhost' 
+            ? 'ws://localhost:8080'
+            : 'wss://vipcep-server-production.up.railway.app';
         
         // Sayfa yüklendiğinde
         document.addEventListener('DOMContentLoaded', function() {
@@ -469,14 +477,26 @@
             document.body.classList.remove('login-active');
             
             isLoggedIn = true;
+            
+            // Verileri yükle ve sunucuya bağlan
+            loadApprovedUsers();
+            connectToServer();
+            
             console.log('✅ Admin panel açıldı');
         }
         
         // Admin çıkış
         function adminLogout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                // Socket bağlantısını kapat
+                if (socket) {
+                    socket.close();
+                }
+                
                 isLoggedIn = false;
                 currentAdmin = { id: '', name: '', avatar: '' };
+                approvedUsers = [];
+                connectedUsers = [];
                 
                 document.getElementById('adminPanel').classList.add('hidden');
                 document.getElementById('loginScreen').classList.remove('hidden');
@@ -488,6 +508,180 @@
                 
                 console.log('🚪 Admin çıkış yaptı');
             }
+        }
+        
+        // Onaylı kullanıcıları yükle
+        async function loadApprovedUsers() {
+            try {
+                console.log('📡 API\'den kullanıcılar yükleniyor...');
+                const response = await fetch('/api/approved-users');
+                
+                if (response.ok) {
+                    const apiUsers = await response.json();
+                    
+                    approvedUsers = apiUsers.map(user => ({
+                        id: user.id,
+                        name: user.name,
+                        credits: user.credits || 0,
+                        totalCalls: user.total_calls || 0,
+                        lastCall: user.last_call
+                    }));
+                    
+                    renderUsers();
+                    updateStats();
+                    
+                    console.log('✅ ' + approvedUsers.length + ' kullanıcı yüklendi');
+                } else {
+                    console.log('⚠️ API\'den kullanıcı yüklenemedi');
+                    document.getElementById('usersList').innerHTML = '❌ Kullanıcılar yüklenemedi';
+                }
+            } catch (error) {
+                console.log('❌ API bağlantı hatası:', error.message);
+                document.getElementById('usersList').innerHTML = '❌ Bağlantı hatası: ' + error.message;
+            }
+        }
+        
+        // Kullanıcıları göster
+        function renderUsers() {
+            const container = document.getElementById('usersList');
+            
+            if (approvedUsers.length === 0) {
+                container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">Henüz onaylı kullanıcı yok</p>';
+                return;
+            }
+            
+            const userHTML = approvedUsers.map(user => {
+                const onlineUser = connectedUsers.find(u => u.id === user.id && u.userType === 'customer');
+                const isOnline = !!onlineUser;
+                const statusColor = isOnline ? '#22c55e' : '#6b7280';
+                const statusText = isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı';
+                
+                return `
+                    <div style="padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background: white;">
+                        <div style="font-weight: 700; color: #2563eb; font-family: monospace;">#${user.id}</div>
+                        <div style="font-weight: 600; color: #374151; margin: 4px 0;">${user.name}</div>
+                        <div style="color: #059669; font-size: 13px; font-weight: 600;">${user.credits} dakika kredi</div>
+                        <div style="color: ${statusColor}; font-size: 12px; margin-top: 4px;">${statusText}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = userHTML;
+        }
+        
+        // İstatistikleri güncelle
+        function updateStats() {
+            document.getElementById('totalApproved').textContent = approvedUsers.length;
+            document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
+            document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
+        }
+        
+        // WebSocket bağlantısı
+        function connectToServer() {
+            if (!isLoggedIn || !currentAdmin.id) {
+                console.log('❌ Admin girişi yapılmadan sunucuya bağlanılamaz');
+                return;
+            }
+            
+            try {
+                console.log('🔗 WebSocket bağlantısı kuruluyor:', serverUrl);
+                socket = new WebSocket(serverUrl);
+                
+                socket.onopen = function() {
+                    updateConnectionStatus('connected');
+                    console.log('✅ Server\'a bağlandı');
+                    
+                    // Admin olarak kayıt ol
+                    socket.send(JSON.stringify({
+                        type: 'register',
+                        userId: currentAdmin.id,
+                        name: currentAdmin.name,
+                        userType: 'admin'
+                    }));
+                };
+                
+                socket.onclose = function() {
+                    updateConnectionStatus('disconnected');
+                    console.log('❌ Bağlantı koptu, yeniden bağlanılıyor...');
+                    if (isLoggedIn) {
+                        setTimeout(connectToServer, 3000);
+                    }
+                };
+                
+                socket.onerror = function() {
+                    updateConnectionStatus('error');
+                    console.log('❌ WebSocket hatası!');
+                };
+                
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                };
+                
+            } catch (error) {
+                console.log('❌ Bağlantı hatası:', error.message);
+                updateConnectionStatus('error');
+            }
+        }
+        
+        // WebSocket mesajları işle
+        function handleMessage(message) {
+            console.log('📨 Mesaj alındı:', message.type);
+            
+            switch (message.type) {
+                case 'user-list-update':
+                    console.log('👥 Kullanıcı listesi güncellendi:', message.users?.length || 0, 'kullanıcı');
+                    updateUserList(message.users || []);
+                    break;
+                    
+                case 'incoming-call':
+                    console.log('📞 Gelen arama:', message.userId);
+                    break;
+                    
+                default:
+                    console.log('📩 Bilinmeyen mesaj türü:', message.type);
+            }
+        }
+        
+        // Bağlı kullanıcı listesini güncelle
+        function updateUserList(users) {
+            connectedUsers = users;
+            const container = document.getElementById('connectionsList');
+            
+            updateStats();
+            renderUsers(); // Kullanıcı listesini yenile (online durumları için)
+            
+            if (users.length === 0) {
+                container.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px;">Henüz kullanıcı bağlanmadı</p>';
+                return;
+            }
+            
+            const connectionsHTML = users.map(user => {
+                const isApproved = approvedUsers.find(u => u.id === user.id);
+                const approvedIcon = isApproved ? '✅' : '❌';
+                
+                return `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background: white;">
+                        <div style="width: 10px; height: 10px; background: #22c55e; border-radius: 50%;"></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 14px;">${user.name} ${approvedIcon}</div>
+                            <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
+                            <div style="font-size: 11px; color: #9ca3af;">${user.registeredAt}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = connectionsHTML;
+        }
+        
+        // Bağlantı durumunu güncelle
+        function updateConnectionStatus(status) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.className = 'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
+            statusText.textContent = status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
         }
         
         // Login hata göster
