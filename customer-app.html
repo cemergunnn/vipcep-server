@@ -254,6 +254,17 @@
             border-left: 4px solid #ef4444;
         }
         
+        .success-message {
+            background: #f0fdf4;
+            color: #16a34a;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 15px;
+            border-left: 4px solid #22c55e;
+        }
+        
         .hidden {
             display: none !important;
         }
@@ -300,11 +311,11 @@
                         🔒 Beni Hatırla
                     </label>
                 </div>
-                <button class="btn btn-login" id="loginButton">
+                <button class="btn btn-login" id="loginButton" onclick="loginUser()">
                     ✅ Giriş Yap
                 </button>
                 
-                <button class="btn btn-whatsapp" id="requestCreditButton">
+                <button class="btn btn-whatsapp" id="requestCreditButton" onclick="requestCreditWhatsApp()">
                     💳 WhatsApp ile Kredi Talep Et
                 </button>
                 
@@ -474,6 +485,14 @@
             document.getElementById('userIdInput').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
             });
+            
+            document.getElementById('userIdInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loginUser();
+            });
+            
+            document.getElementById('userNameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loginUser();
+            });
         };
         
         function loadSavedUserInfo() {
@@ -487,9 +506,14 @@
                     document.getElementById('userNameInput').value = savedName;
                     document.getElementById('rememberMe').checked = true;
                     
+                    // Otomatik giriş için biraz bekle
                     setTimeout(() => {
-                        loginUser();
-                    }, 1000);
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            loginUser();
+                        } else {
+                            showLoginMessage('Sunucu bağlantısı kuruluyor, lütfen tekrar deneyin...', 'error');
+                        }
+                    }, 1500);
                 }
             }
         }
@@ -527,6 +551,14 @@
                     userId: userId,
                     userName: userName
                 }));
+                
+                document.getElementById('loginButton').disabled = true;
+                document.getElementById('loginButton').innerHTML = '⏳ Kontrol ediliyor...';
+            } else {
+                showLoginMessage('Sunucu bağlantısı yok. Lütfen bekleyin...', 'error');
+                setTimeout(() => {
+                    connectToServer();
+                }, 1000);
             }
         }
         
@@ -535,11 +567,24 @@
             
             socket.onopen = () => {
                 updateConnectionStatus('connected');
+                console.log('✅ Sunucuya bağlandı');
+                
+                // Login butonunu aktif et
+                const loginBtn = document.getElementById('loginButton');
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '✅ Giriş Yap';
+                }
             };
             
             socket.onclose = () => {
                 updateConnectionStatus('disconnected');
                 setTimeout(connectToServer, 3000);
+            };
+            
+            socket.onerror = (error) => {
+                console.error('WebSocket hatası:', error);
+                updateConnectionStatus('disconnected');
             };
             
             socket.onmessage = (event) => {
@@ -555,7 +600,9 @@
                         userInfo.credits = message.credits || 0;
                         loginSuccess();
                     } else {
-                        showLoginMessage(message.reason, 'error');
+                        showLoginMessage(message.reason || 'Giriş başarısız!', 'error');
+                        document.getElementById('loginButton').disabled = false;
+                        document.getElementById('loginButton').innerHTML = '✅ Giriş Yap';
                     }
                     break;
                     
@@ -625,6 +672,8 @@
         }
         
         function loginSuccess() {
+            console.log('✅ Giriş başarılı!', userInfo);
+            
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
             
@@ -638,6 +687,10 @@
                 name: userInfo.name,
                 userType: 'customer'
             }));
+            
+            // Login butonunu resetle
+            document.getElementById('loginButton').disabled = false;
+            document.getElementById('loginButton').innerHTML = '✅ Giriş Yap';
         }
         
         function updateCreditsDisplay() {
@@ -893,20 +946,30 @@
             if (status === 'connected') {
                 dot.className = 'status-dot status-connected';
                 text.textContent = 'Bağlı';
+                console.log('✅ Bağlantı durumu: Bağlı');
             } else {
                 dot.className = 'status-dot status-disconnected';
                 text.textContent = 'Bağlantı Yok';
+                console.log('❌ Bağlantı durumu: Bağlantı Yok');
             }
         }
         
         function showLoginMessage(message, type) {
             const messageDiv = document.getElementById('loginMessage');
-            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-            messageDiv.textContent = message;
-            messageDiv.classList.remove('hidden');
+            if (!messageDiv) {
+                const div = document.createElement('div');
+                div.id = 'loginMessage';
+                document.getElementById('loginScreen').appendChild(div);
+            }
+            
+            const elem = document.getElementById('loginMessage');
+            elem.className = type === 'error' ? 'error-message' : 'success-message';
+            elem.textContent = message;
+            elem.classList.remove('hidden');
+            elem.style.marginTop = '15px';
             
             setTimeout(() => {
-                messageDiv.classList.add('hidden');
+                elem.classList.add('hidden');
             }, 5000);
         }
         
@@ -941,10 +1004,13 @@
         
         function requestCreditWhatsApp() {
             const phoneNumber = '905374792403';
+            const userName = userInfo.name || document.getElementById('userNameInput')?.value || 'Belirtilmedi';
+            const userId = userInfo.id || document.getElementById('userIdInput')?.value || 'Belirtilmedi';
+            
             const message = encodeURIComponent(
                 `🎯 VIPCEP Kredi Talebi\n\n` +
-                `👤 Ad: ${userInfo.name || document.getElementById('userNameInput').value || 'Belirtilmedi'}\n` +
-                `🆔 ID: ${userInfo.id || document.getElementById('userIdInput').value || 'Belirtilmedi'}\n` +
+                `👤 Ad: ${userName}\n` +
+                `🆔 ID: ${userId}\n` +
                 `💳 Kredi talep ediyorum`
             );
             
