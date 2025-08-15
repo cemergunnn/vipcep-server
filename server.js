@@ -14,7 +14,7 @@ const USERS_DB_PATH = path.join(__dirname, 'approved-users.json');
 
 // Middleware
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'main')));
 
 // API: Tüm onaylı kullanıcıları getir
 app.get('/api/approved-users', (req, res) => {
@@ -193,3 +193,4 @@ server.listen(PORT, () => {
 });
 
 // Sunucu dosyası tamamlandı!
+
