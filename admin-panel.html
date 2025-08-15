@@ -564,7 +564,8 @@
             document.getElementById('adminName').textContent = currentAdmin.name;
             document.getElementById('adminId').textContent = currentAdmin.id;
             document.getElementById('adminAvatar').textContent = currentAdmin.avatar;
-            document.getElementById('adminInfo').textContent = 'Hoş geldiniz ' + currentAdmin.name + '!';
+            
+            log('✅ ' + currentAdmin.name + ' olarak giriş yapıldı');
             
             // Ekranları değiştir
             document.getElementById('loginScreen').classList.add('hidden');
