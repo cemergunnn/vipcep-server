@@ -612,34 +612,21 @@
         
         // Event listener'ları kur
         function setupEventListeners() {
-            const loginButton = document.getElementById('loginButton');
-            const passwordInput = document.getElementById('adminPassword');
-            const logoutButton = document.getElementById('logoutButton');
+            console.log('Event listener kurulumu başlıyor...');
             
-            if (loginButton) {
-                loginButton.onclick = function() {
-                    console.log('Login button tıklandı');
-                    adminLogin();
-                };
-                console.log('✅ Login button hazır');
-            }
+            // Login button
+            document.getElementById('loginButton').onclick = adminLogin;
+            console.log('✅ Login button onclick atandı');
             
-            if (passwordInput) {
-                passwordInput.onkeypress = function(e) {
-                    if (e.key === 'Enter') {
-                        console.log('Enter tuşuna basıldı');
-                        adminLogin();
-                    }
-                };
-                console.log('✅ Password input hazır');
-            }
+            // Password input
+            document.getElementById('adminPassword').onkeypress = function(e) {
+                if (e.key === 'Enter') adminLogin();
+            };
+            console.log('✅ Password enter atandı');
             
-            if (logoutButton) {
-                logoutButton.onclick = function() {
-                    adminLogout();
-                };
-                console.log('✅ Logout button hazır');
-            }
+            // Logout button  
+            document.getElementById('logoutButton').onclick = adminLogout;
+            console.log('✅ Logout button onclick atandı');
         }
         
         // Admin giriş fonksiyonu
