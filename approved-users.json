@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1001",
+    "name": "Ahmet Yılmaz",
+    "credits": 10,
+    "created_at": "2025-08-14T15:00:00.000Z"
+  },
+  {
+    "id": "1002",
+    "name": "Ayşe Demir",
+    "credits": 5,
+    "created_at": "2025-08-14T15:00:00.000Z"
+  }
+]
