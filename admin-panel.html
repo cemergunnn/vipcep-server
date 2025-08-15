@@ -708,7 +708,10 @@
         async function loadUsersFromAPI() {
             try {
                 log('📡 API\'den kullanıcılar yükleniyor...');
-                const response = await fetch('/api/approved-users');
+                const apiUrl = window.location.hostname === 'localhost' 
+    ? '/api/approved-users'
+    : `${window.location.origin}/api/approved-users`;
+const response = await fetch(apiUrl);
                 if (response.ok) {
                     const apiUsers = await response.json();
                     
@@ -932,7 +935,10 @@
             addButton.classList.add('loading');
             
             // API'ye kullanıcı ekleme isteği gönder
-            fetch('/api/approved-users', {
+            const apiUrl = window.location.hostname === 'localhost' 
+    ? '/api/approved-users'
+    : `${window.location.origin}/api/approved-users`;
+fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -989,7 +995,10 @@
         function removeApprovedUser(userId) {
             if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
                 // API'ye silme isteği gönder
-                fetch(`/api/approved-users/${userId}`, {
+                const apiUrl = window.location.hostname === 'localhost' 
+    ? `/api/approved-users/${userId}`
+    : `${window.location.origin}/api/approved-users/${userId}`;
+fetch(apiUrl, {
                     method: 'DELETE'
                 })
                 .then(response => response.json())
@@ -1024,7 +1033,10 @@
             const oldCredits = user.credits;
             
             // API'ye kredi güncelleme isteği gönder
-            fetch(`/api/approved-users/${userId}/credits`, {
+            const apiUrl = window.location.hostname === 'localhost' 
+    ? `/api/approved-users/${userId}/credits`
+    : `${window.location.origin}/api/approved-users/${userId}/credits`;
+fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1194,7 +1206,10 @@
             document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
             
             // API'den güncel istatistik al
-            fetch('/api/stats')
+            const apiUrl = window.location.hostname === 'localhost' 
+    ? '/api/stats'
+    : `${window.location.origin}/api/stats`;
+fetch(apiUrl)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('todayCalls').textContent = data.todayCalls || 0;
@@ -2046,3 +2061,4 @@
     </script>
 </body>
 </html>
+
