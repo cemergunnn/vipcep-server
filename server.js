@@ -174,10 +174,10 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
             VALUES ($1, $2, $3, $4, $5)
-        `, [userId, 'update', newCredits - oldCredits, reason]);
+        `, [userId,'update', newCredits - oldCredits, newCredits, reason]);
         
         console.log(`💳 Kredi güncellendi: ${userId} -> ${newCredits} (${reason})`);
-        return { newCredits, oldCredits };
+        return newCredits;
     } catch (error) {
         console.log('💾 PostgreSQL kredi güncelleme hatası:', error.message);
         throw error;
@@ -490,7 +490,15 @@ wss.on('connection', (ws, req) => {
                             if (customerForUpdate && customerForUpdate.ws.readyState === WebSocket.OPEN) {
                                 customerForUpdate.ws.send(JSON.stringify({
                                     type: 'credit-update',
-                                    credits: saveResult.newCredits
+                                    credits: saveResult.newCredits,
+                                    newCredits: saveResult.newCredits,
+                                    userId: message.userId
+                                }));
+                                // Backward-compat: bazı istemciler 'credit-updated' bekliyor olabilir
+                                customerForUpdate.ws.send(JSON.stringify({
+                                    type: 'credit-updated',
+                                    userId: message.userId,
+                                    newCredits: saveResult.newCredits
                                 }));
                                 console.log(`📨 Müşteriye kredi güncellemesi gönderildi: ${message.userId}`);
                             }
@@ -511,8 +519,16 @@ wss.on('connection', (ws, req) => {
                         updatedUserClient.ws.send(JSON.stringify({
                             type: 'credit-update',
                             credits: message.newCredits,
+                            newCredits: message.newCredits,
+                            userId: message.userId,
                             updatedBy: message.updatedBy || 'admin',
                             message: 'Krediniz güncellendi!'
+                        }));
+                        // Backward-compat: ek olarak 'credit-updated' mesajını da gönder
+                        updatedUserClient.ws.send(JSON.stringify({
+                            type: 'credit-updated',
+                            userId: message.userId,
+                            newCredits: message.newCredits
                         }));
                         console.log(`📱 Müşteriye kredi güncelleme bildirildi: ${message.userId} -> ${message.newCredits} dk`);
                     }
@@ -932,4 +948,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
