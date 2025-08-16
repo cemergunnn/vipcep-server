@@ -1870,8 +1870,7 @@
                     ? '<button class="btn btn-call" onclick="callUser(\'' + user.id + '\')" title="Bu kullanıcıyı ara">📞 Ara</button>'
                     : '<button class="btn btn-call" disabled title="' + (!isOnline ? 'Kullanıcı çevrimdışı' : 'Zaten bir aramada bulunuyorsunuz') + '" style="opacity: 0.5;">📞 Ara</button>';
                 
-                return 
-                    '<div class="user-item ' + statusClass + '">' +
+                return '<div class="user-item ' + statusClass + '">' +
                         '<div class="user-info">' +
                             '<div class="user-id">#' + highlightText(user.id, searchTerm) + '</div>' +
                             '<div class="user-name">' + highlightText(user.name, searchTerm) + '</div>' +
