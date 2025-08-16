@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPCEP Admin Panel</title>
+    <title>VIPCEP Smart Admin Panel</title>
     <style>
         * {
             margin: 0;
@@ -22,7 +22,7 @@
             max-width: 1400px;
             margin: 0 auto;
         }
-        
+
         /* Login Screen Styles */
         .login-overlay {
             position: fixed;
@@ -238,6 +238,81 @@
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.1); opacity: 0.8; }
         }
+
+        /* 🎯 Smart Router Status Panel */
+        .smart-status {
+            background: linear-gradient(135deg, #1e40af, #1d4ed8);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(30, 64, 175, 0.3);
+        }
+
+        .smart-status h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+        }
+
+        .admin-status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .admin-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .admin-card.available {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .admin-card.busy {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .admin-card.offline {
+            border-color: #6b7280;
+            background: rgba(107, 114, 128, 0.2);
+            opacity: 0.7;
+        }
+
+        .admin-name {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .admin-status-text {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .competition-indicator {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: competitionPulse 2s infinite;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+        }
+
+        @keyframes competitionPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
         
         .main-content {
             display: grid;
@@ -272,6 +347,40 @@
             text-align: center;
             animation: callPulse 1.5s infinite;
             box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+            position: relative;
+        }
+
+        .incoming-call.competing {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border: 3px solid #fbbf24;
+        }
+
+        .competition-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #fbbf24;
+            color: #1e293b;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 700;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .call-taken {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
         }
         
         .outgoing-call {
@@ -614,6 +723,23 @@
             margin-bottom: 4px;
             opacity: 0.9;
         }
+
+        .log-container .log-smart {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .log-container .log-success {
+            color: #22c55e;
+        }
+
+        .log-container .log-error {
+            color: #ef4444;
+        }
+
+        .log-container .log-info {
+            color: #3b82f6;
+        }
         
         /* Utility Classes */
         .hidden {
@@ -677,8 +803,8 @@
                             <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9Z"/>
                         </svg>
                     </div>
-                    <h1>🎯 VIPCEP Admin</h1>
-                    <p>Teknik Servis Yönetim Paneli</p>
+                    <h1>🎯 VIPCEP Smart Admin</h1>
+                    <p>Multi-Admin Call Router</p>
                 </div>
                 
                 <div class="login-form">
@@ -700,7 +826,7 @@
                     <div class="form-group checkbox-group">
                         <label class="checkbox-label">
                             <input type="checkbox" id="rememberAdmin">
-                            🔒 Beni Hatırla (Bu cihazda)
+                            🔐 Beni Hatırla (Bu cihazda)
                         </label>
                     </div>
                     
@@ -715,7 +841,7 @@
                 </div>
                 
                 <div class="login-footer">
-                    <p>🔐 Güvenli Giriş • VIPCEP v1.0</p>
+                    <p>🔐 Güvenli Giriş • VIPCEP Smart Router v2.0</p>
                 </div>
             </div>
         </div>
@@ -725,8 +851,8 @@
             <!-- Header -->
             <div class="header">
                 <div>
-                    <h1>🎯 VIPCEP Admin Panel</h1>
-                    <p style="font-size: 16px; opacity: 0.9;">Voice IP Communication Emergency Protocol</p>
+                    <h1>🎯 VIPCEP Smart Admin Panel</h1>
+                    <p style="font-size: 16px; opacity: 0.9;">Multi-Admin Call Router System</p>
                     <p style="font-size: 14px; opacity: 0.8;">👤 Aktif: <span id="activeAdminName">-</span></p>
                 </div>
                 <div class="status">
@@ -738,6 +864,42 @@
                     <span id="statusText">Bağlanıyor...</span>
                     <button class="logout-btn" onclick="adminLogout()" title="Çıkış Yap">🚪</button>
                 </div>
+            </div>
+
+            <!-- Smart Router Status Panel -->
+            <div class="smart-status">
+                <h3>
+                    ⚡ Smart Call Router Status
+                    <div style="font-size: 12px; opacity: 0.8; font-weight: normal;">Multi-Admin Competition System</div>
+                </h3>
+                <div class="admin-status-grid">
+                    <div class="admin-card offline" id="adminCardCem">
+                        <div class="admin-name">👨‍🔧 Cem Usta</div>
+                        <div class="admin-status-text" id="adminStatusCem">Offline</div>
+                    </div>
+                    <div class="admin-card offline" id="adminCardCenk">
+                        <div class="admin-name">👨‍🔧 Cenk Usta</div>
+                        <div class="admin-status-text" id="adminStatusCenk">Offline</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Competition Indicator -->
+            <div id="competitionIndicator" class="competition-indicator hidden">
+                <div style="font-size: 18px; font-weight: 700;">🏆 ADMIN YARIŞI AKTIF!</div>
+                <div style="font-size: 14px; margin-top: 5px;">Her iki admin'e de arama bildirimi gönderildi - Kim önce kabul ederse kazanır!</div>
+            </div>
+
+            <!-- Call Taken Notification -->
+            <div id="callTakenNotification" class="call-taken hidden">
+                <h3>🏆 ARAMA DİĞER ADMİN TARAFINDAN ALINDI</h3>
+                <div style="margin: 15px 0;">
+                    <p style="font-weight: 600;"><span id="takenByAdminName">-</span> aramayı aldı</p>
+                    <p style="opacity: 0.9;">Müşteri: <span id="takenCustomerName">-</span></p>
+                </div>
+                <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCallTaken()">
+                   ✓ Tamam
+                </button>
             </div>
             
             <!-- İstatistikler -->
@@ -761,21 +923,28 @@
             </div>
             
             <div class="main-content">
-                <!-- Sol Panel - Arama Yönetimi -->
+                <!-- Sol Panel - Smart Call Management -->
                 <div class="panel">
-                    <h3>📞 Arama Yönetimi</h3>
+                    <h3>📞 Smart Call Management</h3>
                     
                     <!-- Gelen Arama -->
                     <div id="incomingCall" class="incoming-call hidden">
+                        <div class="competition-badge" id="competitionBadge">YARISMA!</div>
                         <h3>📞 GELEN ARAMA</h3>
                         <div style="margin: 15px 0;">
                             <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
                             <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
                             <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
+                            <p style="opacity: 0.8; font-size: 12px; margin-top: 8px;">
+                                Call ID: <span id="callRequestId">-</span>
+                            </p>
+                            <div id="competingAdminsInfo" style="opacity: 0.8; font-size: 13px; margin-top: 8px;">
+                                Yarışan Adminler: <span id="competingAdminsList">-</span>
+                            </div>
                         </div>
                         <div class="call-buttons">
                             <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
-                                ✅ Kabul Et
+                                🏆 Hızlı Kabul Et
                             </button>
                             <button class="btn btn-reject" onclick="rejectCall()">
                                 ❌ Reddet
@@ -824,16 +993,16 @@
                         </button>
                     </div>
                     
-                    <!-- Sistem Logları -->
-                    <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
+                    <!-- Smart Router Sistem Logları -->
+                    <h3 style="margin-top: 25px;">📋 Smart Router Logs</h3>
                     <div class="log-container" id="logContainer">
-                        <div>[Sistem] Admin panel başlatılıyor...</div>
+                        <div class="log-smart">[Smart Router] Multi-Admin sistemi başlatılıyor...</div>
                     </div>
                 </div>
                 
                 <!-- Orta Panel - Kullanıcı Yönetimi -->
                 <div class="panel">
-                    <h3>🆔 Kullanıcı Yönetimi</h3>
+                    <h3>🔧 Kullanıcı Yönetimi</h3>
                     
                     <!-- Yeni Kullanıcı Ekleme -->
                     <div class="form-section">
@@ -899,7 +1068,7 @@
     <audio id="remoteAudio" autoplay></audio>
     
     <script>
-        // Admin Authentication System - FIXED VERSION
+        // Admin Authentication System
         const ADMIN_CREDENTIALS = {
             'CEM': { 
                 password: 'cem2025', 
@@ -930,11 +1099,16 @@
         let filteredUsers = [];
         let outgoingCallInfo = null;
         
+        // 🎯 Smart Router Variables
+        let currentCallRequest = null;
+        let competingAdmins = [];
+        let adminStates = {};
+        
         const serverUrl = window.location.hostname === 'localhost' 
             ? 'ws://localhost:8080'
             : `wss://vipcep-server-production.up.railway.app`;
         
-        console.log('🔗 Admin WebSocket URL:', serverUrl);
+        console.log('🔗 Smart Admin WebSocket URL:', serverUrl);
         
         // WebRTC yapılandırması
         const rtcConfig = {
@@ -946,7 +1120,7 @@
 
         // Sayfa yüklendiğinde önce login kontrolü yap
         window.onload = function() {
-            log('🚀 Admin panel başlatılıyor...');
+            log('🚀 Smart Admin panel başlatılıyor...', 'smart');
             
             // Önce auto-login kontrolü
             checkAutoLogin();
@@ -981,7 +1155,7 @@
                             isAdminLoggedIn = true;
                             
                             // Hoş geldin mesajı
-                            log(`👋 Hoş geldin ${currentAdmin.displayName}! Otomatik giriş yapılıyor...`);
+                            log(`👋 Hoş geldin ${currentAdmin.displayName}! Otomatik giriş yapılıyor...`, 'success');
                             
                             showAdminPanel();
                             return true;
@@ -989,7 +1163,7 @@
                     } else {
                         // Token süresi dolmuş
                         localStorage.removeItem('vipcep_admin_token');
-                        log('⏰ Oturum süresi dolmuş, yeniden giriş gerekli');
+                        log('⏰ Oturum süresi dolmuş, yeniden giriş gerekli', 'error');
                     }
                 } catch (error) {
                     console.log('Token okuma hatası:', error);
@@ -1063,10 +1237,10 @@
                             time: Date.now()
                         };
                         localStorage.setItem('vipcep_admin_token', btoa(JSON.stringify(tokenData)));
-                        log('🔒 Giriş bilgileri kaydedildi');
+                        log('🔐 Giriş bilgileri kaydedildi', 'info');
                     }
                     
-                    log(`✅ ${currentAdmin.displayName} başarıyla giriş yaptı`);
+                    log(`✅ ${currentAdmin.displayName} başarıyla giriş yaptı`, 'success');
                     showAdminPanel();
                     
                 } else {
@@ -1118,7 +1292,7 @@
             loadApprovedUsers();
             connectToServer();
             
-            log(`🎯 ${currentAdmin.displayName} admin paneli başlatıldı`);
+            log(`🎯 ${currentAdmin.displayName} Smart admin paneli başlatıldı`, 'smart');
         }
 
         function hideLoginError() {
@@ -1143,11 +1317,84 @@
                     callTimer = null;
                 }
                 
-                log('👋 Admin çıkış yaptı');
+                log('👋 Admin çıkış yaptı', 'info');
                 
                 // Show login screen
                 showLoginScreen();
             }
+        }
+
+        // 🎯 Smart Router Admin Status Management
+        function updateAdminStatusDisplay(adminStatesData) {
+            console.log('🔄 Admin status update:', adminStatesData);
+            
+            for (const [adminId, status] of Object.entries(adminStatesData)) {
+                const isCurrentAdmin = currentAdmin && currentAdmin.id === adminId;
+                
+                if (adminId === 'ADMIN_CEM') {
+                    const card = document.getElementById('adminCardCem');
+                    const statusText = document.getElementById('adminStatusCem');
+                    
+                    card.className = 'admin-card ' + status.status;
+                    
+                    let statusMessage = status.status === 'available' ? '✅ Hazır' : 
+                                       status.status === 'busy' ? '🔥 Meşgul' : 
+                                       '❌ Offline';
+                    
+                    if (isCurrentAdmin && status.status !== 'offline') {
+                        statusMessage += ' (Sen)';
+                    }
+                    
+                    statusText.textContent = statusMessage;
+                }
+                
+                if (adminId === 'ADMIN_CENK') {
+                    const card = document.getElementById('adminCardCenk');
+                    const statusText = document.getElementById('adminStatusCenk');
+                    
+                    card.className = 'admin-card ' + status.status;
+                    
+                    let statusMessage = status.status === 'available' ? '✅ Hazır' : 
+                                       status.status === 'busy' ? '🔥 Meşgul' : 
+                                       '❌ Offline';
+                    
+                    if (isCurrentAdmin && status.status !== 'offline') {
+                        statusMessage += ' (Sen)';
+                    }
+                    
+                    statusText.textContent = statusMessage;
+                }
+            }
+            
+            adminStates = adminStatesData;
+        }
+
+        function showCompetitionIndicator(show = true) {
+            const indicator = document.getElementById('competitionIndicator');
+            if (show) {
+                indicator.classList.remove('hidden');
+            } else {
+                indicator.classList.add('hidden');
+            }
+        }
+
+        function showCallTakenNotification(takenByName, customerName) {
+            document.getElementById('takenByAdminName').textContent = takenByName;
+            document.getElementById('takenCustomerName').textContent = customerName;
+            document.getElementById('callTakenNotification').classList.remove('hidden');
+            
+            // Hide other call states
+            document.getElementById('incomingCall').classList.add('hidden');
+            showCompetitionIndicator(false);
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                dismissCallTaken();
+            }, 5000);
+        }
+
+        function dismissCallTaken() {
+            document.getElementById('callTakenNotification').classList.add('hidden');
         }
         
         // Onaylı kullanıcıları yükle
@@ -1160,7 +1407,7 @@
         // API'den kullanıcıları yükle
         async function loadUsersFromAPI() {
             try {
-                log('📡 API\'den kullanıcılar yükleniyor...');
+                log('📡 API\'den kullanıcılar yükleniyor...', 'info');
                 const response = await fetch('/api/approved-users');
                 if (response.ok) {
                     const apiUsers = await response.json();
@@ -1180,26 +1427,495 @@
                     renderApprovedUsers();
                     updateStats();
                     
-                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
+                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`, 'success');
                 } else {
-                    log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
+                    log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor', 'error');
                 }
             } catch (error) {
-                log('⚠️ API bağlantı hatası: ' + error.message);
+                log('⚠️ API bağlantı hatası: ' + error.message, 'error');
             }
         }
         
-        // Rest of the JavaScript functions remain the same...
-        // (I'll continue with the key functions that need to be included)
+        // Onaylı kullanıcıları kaydet
+        function saveApprovedUsers() {
+            localStorage.setItem('vipcep_approved_users', JSON.stringify(approvedUsers));
+        }
+
+        function searchUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (searchTerm === '') {
+                filteredUsers = [...approvedUsers];
+                resultsDiv.classList.add('hidden');
+            } else {
+                filteredUsers = approvedUsers.filter(user => {
+                    const nameMatch = user.name.toLowerCase().includes(searchTerm);
+                    const idMatch = user.id.includes(searchTerm);
+                    return nameMatch || idMatch;
+                });
+                
+                if (filteredUsers.length === 0) {
+                    resultsDiv.innerHTML = `❌ "${searchTerm}" için sonuç bulunamadı`;
+                    resultsDiv.classList.remove('hidden');
+                } else if (filteredUsers.length === approvedUsers.length) {
+                    resultsDiv.classList.add('hidden');
+                } else {
+                    resultsDiv.innerHTML = `🔍 "${searchTerm}" için ${filteredUsers.length} sonuç bulundu`;
+                    resultsDiv.classList.remove('hidden');
+                }
+            }
+            
+            renderApprovedUsers();
+        }
+
+        function highlightText(text, searchTerm) {
+            if (!searchTerm || searchTerm === '') return text;
+            
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlighted">$1</span>');
+        }
+
+        function callUser(userId) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) {
+                alert('Kullanıcı bulunamadı!');
+                return;
+            }
+
+            const onlineUser = connectedUsers.find(u => u.id === userId && u.userType === 'customer');
+            if (!onlineUser) {
+                alert('Bu kullanıcı şu anda çevrimiçi değil!');
+                return;
+            }
+
+            if (currentCall || outgoingCallInfo) {
+                alert('Zaten bir aramada bulunuyorsunuz!');
+                return;
+            }
+
+            outgoingCallInfo = {
+                userId: userId,
+                userName: user.name,
+                credits: user.credits,
+                startTime: Date.now()
+            };
+
+            showOutgoingCall(outgoingCallInfo);
+            playAdminRingbackTone();
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-request',
+                    targetId: userId,
+                    adminId: currentAdmin.id,
+                    adminName: currentAdmin.displayName
+                }));
+                
+                log(`📞 ${user.name} (${userId}) kullanıcısı aranıyor...`, 'info');
+            } else {
+                alert('Sunucu bağlantısı yok!');
+                cancelOutgoingCall();
+            }
+        }
+
+        function showOutgoingCall(callInfo) {
+            document.getElementById('outgoingName').textContent = callInfo.userName;
+            document.getElementById('outgoingId').textContent = callInfo.userId;
+            document.getElementById('outgoingCredits').textContent = callInfo.credits;
+            document.getElementById('outgoingCall').classList.remove('hidden');
+            
+            document.getElementById('incomingCall').classList.add('hidden');
+            document.getElementById('callCancelled').classList.add('hidden');
+            
+            log(`📞 Giden arama: ${callInfo.userName} (${callInfo.userId})`, 'info');
+        }
+
+        let adminRingbackAudio = null;
+
+        function playAdminRingbackTone() {
+            try {
+                if (adminRingbackAudio) {
+                    stopAdminRingbackTone();
+                }
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                function playTone() {
+                    if (!outgoingCallInfo) return;
+                    
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(425, audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 1.0);
+                    
+                    setTimeout(playTone, 4000);
+                }
+                
+                playTone();
+                adminRingbackAudio = { audioContext, stop: () => {} };
+                
+                console.log('📊 Admin çeviri sesi başlatıldı');
+            } catch (error) {
+                console.log('Admin çeviri sesi çalınamadı:', error);
+            }
+        }
+        
+        function stopAdminRingbackTone() {
+            if (adminRingbackAudio) {
+                try {
+                    if (adminRingbackAudio.audioContext && adminRingbackAudio.audioContext.state === 'running') {
+                        adminRingbackAudio.audioContext.suspend();
+                    }
+                } catch (error) {
+                    console.log('Admin çeviri sesi durdurma hatası:', error);
+                }
+                adminRingbackAudio = null;
+                console.log('🔇 Admin çeviri sesi durduruldu');
+            }
+        }
+
+        function cancelOutgoingCall() {
+            stopAdminRingbackTone();
+            
+            if (outgoingCallInfo && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-cancelled',
+                    targetId: outgoingCallInfo.userId,
+                    adminId: currentAdmin.id,
+                    reason: 'Admin aramayı iptal etti'
+                }));
+                
+                log(`📞 Giden arama iptal edildi: ${outgoingCallInfo.userName}`, 'info');
+            }
+            
+            document.getElementById('outgoingCall').classList.add('hidden');
+            outgoingCallInfo = null;
+        }
+        
+        function addApprovedUser() {
+            const userId = document.getElementById('newUserId').value.trim();
+            const userName = document.getElementById('newUserName').value.trim();
+            const userCredits = parseInt(document.getElementById('newUserCredits').value) || 0;
+            
+            if (!userId || userId.length !== 4 || !/^\d{4}$/.test(userId)) {
+                alert('Lütfen 4 haneli sayısal ID girin!');
+                return;
+            }
+            
+            if (!userName || userName.length < 2) {
+                alert('Lütfen kullanıcı adını girin!');
+                return;
+            }
+            
+            if (approvedUsers.find(u => u.id === userId)) {
+                alert('Bu ID zaten kullanılıyor!');
+                return;
+            }
+            
+            // Loading state
+            const addButton = document.querySelector('button[onclick="addApprovedUser()"]');
+            const originalText = addButton.textContent;
+            addButton.disabled = true;
+            addButton.textContent = '⏳ Ekleniyor...';
+            addButton.classList.add('loading');
+            
+            // API'ye kullanıcı ekleme isteği gönder
+            fetch('/api/approved-users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: userId,
+                    name: userName,
+                    credits: userCredits
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.user) {
+                    // Local storage'a da ekle
+                    const newUser = {
+                        id: data.user.id,
+                        name: data.user.name,
+                        credits: data.user.credits,
+                        createdAt: data.user.created_at ? new Date(data.user.created_at).toLocaleString() : new Date().toLocaleString(),
+                        totalCalls: data.user.total_calls || 0,
+                        lastCall: data.user.last_call ? new Date(data.user.last_call).toLocaleString() : null
+                    };
+                    
+                    approvedUsers.push(newUser);
+                    saveApprovedUsers();
+                    searchUsers();
+                    updateStats();
+                    
+                    // Form'u temizle
+                    document.getElementById('newUserId').value = '';
+                    document.getElementById('newUserName').value = '';
+                    document.getElementById('newUserCredits').value = '';
+                    
+                    log(`✅ Kullanıcı başarıyla eklendi: ${userName} (${userId}) - ${userCredits} dk`, 'success');
+                    
+                    // Başarı bildirimi
+                    showSuccessNotification(`Kullanıcı eklendi: ${userName} (${userId})`);
+                    
+                } else {
+                    throw new Error(data.error || 'Kullanıcı eklenemedi');
+                }
+            })
+            .catch(error => {
+                console.error('Kullanıcı ekleme hatası:', error);
+                alert('Kullanıcı ekleme hatası: ' + error.message);
+                log(`❌ Kullanıcı ekleme hatası: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                // Loading state'i kaldır
+                addButton.disabled = false;
+                addButton.textContent = originalText;
+                addButton.classList.remove('loading');
+            });
+        }
+        
+        function removeApprovedUser(userId) {
+            if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
+                // API'ye silme isteği gönder
+                fetch(`/api/approved-users/${userId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Local storage'dan da sil
+                        approvedUsers = approvedUsers.filter(u => u.id !== userId);
+                        saveApprovedUsers();
+                        searchUsers();
+                        updateStats();
+                        log(`🗑️ Kullanıcı silindi: ${userId}`, 'info');
+                        showSuccessNotification(`Kullanıcı silindi: ${userId}`);
+                    } else {
+                        throw new Error(data.error || 'Kullanıcı silinemedi');
+                    }
+                })
+                .catch(error => {
+                    console.error('Kullanıcı silme hatası:', error);
+                    alert('Kullanıcı silme hatası: ' + error.message);
+                    log(`❌ Kullanıcı silme hatası: ${error.message}`, 'error');
+                });
+            }
+        }
+        
+        function updateCredits(userId, newCredits) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) {
+                alert('Kullanıcı bulunamadı!');
+                return;
+            }
+            
+            const oldCredits = user.credits;
+            
+            // API'ye kredi güncelleme isteği gönder
+            fetch(`/api/approved-users/${userId}/credits`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    credits: parseInt(newCredits) || 0,
+                    reason: `Admin tarafından güncellendi: ${oldCredits} → ${newCredits}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Local storage'ı güncelle
+                    user.credits = parseInt(newCredits) || 0;
+                    saveApprovedUsers();
+                    renderApprovedUsers();
+                    updateStats();
+                    
+                    // WebSocket ile tüm client'lara bildir
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'credit-update-broadcast',
+                            userId: userId,
+                            newCredits: user.credits,
+                            updatedBy: currentAdmin.displayName
+                        }));
+                    }
+                    
+                    log(`💳 Kredi başarıyla güncellendi: ${userId} -> ${newCredits} dk`, 'success');
+                    
+                    // Görsel bildirim göster
+                    showCreditUpdateNotification(userId, user.name, oldCredits, user.credits);
+                } else {
+                    alert('Kredi güncellenemedi: ' + (data.error || 'Bilinmeyen hata'));
+                    log(`❌ Kredi güncelleme hatası: ${userId} -> ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Kredi güncelleme hatası:', error);
+                alert('Kredi güncelleme sırasında hata oluştu!');
+                log(`❌ Kredi güncelleme API hatası: ${error.message}`, 'error');
+            });
+        }
+
+        // Başarı bildirimi göster
+        function showSuccessNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.style.borderLeft = '4px solid #22c55e';
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="color: #22c55e; font-size: 18px;">✅</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #22c55e;">Başarılı</div>
+                        <div style="font-size: 13px; color: #64748b;">
+                            ${message}<br>
+                            ⏰ ${new Date().toLocaleTimeString()}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.getElementById('creditNotifications');
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.classList.add('slide-out');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        }
+
+        // Kredi güncelleme bildirimi göster
+        function showCreditUpdateNotification(userId, userName, oldCredits, newCredits) {
+            const change = newCredits - oldCredits;
+            const changeText = change > 0 ? `+${change}` : `${change}`;
+            const changeColor = change > 0 ? '#22c55e' : '#ef4444';
+            
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.style.borderLeft = `4px solid ${changeColor}`;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="color: ${changeColor}; font-size: 18px;">💳</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #374151;">${userName} (${userId})</div>
+                        <div style="font-size: 13px; color: #64748b;">
+                            📊 Kredi: ${oldCredits} → ${newCredits} dk (${changeText})<br>
+                            ⏰ ${new Date().toLocaleTimeString()}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const container = document.getElementById('creditNotifications');
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.classList.add('slide-out');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 5000);
+        }
+        
+        function renderApprovedUsers() {
+            const container = document.getElementById('approvedUsersList');
+            const usersToShow = filteredUsers.length > 0 ? filteredUsers : approvedUsers;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            if (usersToShow.length === 0) {
+                if (searchTerm) {
+                    container.innerHTML = 
+                        '<div style="text-align: center; color: #6b7280; padding: 30px;">' +
+                            '<div style="font-size: 48px; margin-bottom: 10px;">🔍</div>' +
+                            '<div>Arama sonucu bulunamadı</div>' +
+                        '</div>';
+                } else {
+                    container.innerHTML = 
+                        '<div style="text-align: center; color: #6b7280; padding: 30px;">' +
+                            '<div style="font-size: 48px; margin-bottom: 10px;">👥</div>' +
+                            '<div>Henüz onaylı kullanıcı yok</div>' +
+                        '</div>';
+                }
+                return;
+            }
+            
+            container.innerHTML = usersToShow.map(function(user) {
+                const onlineUser = connectedUsers.find(function(u) { return u.id === user.id && u.userType === 'customer'; });
+                const isOnline = !!onlineUser;
+                const statusText = isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı';
+                const statusClass = isOnline ? 'online-user' : '';
+                
+                const canCall = isOnline && !currentCall && !outgoingCallInfo;
+                const callButtonHtml = canCall 
+                    ? '<button class="btn btn-call" onclick="callUser(\'' + user.id + '\')" title="Bu kullanıcıyı ara">📞 Ara</button>'
+                    : '<button class="btn btn-call" disabled title="' + (!isOnline ? 'Kullanıcı çevrimdışı' : 'Zaten bir aramada bulunuyorsunuz') + '" style="opacity: 0.5;">📞 Ara</button>';
+                
+                return 
+                    '<div class="user-item ' + statusClass + '">' +
+                        '<div class="user-info">' +
+                            '<div class="user-id">#' + highlightText(user.id, searchTerm) + '</div>' +
+                            '<div class="user-name">' + highlightText(user.name, searchTerm) + '</div>' +
+                            '<div class="user-credits">' + user.credits + ' dakika kredi</div>' +
+                            '<div class="user-status ' + (isOnline ? 'online' : '') + '">' + statusText + '</div>' +
+                        '</div>' +
+                        '<div class="user-actions">' +
+                            '<input type="number" value="' + user.credits + '" min="0" style="width: 70px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;" onchange="updateCredits(\'' + user.id + '\', this.value)" title="Kredi güncelle">' +
+                            callButtonHtml +
+                            '<button class="btn btn-reject btn-small" onclick="removeApprovedUser(\'' + user.id + '\')" title="Kullanıcıyı sil">🗑️</button>' +
+                        '</div>' +
+                    '</div>';
+            }).join('');
+        }
+        
+        function updateStats() {
+            document.getElementById('totalApproved').textContent = approvedUsers.length;
+            document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
+            document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
+            
+            // API'den güncel istatistik al
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('todayCalls').textContent = data.todayCalls || 0;
+                })
+                .catch(error => {
+                    console.log('İstatistik yükleme hatası:', error);
+                });
+        }
+        
+        function isUserApproved(userId) {
+            const user = approvedUsers.find(u => u.id === userId);
+            return user;
+        }
         
         function connectToServer() {
             try {
-                console.log('🔗 WebSocket bağlantısı kuruluyor:', serverUrl);
+                console.log('🔗 Smart WebSocket bağlantısı kuruluyor:', serverUrl);
                 socket = new WebSocket(serverUrl);
                 
                 socket.onopen = function() {
                     updateStatus('connected');
-                    log('✅ Server\'a bağlandı');
+                    log('✅ Smart Server\'a bağlandı', 'success');
                     
                     // Admin bilgisi ile register ol
                     if (currentAdmin) {
@@ -1211,19 +1927,19 @@
                             callStatus: 'available'
                         }));
                         
-                        log(`🔐 ${currentAdmin.displayName} olarak sisteme kaydolundu`);
+                        log(`🔐 ${currentAdmin.displayName} olarak Smart Router'a kaydolundu`, 'smart');
                     }
                 };
                 
                 socket.onclose = function() {
                     updateStatus('disconnected');
-                    log('❌ Bağlantı koptu, yeniden bağlanılıyor...');
+                    log('❌ Bağlantı koptu, yeniden bağlanılıyor...', 'error');
                     setTimeout(connectToServer, 3000);
                 };
                 
                 socket.onerror = function() {
                     updateStatus('error');
-                    log('❌ WebSocket hatası!');
+                    log('❌ Smart WebSocket hatası!', 'error');
                 };
                 
                 socket.onmessage = function(event) {
@@ -1232,17 +1948,899 @@
                 };
                 
             } catch (error) {
-                log('❌ Bağlantı hatası: ' + error.message);
+                log('❌ Bağlantı hatası: ' + error.message, 'error');
                 updateStatus('error');
             }
         }
-
-        // Simplified essential functions
+        
         function handleMessage(message) {
-            log('📨 Mesaj alındı: ' + message.type);
-            // Message handling logic here...
+            log('📨 Mesaj alındı: ' + message.type, 'info');
+            
+            switch (message.type) {
+                case 'admin-status-update':
+                    console.log('🔄 Admin status güncelleme alındı:', message.admins);
+                    updateAdminStatusDisplay(message.admins);
+                    break;
+
+                case 'incoming-call':
+                    console.log('📞 SMART GELEN ARAMA MESAJI ALINDI!', message);
+                    
+                    const user = isUserApproved(message.userId);
+                    
+                    if (!user) {
+                        socket.send(JSON.stringify({
+                            type: 'reject-call',
+                            callRequestId: message.callRequestId,
+                            userId: message.userId,
+                            reason: 'unauthorized'
+                        }));
+                        log(`❌ Onaylanmamış kullanıcı arama yapmaya çalıştı: ${message.userId}`, 'error');
+                        return;
+                    }
+                    
+                    if (outgoingCallInfo) {
+                        cancelOutgoingCall();
+                    }
+                    
+                    hideCallCancelled();
+                    
+                    // Smart Router call data
+                    currentCallRequest = {
+                        id: message.callRequestId,
+                        userId: message.userId,
+                        userName: user.name,
+                        credits: user.credits,
+                        competingAdmins: message.competingAdmins || [],
+                        totalAdmins: message.totalAdmins || 1
+                    };
+                    
+                    competingAdmins = message.competingAdmins || [];
+                    
+                    showIncomingCall(currentCallRequest);
+                    
+                    // Competition indicator göster
+                    if (currentCallRequest.totalAdmins > 1) {
+                        showCompetitionIndicator(true);
+                        log(`🏆 MULTI-ADMIN COMPETITION: ${currentCallRequest.totalAdmins} admin yarışıyor!`, 'smart');
+                    }
+                    break;
+
+                case 'call-taken-by-other-admin':
+                    console.log('🏆 Arama diğer admin tarafından alındı:', message);
+                    
+                    // Hide incoming call
+                    document.getElementById('incomingCall').classList.add('hidden');
+                    showCompetitionIndicator(false);
+                    
+                    // Show notification
+                    showCallTakenNotification(message.acceptedByName, message.customerInfo?.userName || 'Bilinmeyen');
+                    
+                    // Reset states
+                    currentCallRequest = null;
+                    competingAdmins = [];
+                    
+                    log(`🥈 ${message.acceptedByName} aramayı aldı - siz kaybettiniz`, 'smart');
+                    break;
+
+                case 'call-timeout':
+                    console.log('⏰ Arama zaman aşımı:', message);
+                    
+                    document.getElementById('incomingCall').classList.add('hidden');
+                    showCompetitionIndicator(false);
+                    
+                    currentCallRequest = null;
+                    competingAdmins = [];
+                    
+                    log('⏰ Gelen arama zaman aşımına uğradı', 'error');
+                    break;
+
+                case 'call-already-taken':
+                    console.log('⚠️ Arama zaten alınmış:', message);
+                    
+                    document.getElementById('incomingCall').classList.add('hidden');
+                    showCompetitionIndicator(false);
+                    
+                    alert('Bu arama zaten başka bir admin tarafından alındı!');
+                    
+                    currentCallRequest = null;
+                    competingAdmins = [];
+                    break;
+
+                case 'admin-call-accepted':
+                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
+                        log(`✅ ${outgoingCallInfo.userName} aramayı kabul etti`, 'success');
+                        stopAdminRingbackTone();
+                        
+                        document.getElementById('outgoingCall').classList.add('hidden');
+                        setupOutgoingPeerConnection();
+                    }
+                    break;
+
+                case 'admin-call-rejected':
+                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
+                        log(`❌ ${outgoingCallInfo.userName} aramayı reddetti: ${message.reason}`, 'error');
+                        stopAdminRingbackTone();
+                        
+                        showCallCancelled({
+                            userId: outgoingCallInfo.userId,
+                            userName: outgoingCallInfo.userName,
+                            reason: message.reason || 'Müşteri aramayı reddetti'
+                        });
+                        
+                        cancelOutgoingCall();
+                    }
+                    break;
+
+                case 'admin-call-timeout':
+                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
+                        log(`⏰ ${outgoingCallInfo.userName} aramayı cevaplamadı`, 'error');
+                        stopAdminRingbackTone();
+                        
+                        showCallCancelled({
+                            userId: outgoingCallInfo.userId,
+                            userName: outgoingCallInfo.userName,
+                            reason: 'Müşteri aramayı cevaplamadı (30 saniye zaman aşımı)'
+                        });
+                        
+                        cancelOutgoingCall();
+                    }
+                    break;
+                    
+                case 'call-cancelled':
+                    log(`📞 Arama iptal edildi: ${message.userName}`, 'info');
+                    document.getElementById('incomingCall').classList.add('hidden');
+                    showCompetitionIndicator(false);
+                    
+                    showCallCancelled({
+                        userId: message.userId,
+                        userName: message.userName,
+                        reason: message.reason
+                    });
+                    
+                    currentCallRequest = null;
+                    competingAdmins = [];
+                    break;
+                    
+                case 'offer':
+                    console.log('📤 WebRTC Offer alındı');
+                    handleOffer(message);
+                    break;
+
+                case 'answer':
+                    console.log('📥 WebRTC Answer alındı');
+                    handleAnswer(message);
+                    break;
+                    
+                case 'ice-candidate':
+                    console.log('🧊 ICE Candidate alındı');
+                    handleIceCandidate(message);
+                    break;
+                    
+                case 'end-call':
+                case 'call-ended':
+                    console.log('📞 Arama sonlandırılıyor');
+                    if (message.duration && message.creditsUsed) {
+                        showCreditNotification(message.userId, message.creditsUsed, message.duration);
+                        
+                        const user = approvedUsers.find(u => u.id === message.userId);
+                        if (user) {
+                            user.credits = Math.max(0, user.credits - message.creditsUsed);
+                            user.totalCalls = (user.totalCalls || 0) + 1;
+                            user.lastCall = new Date().toLocaleString();
+                            saveApprovedUsers();
+                            searchUsers();
+                            updateStats();
+                        }
+                    }
+                    endCall();
+                    break;
+                    
+                case 'credit-updated':
+                    console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
+                    const updatedUser = approvedUsers.find(u => u.id === message.userId);
+                    if (updatedUser) {
+                        // Kredi bilgisini güncelle
+                        updatedUser.credits = message.newCredits;
+                        updatedUser.totalCalls = (updatedUser.totalCalls || 0) + 1;
+                        updatedUser.lastCall = new Date().toLocaleString();
+                        
+                        // localStorage'ı güncelle (önemli!)
+                        saveApprovedUsers();
+                        renderApprovedUsers();
+                        updateStats();
+                        
+                        if (message.creditsUsed && message.duration) {
+                            showCreditNotification(message.userId, message.creditsUsed, message.duration);
+                        }
+                        
+                        log(`💳 ${updatedUser.name} kredi güncellendi: ${message.newCredits} dk`, 'success');
+                    }
+                    break;
+
+                case 'auto-credit-update':
+                    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
+                    const userToUpdate = approvedUsers.find(u => u.id === message.userId);
+                    if (userToUpdate) {
+                        userToUpdate.credits = message.newCredits;
+                        saveApprovedUsers();
+                        renderApprovedUsers();
+                        updateStats();
+                        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
+                    }
+                    break;
+                    
+                case 'user-list-update':
+                    console.log(`👥 Kullanıcı listesi güncellendi: ${message.users?.length || 0} kullanıcı`);
+                    updateUserList(message.users || []);
+                    break;
+                    
+                case 'user-online':
+                    log('👋 Yeni kullanıcı: ' + message.userName, 'info');
+                    break;
+
+                case 'credit-update-broadcast':
+                    console.log('💳 Kredi güncelleme broadcast:', message.userId, '->', message.newCredits);
+                    
+                    // Güncellenen kullanıcıya bildir
+                    const updatedUserClient = connectedUsers.find(u => u.id === message.userId && u.userType === 'customer');
+                    if (updatedUserClient) {
+                        console.log(`📱 Müşteriye kredi güncelleme bildirimi: ${message.userId} -> ${message.newCredits} dk`);
+                    }
+                    break;
+            }
         }
 
+        // Gelen arama göster - Smart Router versiyonu
+        function showIncomingCall(callData) {
+            try {
+                currentCall = callData;
+                
+                const callerNameElement = document.getElementById('callerName');
+                const callerIdElement = document.getElementById('callerId');
+                const callerCreditsElement = document.getElementById('callerCredits');
+                const callRequestIdElement = document.getElementById('callRequestId');
+                const competingAdminsElement = document.getElementById('competingAdminsList');
+                const incomingCallElement = document.getElementById('incomingCall');
+                const acceptBtnElement = document.getElementById('acceptBtn');
+                const competitionBadge = document.getElementById('competitionBadge');
+                const competingAdminsInfo = document.getElementById('competingAdminsInfo');
+                
+                if (!callerNameElement || !callerIdElement || !callerCreditsElement || !incomingCallElement) {
+                    console.error('❌ Gerekli DOM elementleri bulunamadı!');
+                    return;
+                }
+                
+                callerNameElement.textContent = callData.userName;
+                callerIdElement.textContent = callData.userId;
+                callerCreditsElement.textContent = callData.credits;
+                callRequestIdElement.textContent = callData.id || 'N/A';
+                
+                // Competition info
+                if (callData.competingAdmins && callData.competingAdmins.length > 1) {
+                    const adminNames = callData.competingAdmins.map(a => a.name).join(', ');
+                    competingAdminsElement.textContent = adminNames;
+                    competingAdminsInfo.classList.remove('hidden');
+                    
+                    // Add competition styling
+                    incomingCallElement.classList.add('competing');
+                    competitionBadge.classList.remove('hidden');
+                    competitionBadge.textContent = `${callData.totalAdmins} ADMIN!`;
+                } else {
+                    competingAdminsInfo.classList.add('hidden');
+                    incomingCallElement.classList.remove('competing');
+                    competitionBadge.classList.add('hidden');
+                }
+                
+                incomingCallElement.classList.remove('hidden');
+                
+                if (acceptBtnElement) {
+                    acceptBtnElement.disabled = false;
+                    if (callData.competingAdmins && callData.competingAdmins.length > 1) {
+                        acceptBtnElement.innerHTML = '🏆 Hızlı Kabul Et';
+                    } else {
+                        acceptBtnElement.innerHTML = '✅ Kabul Et';
+                    }
+                }
+                
+                log(`📞 Smart Gelen arama: ${callData.userName} (${callData.credits} dk) - ${callData.totalAdmins || 1} admin yarışıyor`, 'smart');
+                playNotificationSound();
+                
+            } catch (error) {
+                console.error('❌ showIncomingCall hatası:', error);
+            }
+        }
+        
+        function showCallCancelled(cancelInfo) {
+            document.getElementById('cancelledName').textContent = cancelInfo.userName;
+            document.getElementById('cancelledId').textContent = cancelInfo.userId;
+            document.getElementById('cancelledReason').textContent = cancelInfo.reason;
+            
+            const cancelledDiv = document.getElementById('callCancelled');
+            cancelledDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                hideCallCancelled();
+            }, 5000);
+        }
+        
+        function hideCallCancelled() {
+            const cancelledDiv = document.getElementById('callCancelled');
+            if (!cancelledDiv.classList.contains('hidden')) {
+                cancelledDiv.classList.add('slide-out');
+                setTimeout(() => {
+                    cancelledDiv.classList.add('hidden');
+                    cancelledDiv.classList.remove('slide-out');
+                }, 300);
+            }
+        }
+        
+        function dismissCancelledCall() {
+            hideCallCancelled();
+        }
+        
+        function showCreditNotification(userId, creditsUsed, duration) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            const mins = Math.floor(duration / 60);
+            const secs = duration % 60;
+            const durationText = mins + ':' + secs.toString().padStart(2, '0');
+            
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.style.borderLeft = '4px solid #059669';
+            notification.innerHTML = 
+                '<div style="display: flex; align-items: center; gap: 10px;">' +
+                    '<div style="color: #059669; font-size: 18px;">💳</div>' +
+                    '<div style="flex: 1;">' +
+                        '<div style="font-weight: 600; color: #374151;">' + user.name + ' (' + userId + ')</div>' +
+                        '<div style="font-size: 13px; color: #64748b;">' +
+                            '⏱️ Görüşme: ' + durationText + ' → ' + creditsUsed + ' kredi düştü<br>' +
+                            '💰 Kalan: ' + user.credits + ' dakika' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            
+            const container = document.getElementById('creditNotifications');
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.classList.add('slide-out');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 8000);
+            
+            log('💳 Kredi düşürüldü: ' + user.name + ' -' + creditsUsed + ' dk (' + durationText + ')', 'success');
+        }
+        
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const frequencies = [800, 1000, 800, 1000];
+                let currentTone = 0;
+                
+                function playTone() {
+                    if (currentTone >= frequencies.length) {
+                        setTimeout(() => {
+                            if (document.getElementById('incomingCall').classList.contains('hidden')) {
+                                return;
+                            }
+                            currentTone = 0;
+                            playTone();
+                        }, 2000);
+                        return;
+                    }
+                    
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequencies[currentTone], audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    
+                    currentTone++;
+                    setTimeout(playTone, 600);
+                }
+                
+                playTone();
+                
+            } catch (error) {
+                console.log('Ses çalınamadı:', error);
+            }
+        }
+        
+        // Smart Router - Arama kabul et
+        async function acceptCall() {
+            console.log('✅ Smart Arama kabul ediliyor...', currentCallRequest);
+            
+            // CRITICAL: Arama durumunu hemen kontrol et
+            if (!currentCall || !currentCallRequest) {
+                console.log('❌ currentCall veya currentCallRequest null - arama zaten iptal edilmiş');
+                return;
+            }
+            
+            try {
+                log('📞 Smart Arama kabul ediliyor...', 'smart');
+                
+                // Button'ı hemen devre dışı bırak
+                const acceptBtn = document.getElementById('acceptBtn');
+                const rejectBtn = document.querySelector('button[onclick="rejectCall()"]');
+                
+                acceptBtn.disabled = true;
+                acceptBtn.textContent = '🔄 Yarışılıyor...';
+                
+                if (rejectBtn) {
+                    rejectBtn.disabled = true;
+                }
+                
+                // Mikrofon erişimi al
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                
+                console.log('🎤 Admin mikrofon erişimi alındı');
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Local stream'i ekle
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                    console.log('🎤 Admin local track eklendi (smart):', track.kind);
+                });
+                
+                // Remote stream handler
+                peerConnection.ontrack = function(event) {
+                    console.log('📡 Admin remote track alındı (smart):', event.track.kind);
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (event.streams && event.streams[0]) {
+                        remoteAudio.srcObject = event.streams[0];
+                        console.log('📊 Admin remote audio stream atandı (smart)');
+                        
+                        remoteAudio.play().then(() => {
+                            console.log('✅ Admin remote audio oynatılmaya başladı (smart)');
+                        }).catch(e => {
+                            console.log('⚠️ Admin remote audio oynatma hatası (smart):', e);
+                        });
+                    }
+                };
+                
+                // ICE candidate handler
+                peerConnection.onicecandidate = function(event) {
+                    if (event.candidate && socket && currentCall) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: currentCall.userId
+                        }));
+                        console.log('📡 Admin ICE candidate gönderildi (smart):', event.candidate.type);
+                    } else if (!event.candidate) {
+                        console.log('📡 Admin ICE gathering tamamlandı (smart)');
+                    }
+                };
+
+                // Bağlantı durumu takibi
+                peerConnection.onconnectionstatechange = function() {
+                    console.log('🔗 Admin Connection State (smart):', peerConnection.connectionState);
+                    switch (peerConnection.connectionState) {
+                        case 'connected':
+                            console.log('✅ Admin WebRTC TAM OLARAK BAĞLANDI (smart)!');
+                            document.getElementById('incomingCall').classList.add('hidden');
+                            showCompetitionIndicator(false);
+                            document.getElementById('activeCaller').textContent = currentCall.userName;
+                            document.getElementById('activeCall').classList.remove('hidden');
+                            startCallTimer();
+                            break;
+                        case 'connecting':
+                            console.log('🔗 Admin WebRTC bağlanıyor (smart)...');
+                            break;
+                        case 'failed':
+                            console.log('❌ Admin WebRTC bağlantısı başarısız (smart)');
+                            endCall();
+                            break;
+                        case 'disconnected':
+                            console.log('📞 Admin WebRTC bağlantısı koptu (smart)');
+                            endCall();
+                            break;
+                    }
+                };
+
+                // ICE bağlantı durumu takibi
+                peerConnection.oniceconnectionstatechange = function() {
+                    console.log('🧊 Admin ICE Connection State (smart):', peerConnection.iceConnectionState);
+                    switch (peerConnection.iceConnectionState) {
+                        case 'connected':
+                        case 'completed':
+                            console.log('✅ Admin ICE bağlantısı kuruldu (smart)');
+                            if (peerConnection.connectionState === 'connecting') {
+                                setTimeout(() => {
+                                    if (peerConnection.connectionState === 'connecting') {
+                                        console.log('🔄 Admin ICE connected oldu (smart), call state güncelleniyor');
+                                        document.getElementById('incomingCall').classList.add('hidden');
+                                        showCompetitionIndicator(false);
+                                        document.getElementById('activeCaller').textContent = currentCall.userName;
+                                        document.getElementById('activeCall').classList.remove('hidden');
+                                        startCallTimer();
+                                    }
+                                }, 1000);
+                            }
+                            break;
+                        case 'failed':
+                            console.log('❌ Admin ICE bağlantısı başarısız (smart)');
+                            endCall();
+                            break;
+                    }
+                };
+                
+                // CRITICAL: Socket kontrolü
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    throw new Error('WebSocket bağlantısı yok!');
+                }
+                
+                if (!currentCall || !currentCallRequest) {
+                    throw new Error('currentCall veya currentCallRequest null oldu!');
+                }
+                
+                // Smart Router'a arama kabul mesajı gönder
+                socket.send(JSON.stringify({
+                    type: 'accept-call',
+                    callRequestId: currentCallRequest.id,
+                    userId: currentCall.userId,
+                    adminId: currentAdmin.id
+                }));
+                
+                log('🏆 Smart görüşme kabul edildi, WebRTC kuruluyor...', 'smart');
+                
+            } catch (error) {
+                console.error('❌ Admin smart arama kabul hatası:', error);
+                log('❌ Smart arama kabul hatası: ' + error.message, 'error');
+                alert('Mikrofon erişimi gerekli! Hata: ' + error.message);
+                
+                // Error durumunda button'ları reset et
+                const acceptBtn = document.getElementById('acceptBtn');
+                const rejectBtn = document.querySelector('button[onclick="rejectCall()"]');
+                
+                if (acceptBtn) {
+                    acceptBtn.disabled = false;
+                    acceptBtn.textContent = '🏆 Hızlı Kabul Et';
+                }
+                if (rejectBtn) {
+                    rejectBtn.disabled = false;
+                }
+                
+                // Cleanup
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                }
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
+            }
+        }
+        
+        function rejectCall() {
+            console.log('❌ Smart rejectCall() çağrıldı - currentCall:', currentCall);
+            console.trace('❌ Smart rejectCall() call stack:');
+            
+            if (currentCall && currentCallRequest && socket) {
+                socket.send(JSON.stringify({
+                    type: 'reject-call',
+                    callRequestId: currentCallRequest.id,
+                    userId: currentCall.userId,
+                    adminId: currentAdmin.id
+                }));
+                
+                document.getElementById('incomingCall').classList.add('hidden');
+                showCompetitionIndicator(false);
+                
+                log('❌ Smart arama reddedildi: ' + currentCall.userName, 'info');
+                
+                currentCall = null;
+                currentCallRequest = null;
+                competingAdmins = [];
+            } else {
+                console.log('❌ Smart rejectCall: currentCall null veya socket yok');
+            }
+        }
+        
+        function endCall() {
+            console.log('📞 Smart görüşme sonlandırılıyor');
+            
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (currentCall && socket) {
+                socket.send(JSON.stringify({
+                    type: 'end-call',
+                    userId: currentAdmin.id,
+                    targetId: currentCall.userId,
+                    duration: callDuration,
+                    userType: 'admin',
+                    endedBy: 'admin',
+                    callRequestId: currentCallRequest?.id
+                }));
+                
+                log(`📞 Smart admin görüşmeyi sonlandırdı: ${currentCall.userName}`, 'smart');
+            }
+            
+            document.getElementById('activeCall').classList.add('hidden');
+            document.getElementById('incomingCall').classList.add('hidden');
+            document.getElementById('outgoingCall').classList.add('hidden');
+            showCompetitionIndicator(false);
+            
+            if (currentCall) {
+                log(`📞 Smart görüşme sona erdi: ${currentCall.userName} (${Math.floor(callDuration/60)}:${(callDuration%60).toString().padStart(2,'0')})`, 'smart');
+            }
+            
+            currentCall = null;
+            currentCallRequest = null;
+            outgoingCallInfo = null;
+            competingAdmins = [];
+            callDuration = 0;
+            
+            renderApprovedUsers();
+        }
+        
+        // WebRTC işleyicileri
+        async function setupOutgoingPeerConnection() {
+            try {
+                console.log('🔗 Giden arama için WebRTC kuruluyor...');
+                
+                // Mikrofon erişimi al
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Local stream'i ekle
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                    console.log('🎤 Admin local track eklendi:', track.kind);
+                });
+                
+                // Remote stream handler
+                peerConnection.ontrack = function(event) {
+                    console.log('📡 Admin remote track alındı:', event.track.kind);
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (event.streams && event.streams[0]) {
+                        remoteAudio.srcObject = event.streams[0];
+                        console.log('📊 Admin remote audio stream atandı');
+                        
+                        remoteAudio.play().then(() => {
+                            console.log('✅ Admin remote audio oynatılmaya başladı');
+                        }).catch(e => {
+                            console.log('⚠️ Admin remote audio oynatma hatası:', e);
+                        });
+                    }
+                };
+                
+                // ICE candidate handler
+                peerConnection.onicecandidate = function(event) {
+                    if (event.candidate && socket && outgoingCallInfo) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: outgoingCallInfo.userId
+                        }));
+                        console.log('📡 Admin ICE candidate gönderildi:', event.candidate.type);
+                    } else if (!event.candidate) {
+                        console.log('📡 Admin ICE gathering tamamlandı');
+                    }
+                };
+
+                // Bağlantı durumu takibi
+                peerConnection.onconnectionstatechange = function() {
+                    console.log('🔗 Admin Connection State:', peerConnection.connectionState);
+                    switch (peerConnection.connectionState) {
+                        case 'connected':
+                            console.log('✅ Admin WebRTC TAM OLARAK BAĞLANDI!');
+                            currentCall = outgoingCallInfo;
+                            outgoingCallInfo = null;
+                            
+                            document.getElementById('activeCaller').textContent = currentCall.userName;
+                            document.getElementById('activeCall').classList.remove('hidden');
+                            startCallTimer();
+                            break;
+                        case 'connecting':
+                            console.log('🔗 Admin WebRTC bağlanıyor...');
+                            break;
+                        case 'failed':
+                            console.log('❌ Admin WebRTC bağlantısı başarısız');
+                            endCall();
+                            break;
+                        case 'disconnected':
+                            console.log('📞 Admin WebRTC bağlantısı koptu');
+                            endCall();
+                            break;
+                    }
+                };
+
+                // ICE bağlantı durumu takibi
+                peerConnection.oniceconnectionstatechange = function() {
+                    console.log('🧊 Admin ICE Connection State:', peerConnection.iceConnectionState);
+                    switch (peerConnection.iceConnectionState) {
+                        case 'connected':
+                        case 'completed':
+                            console.log('✅ Admin ICE bağlantısı kuruldu');
+                            if (peerConnection.connectionState === 'connecting') {
+                                setTimeout(() => {
+                                    if (peerConnection.connectionState === 'connecting') {
+                                        console.log('🔄 Admin ICE connected oldu, call state güncelleniyor');
+                                        currentCall = outgoingCallInfo;
+                                        outgoingCallInfo = null;
+                                        
+                                        document.getElementById('activeCaller').textContent = currentCall.userName;
+                                        document.getElementById('activeCall').classList.remove('hidden');
+                                        startCallTimer();
+                                    }
+                                }, 1000);
+                            }
+                            break;
+                        case 'failed':
+                            console.log('❌ Admin ICE bağlantısı başarısız');
+                            endCall();
+                            break;
+                    }
+                };
+
+                // Offer oluştur ve gönder
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                console.log('📤 Admin offer oluşturuldu ve local description ayarlandı');
+                
+                socket.send(JSON.stringify({
+                    type: 'offer',
+                    offer: offer,
+                    targetId: outgoingCallInfo.userId,
+                    userId: currentAdmin.id,
+                    userName: currentAdmin.displayName
+                }));
+                console.log('📨 Admin offer müşteriye gönderildi');
+                
+                log('🎤 Giden arama WebRTC hazır - Answer bekleniyor...', 'info');
+                
+            } catch (error) {
+                console.error('❌ Admin giden arama WebRTC hatası:', error);
+                log('❌ Giden arama WebRTC hatası: ' + error.message, 'error');
+                alert('Mikrofon erişimi gerekli!');
+                cancelOutgoingCall();
+            }
+        }
+        
+        async function handleOffer(message) {
+            if (peerConnection) {
+                try {
+                    console.log('📥 Admin offer alındı');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    console.log('✅ Admin remote description (offer) ayarlandı');
+                    
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    console.log('📤 Admin answer oluşturuldu ve local description ayarlandı');
+                    
+                    socket.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer,
+                        targetId: message.userId
+                    }));
+                    console.log('📞 Admin answer gönderildi');
+                    
+                } catch (error) {
+                    console.error('❌ Admin offer işleme hatası:', error);
+                    endCall();
+                }
+            }
+        }
+
+        async function handleAnswer(message) {
+            if (peerConnection) {
+                try {
+                    console.log('📥 Admin answer alındı');
+                    
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                    console.log('✅ Admin remote description (answer) ayarlandı');
+                    console.log('⏳ Admin ICE bağlantısı bekleniyor...');
+                    
+                } catch (error) {
+                    console.error('❌ Admin answer işleme hatası:', error);
+                    endCall();
+                }
+            }
+        }
+        
+        async function handleIceCandidate(message) {
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    console.log('📡 Admin ICE candidate eklendi:', message.candidate.type);
+                } catch (error) {
+                    console.error('❌ Admin ICE candidate hatası:', error);
+                }
+            }
+        }
+        
+        function startCallTimer() {
+            callDuration = 0;
+            callTimer = setInterval(function() {
+                callDuration++;
+                const mins = Math.floor(callDuration / 60);
+                const secs = callDuration % 60;
+                document.getElementById('callTimer').textContent = 
+                    mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+            }, 1000);
+        }
+        
+        function updateUserList(users) {
+            connectedUsers = users;
+            const userListDiv = document.getElementById('userList');
+            
+            updateStats();
+            renderApprovedUsers();
+            
+            if (users.length === 0) {
+                userListDiv.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            userListDiv.innerHTML = '';
+            users.forEach(user => {
+                const userDiv = document.createElement('div');
+                const isApproved = isUserApproved(user.id);
+                userDiv.className = 'connected-user' + (isApproved ? ' online-user' : '');
+                userDiv.innerHTML = `
+                    <div class="${user.online ? 'user-online-dot' : 'user-offline-dot'}"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">${user.name} ${isApproved ? '✅' : '❌'}</div>
+                        <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
+                        <div style="font-size: 11px; color: #9ca3af;">${user.registeredAt}</div>
+                    </div>
+                `;
+                userListDiv.appendChild(userDiv);
+            });
+        }
+        
         function updateStatus(status) {
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
@@ -1250,12 +2848,16 @@
             statusDot.className = 'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
             statusText.textContent = status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
         }
-
-        function log(message) {
+        
+        function log(message, type = 'info') {
             const logContainer = document.getElementById('logContainer');
             const time = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
+            
+            // Add CSS class based on type
+            logEntry.className = `log-${type}`;
             logEntry.textContent = `[${time}] ${message}`;
+            
             logContainer.appendChild(logEntry);
             logContainer.scrollTop = logContainer.scrollHeight;
             
@@ -1264,38 +2866,72 @@
                 logContainer.removeChild(logContainer.firstChild);
             }
         }
-
-        // Placeholder functions for user management
-        function saveApprovedUsers() {
-            localStorage.setItem('vipcep_approved_users', JSON.stringify(approvedUsers));
+        
+        // Verileri API'den yenile
+        async function refreshData() {
+            log('🔄 Veriler API\'den yenileniyor...', 'info');
+            const refreshButton = document.querySelector('button[onclick="refreshData()"]');
+            const originalText = refreshButton.textContent;
+            
+            refreshButton.disabled = true;
+            refreshButton.textContent = '⏳ Yenileniyor...';
+            
+            try {
+                await loadUsersFromAPI();
+                showSuccessNotification('Veriler başarıyla yenilendi!');
+                log('✅ Tüm veriler API\'den güncellendi', 'success');
+            } catch (error) {
+                log('❌ Veri yenileme hatası: ' + error.message, 'error');
+                alert('Veri yenileme hatası: ' + error.message);
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.textContent = originalText;
+            }
         }
-
-        function renderApprovedUsers() {
-            // User rendering logic
+        
+        // Page visibility API ile connection refresh
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && isAdminLoggedIn) {
+                // Force refresh user list
+                refreshData();
+                // Reconnect if needed
+                if (socket && socket.readyState !== WebSocket.OPEN) {
+                    connectToServer();
+                }
+            }
+        });
+        
+        function testIncomingCall() {
+            console.log('🧪 TEST: Manual smart gelen arama tetikleniyor');
+            
+            const testUser = approvedUsers.find(u => u.id === '1234') || 
+                            approvedUsers.find(u => u.id === '0005') || 
+                            approvedUsers[0];
+            
+            if (!testUser) {
+                alert('Test için onaylı kullanıcı gerekli!');
+                return;
+            }
+            
+            console.log(`✅ TEST: Test kullanıcısı bulundu: ${testUser.name} (${testUser.id})`);
+            
+            // Manuel smart gelen arama simülasyonu
+            const testMessage = {
+                type: 'incoming-call',
+                callRequestId: 'test_call_' + Date.now(),
+                userId: testUser.id,
+                userName: testUser.name,
+                credits: testUser.credits,
+                competingAdmins: [
+                    { id: 'ADMIN_CEM', name: 'Cem Usta' },
+                    { id: 'ADMIN_CENK', name: 'Cenk Usta' }
+                ],
+                totalAdmins: 2
+            };
+            
+            console.log('📨 TEST: Simüle smart incoming-call mesajı işleniyor');
+            handleMessage(testMessage);
         }
-
-        function updateStats() {
-            // Stats update logic
-        }
-
-        function searchUsers() {
-            // Search functionality
-        }
-
-        function addApprovedUser() {
-            // Add user functionality
-        }
-
-        function refreshData() {
-            // Refresh data functionality
-        }
-
-        // Call management functions
-        function acceptCall() {}
-        function rejectCall() {}
-        function endCall() {}
-        function cancelOutgoingCall() {}
-        function dismissCancelledCall() {}
     </script>
 </body>
 </html>
