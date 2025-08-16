@@ -2166,7 +2166,9 @@
         }
         
         function rejectCall() {
-            console.log('❌ Arama reddediliyor');
+            console.log('❌ rejectCall() çağrıldı - currentCall:', currentCall);
+            console.trace('❌ rejectCall() call stack:'); // Nereden çağrıldığını göster
+            
             if (currentCall && socket) {
                 socket.send(JSON.stringify({
                     type: 'reject-call',
@@ -2176,6 +2178,8 @@
                 document.getElementById('incomingCall').classList.add('hidden');
                 log('❌ Arama reddedildi: ' + currentCall.userName);
                 currentCall = null;
+            } else {
+                console.log('❌ rejectCall: currentCall null veya socket yok');
             }
         }
         
