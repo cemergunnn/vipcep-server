@@ -1999,16 +1999,25 @@
         async function acceptCall() {
             console.log('✅ Arama kabul ediliyor...');
             
-            if (document.getElementById('incomingCall').classList.contains('hidden')) {
-                alert('Bu arama iptal edilmiş!');
+            // CRITICAL: Arama durumunu hemen kontrol et
+            if (!currentCall) {
+                console.log('❌ currentCall null - arama zaten iptal edilmiş');
                 return;
             }
             
             try {
                 log('📞 Arama kabul ediliyor...');
                 
-                document.getElementById('acceptBtn').disabled = true;
-                document.getElementById('acceptBtn').textContent = '🔄 Bağlanıyor...';
+                // Button'ı hemen devre dışı bırak
+                const acceptBtn = document.getElementById('acceptBtn');
+                const rejectBtn = document.querySelector('button[onclick="rejectCall()"]');
+                
+                acceptBtn.disabled = true;
+                acceptBtn.textContent = '🔄 Bağlanıyor...';
+                
+                if (rejectBtn) {
+                    rejectBtn.disabled = true; // Reject butonunu da devre dışı bırak
+                }
                 
                 // Mikrofon erişimi al
                 localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -2047,7 +2056,7 @@
                 
                 // ICE candidate handler
                 peerConnection.onicecandidate = function(event) {
-                    if (event.candidate && socket) {
+                    if (event.candidate && socket && currentCall) {
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
@@ -2110,6 +2119,15 @@
                     }
                 };
                 
+                // CRITICAL: Socket kontrolü
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    throw new Error('WebSocket bağlantısı yok!');
+                }
+                
+                if (!currentCall) {
+                    throw new Error('currentCall null oldu!');
+                }
+                
                 // Sunucuya arama kabul mesajı gönder
                 socket.send(JSON.stringify({
                     type: 'accept-call',
@@ -2121,10 +2139,29 @@
             } catch (error) {
                 console.error('❌ Admin arama kabul hatası:', error);
                 log('❌ Arama kabul hatası: ' + error.message);
-                alert('Mikrofon erişimi gerekli!');
+                alert('Mikrofon erişimi gerekli! Hata: ' + error.message);
                 
-                document.getElementById('acceptBtn').disabled = false;
-                document.getElementById('acceptBtn').textContent = '✅ Kabul Et';
+                // Error durumunda button'ları reset et
+                const acceptBtn = document.getElementById('acceptBtn');
+                const rejectBtn = document.querySelector('button[onclick="rejectCall()"]');
+                
+                if (acceptBtn) {
+                    acceptBtn.disabled = false;
+                    acceptBtn.textContent = '✅ Kabul Et';
+                }
+                if (rejectBtn) {
+                    rejectBtn.disabled = false;
+                }
+                
+                // Cleanup
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
+                    localStream = null;
+                }
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
             }
         }
         
