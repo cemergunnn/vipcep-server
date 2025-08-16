@@ -1111,21 +1111,7 @@
         console.log('🔗 Smart Admin WebSocket URL:', serverUrl);
         
         // WebRTC yapılandırması - Production-ready
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                { urls: 'stun:stun.cloudflare.com:3478' },
-                { urls: 'stun:openrelay.metered.ca:80' }
-            ],
-            iceCandidatePoolSize: 10,
-            iceTransportPolicy: 'all',
-            bundlePolicy: 'balanced',
-            rtcpMuxPolicy: 'require'
-        };
+     const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] };
 
         // Sayfa yüklendiğinde önce login kontrolü yap
         window.onload = function() {
@@ -2943,3 +2929,4 @@
     </script>
 </body>
 </html>
+
