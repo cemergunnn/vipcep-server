@@ -1389,23 +1389,14 @@
                     }
                     break;
                     case 'auto-credit-update':
-    console.log(`💳 Otomatik kredi güncellemesi alındı: ${message.userId}`);
+    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
     const userToUpdate = approvedUsers.find(u => u.id === message.userId);
     if (userToUpdate) {
-        // LocalStorage'ı güncelle
         userToUpdate.credits = message.newCredits;
-        userToUpdate.totalCalls = (userToUpdate.totalCalls || 0) + 1;
-        userToUpdate.lastCall = new Date().toLocaleString();
         saveApprovedUsers();
-        
-        // UI'ı güncelle
         renderApprovedUsers();
         updateStats();
-        
-        // Doğru kredi ile bildirim göster
-        showCreditUpdateNotification(message.userId, userToUpdate.name, message.oldCredits, message.newCredits);
-        
-        log(`💳 ${userToUpdate.name} kredi otomatik güncellendi: ${message.newCredits} dk`);
+        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
     }
     break;
                     
@@ -2066,4 +2057,5 @@
     </script>
 </body>
 </html>
+
 
