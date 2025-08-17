@@ -559,77 +559,210 @@
     </div>
     
     <script>
-        // Global değişkenler
-        let approvedUsers = [];
+        // Global değişkenler (orijinal kodunuzdan)
+        let socket = null;
+        let peerConnection = null;
+        let localStream = null;
+        let currentCall = null;
+        let callTimer = null;
+        let callDuration = 0;
         let connectedUsers = [];
+        let approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
         let filteredUsers = [];
+        let outgoingCallInfo = null;
         
-        // Demo data
-        const demoUsers = [
-            {
-                id: '1234',
-                name: 'Test Kullanıcı',
-                credits: 10,
-                createdAt: new Date('2024-01-15').toLocaleString(),
-                totalCalls: 5,
-                lastCall: new Date('2024-03-20').toLocaleString()
-            },
-            {
-                id: '0005',
-                name: 'VIP Müşteri',
-                credits: 25,
-                createdAt: new Date('2024-02-10').toLocaleString(),
-                totalCalls: 12,
-                lastCall: new Date('2024-03-19').toLocaleString()
-            },
-            {
-                id: '0007',
-                name: 'Cenk Zortu',
-                credits: 999,
-                createdAt: new Date('2024-01-05').toLocaleString(),
-                totalCalls: 45,
-                lastCall: new Date('2024-03-21').toLocaleString()
-            },
-            {
-                id: '9999',
-                name: 'Demo User',
-                credits: 0,
-                createdAt: new Date('2024-03-01').toLocaleString(),
-                totalCalls: 2,
-                lastCall: new Date('2024-03-10').toLocaleString()
-            },
-            {
-                id: '0001',
-                name: 'Premium Kullanıcı',
-                credits: 50,
-                createdAt: new Date('2024-01-20').toLocaleString(),
-                totalCalls: 23,
-                lastCall: new Date('2024-03-18').toLocaleString()
-            }
-        ];
+        const adminId = "ADMIN001";
+        const serverUrl = window.location.hostname === 'localhost' 
+            ? 'ws://localhost:8080'
+            : `wss://vipcep-server-production.up.railway.app`;
         
-        // Demo bağlı kullanıcılar
-        const demoConnectedUsers = [
-            { id: '1234', name: 'Test Kullanıcı', userType: 'customer', online: true },
-            { id: '0005', name: 'VIP Müşteri', userType: 'customer', online: true },
-            { id: '0007', name: 'Cenk Zortu', userType: 'customer', online: true }
-        ];
+        console.log('🔗 Admin WebSocket URL:', serverUrl);
         
-        // Sayfa yüklendiğinde
+        // WebRTC konfigürasyonu
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        // Sayfa yüklendiğinde başlat
         window.onload = function() {
-            // Demo verileri yükle
-            approvedUsers = [...demoUsers];
-            connectedUsers = [...demoConnectedUsers];
-            
-            updateStats();
-            filterAndSortUsers();
-            updateConnectedUsersList();
+            console.log('🚀 Admin panel başlatılıyor...');
+            loadApprovedUsers();
+            connectToServer();
             
             // ID input sadece sayı kabul etsin
             document.getElementById('newUserId').addEventListener('input', function(e) {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
             });
         };
+        
+        // Onaylı kullanıcıları yükle (orijinal fonksiyonunuz)
+        function loadApprovedUsers() {
+            loadUsersFromAPI();
+            filterAndSortUsers(); // renderApprovedUsers() yerine
+            updateStats();
+        }
+
+        // API'den kullanıcıları yükle (orijinal fonksiyonunuz)
+        async function loadUsersFromAPI() {
+            try {
+                console.log('📡 API\'den kullanıcılar yükleniyor...');
+                const response = await fetch('/api/approved-users');
+                if (response.ok) {
+                    const apiUsers = await response.json();
+                    
+                    // API'den gelen kullanıcıları local format'a çevir
+                    approvedUsers = apiUsers.map(user => ({
+                        id: user.id,
+                        name: user.name,
+                        credits: user.credits || 0,
+                        createdAt: user.created_at ? new Date(user.created_at).toLocaleString() : new Date().toLocaleString(),
+                        totalCalls: user.total_calls || 0,
+                        lastCall: user.last_call ? new Date(user.last_call).toLocaleString() : null
+                    }));
+                    
+                    // LocalStorage'ı API verisi ile güncelle
+                    saveApprovedUsers();
+                    filterAndSortUsers(); // renderApprovedUsers() yerine
+                    updateStats();
+                    
+                    console.log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
+                } else {
+                    console.log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
+                }
+            } catch (error) {
+                console.log('⚠️ API bağlantı hatası: ' + error.message);
+            }
+        }
+        
+        // Onaylı kullanıcıları kaydet (orijinal fonksiyonunuz)
+        function saveApprovedUsers() {
+            localStorage.setItem('vipcep_approved_users', JSON.stringify(approvedUsers));
+        }
+
+        // WebSocket bağlantı fonksiyonu (orijinal kodunuzdan)
+        function connectToServer() {
+            try {
+                console.log('🔗 WebSocket bağlantısı kuruluyor:', serverUrl);
+                socket = new WebSocket(serverUrl);
+                
+                socket.onopen = function() {
+                    updateConnectionStatus('connected');
+                    console.log('✅ Server\'a bağlandı');
+                    
+                    socket.send(JSON.stringify({
+                        type: 'register',
+                        userId: adminId,
+                        name: 'Admin',
+                        userType: 'admin'
+                    }));
+                };
+                
+                socket.onclose = function() {
+                    updateConnectionStatus('disconnected');
+                    console.log('❌ Bağlantı koptu, yeniden bağlanılıyor...');
+                    setTimeout(connectToServer, 3000);
+                };
+                
+                socket.onerror = function() {
+                    updateConnectionStatus('error');
+                    console.log('❌ WebSocket hatası!');
+                };
+                
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                };
+                
+            } catch (error) {
+                console.log('❌ Bağlantı hatası: ' + error.message);
+                updateConnectionStatus('error');
+            }
+        }
+        
+        // Mesaj işleyici (sadece gerekli kısımlar)
+        function handleMessage(message) {
+            console.log('📨 Mesaj alındı: ' + message.type);
+            
+            switch (message.type) {
+                case 'user-list-update':
+                    console.log(`👥 Kullanıcı listesi güncellendi: ${message.users?.length || 0} kullanıcı`);
+                    updateUserList(message.users || []);
+                    break;
+                    
+                case 'credit-updated':
+                    console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
+                    const updatedUser = approvedUsers.find(u => u.id === message.userId);
+                    if (updatedUser) {
+                        updatedUser.credits = message.newCredits;
+                        saveApprovedUsers();
+                        filterAndSortUsers(); // renderApprovedUsers() yerine
+                        updateStats();
+                        console.log(`💳 ${updatedUser.name} kredi güncellendi: ${message.newCredits} dk`);
+                    }
+                    break;
+                    
+                case 'auto-credit-update':
+                    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
+                    const userToUpdate = approvedUsers.find(u => u.id === message.userId);
+                    if (userToUpdate) {
+                        userToUpdate.credits = message.newCredits;
+                        saveApprovedUsers();
+                        filterAndSortUsers(); // renderApprovedUsers() yerine
+                        updateStats();
+                        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
+                    }
+                    break;
+            }
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.className = 'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
+            statusText.textContent = status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
+        }
+        
+        function updateUserList(users) {
+            connectedUsers = users;
+            const userListDiv = document.getElementById('userList');
+            
+            updateStats();
+            filterAndSortUsers(); // renderApprovedUsers() yerine - online durumunu güncellemek için
+            
+            if (users.length === 0) {
+                userListDiv.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            userListDiv.innerHTML = '';
+            users.forEach(user => {
+                const userDiv = document.createElement('div');
+                const isApproved = approvedUsers.find(u => u.id === user.id);
+                userDiv.style.cssText = `
+                    display: flex; align-items: center; gap: 12px; padding: 12px; 
+                    border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; 
+                    background: white;
+                `;
+                userDiv.innerHTML = `
+                    <div style="width: 10px; height: 10px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 14px;">${user.name} ${isApproved ? '✅' : '❌'}</div>
+                        <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
+                        <div style="font-size: 11px; color: #9ca3af;">${user.registeredAt}</div>
+                    </div>
+                `;
+                userListDiv.appendChild(userDiv);
+            });
+        }
         
         function isUserOnline(userId) {
             return connectedUsers.some(u => u.id === userId && u.userType === 'customer' && u.online);
@@ -856,27 +989,62 @@
                 return;
             }
             
-            const newUser = {
-                id: userId,
-                name: userName,
-                credits: userCredits,
-                createdAt: new Date().toLocaleString(),
-                totalCalls: 0,
-                lastCall: null
-            };
+            // Loading state
+            const addButton = document.querySelector('button[onclick="addApprovedUser()"]');
+            const originalText = addButton.innerHTML;
+            addButton.disabled = true;
+            addButton.innerHTML = '⏳ Ekleniyor...';
             
-            approvedUsers.push(newUser);
-            
-            // Form'u temizle
-            document.getElementById('newUserId').value = '';
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserCredits').value = '';
-            
-            updateStats();
-            filterAndSortUsers();
-            
-            // Başarı mesajı
-            showNotification(`Kullanıcı eklendi: ${userName} (${userId})`, 'success');
+            // API'ye kullanıcı ekleme isteği gönder (orijinal kodunuzdan)
+            fetch('/api/approved-users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: userId,
+                    name: userName,
+                    credits: userCredits
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.user) {
+                    // Local storage'a da ekle
+                    const newUser = {
+                        id: data.user.id,
+                        name: data.user.name,
+                        credits: data.user.credits,
+                        createdAt: data.user.created_at ? new Date(data.user.created_at).toLocaleString() : new Date().toLocaleString(),
+                        totalCalls: data.user.total_calls || 0,
+                        lastCall: data.user.last_call ? new Date(data.user.last_call).toLocaleString() : null
+                    };
+                    
+                    approvedUsers.push(newUser);
+                    saveApprovedUsers();
+                    filterAndSortUsers(); // searchUsers() yerine
+                    updateStats();
+                    
+                    // Form'u temizle
+                    document.getElementById('newUserId').value = '';
+                    document.getElementById('newUserName').value = '';
+                    document.getElementById('newUserCredits').value = '';
+                    
+                    console.log(`✅ Kullanıcı başarıyla eklendi: ${userName} (${userId}) - ${userCredits} dk`);
+                    showNotification(`Kullanıcı eklendi: ${userName} (${userId})`, 'success');
+                    
+                } else {
+                    throw new Error(data.error || 'Kullanıcı eklenemedi');
+                }
+            })
+            .catch(error => {
+                console.error('Kullanıcı ekleme hatası:', error);
+                alert('Kullanıcı ekleme hatası: ' + error.message);
+                console.log(`❌ Kullanıcı ekleme hatası: ${error.message}`);
+            })
+            .finally(() => {
+                // Loading state'i kaldır
+                addButton.disabled = false;
+                addButton.innerHTML = originalText;
+            });
         }
         
         function removeApprovedUser(userId) {
@@ -884,10 +1052,29 @@
             if (!user) return;
             
             if (confirm(`${user.name} (${userId}) kullanıcısını silmek istediğinizden emin misiniz?`)) {
-                approvedUsers = approvedUsers.filter(u => u.id !== userId);
-                updateStats();
-                filterAndSortUsers();
-                showNotification(`Kullanıcı silindi: ${user.name}`, 'info');
+                // API'ye silme isteği gönder (orijinal kodunuzdan)
+                fetch(`/api/approved-users/${userId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Local storage'dan da sil
+                        approvedUsers = approvedUsers.filter(u => u.id !== userId);
+                        saveApprovedUsers();
+                        filterAndSortUsers(); // searchUsers() yerine
+                        updateStats();
+                        console.log(`🗑️ Kullanıcı silindi: ${userId}`);
+                        showNotification(`Kullanıcı silindi: ${user.name}`, 'success');
+                    } else {
+                        throw new Error(data.error || 'Kullanıcı silinemedi');
+                    }
+                })
+                .catch(error => {
+                    console.error('Kullanıcı silme hatası:', error);
+                    alert('Kullanıcı silme hatası: ' + error.message);
+                    console.log(`❌ Kullanıcı silme hatası: ${error.message}`);
+                });
             }
         }
         
@@ -899,24 +1086,55 @@
             }
             
             const oldCredits = user.credits;
-            user.credits = parseInt(newCredits) || 0;
             
-            updateStats();
-            filterAndSortUsers();
-            
-            showNotification(`${user.name} kredi güncellendi: ${oldCredits} → ${user.credits} dk`, 'success');
+            // API'ye kredi güncelleme isteği gönder (orijinal kodunuzdan)
+            fetch(`/api/approved-users/${userId}/credits`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    credits: parseInt(newCredits) || 0,
+                    reason: `Admin tarafından güncellendi: ${oldCredits} → ${newCredits}`
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Local storage'ı güncelle
+                    user.credits = parseInt(newCredits) || 0;
+                    saveApprovedUsers();
+                    filterAndSortUsers(); // renderApprovedUsers() yerine
+                    updateStats();
+                    
+                    // WebSocket ile tüm client'lara bildir
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'credit-update-broadcast',
+                            userId: userId,
+                            newCredits: user.credits,
+                            updatedBy: 'admin'
+                        }));
+                    }
+                    
+                    console.log(`💳 Kredi başarıyla güncellendi: ${userId} -> ${newCredits} dk`);
+                    showCreditUpdateNotification(userId, user.name, oldCredits, user.credits);
+                } else {
+                    alert('Kredi güncellenemedi: ' + (data.error || 'Bilinmeyen hata'));
+                    console.log(`❌ Kredi güncelleme hatası: ${userId} -> ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Kredi güncelleme hatası:', error);
+                alert('Kredi güncelleme sırasında hata oluştu!');
+                console.log(`❌ Kredi güncelleme API hatası: ${error.message}`);
+            });
         }
-        
-        function editUser(userId) {
-            const user = approvedUsers.find(u => u.id === userId);
-            if (!user) return;
+
+        // Kredi güncelleme bildirimi göster (orijinal fonksiyonunuzdan)
+        function showCreditUpdateNotification(userId, userName, oldCredits, newCredits) {
+            const change = newCredits - oldCredits;
+            const changeText = change > 0 ? `+${change}` : `${change}`;
             
-            const newName = prompt(`${user.name} için yeni isim:`, user.name);
-            if (newName && newName.trim() !== user.name) {
-                user.name = newName.trim();
-                filterAndSortUsers();
-                showNotification(`Kullanıcı ismi güncellendi: ${newName}`, 'success');
-            }
+            showNotification(`${userName} kredi güncellendi: ${oldCredits} → ${newCredits} dk (${changeText})`, 'success');
         }
         
         function callUser(userId) {
@@ -925,20 +1143,57 @@
                 alert('Kullanıcı bulunamadı!');
                 return;
             }
-            
-            const isOnline = isUserOnline(userId);
-            if (!isOnline) {
+
+            const onlineUser = connectedUsers.find(u => u.id === userId && u.userType === 'customer');
+            if (!onlineUser) {
                 alert('Bu kullanıcı şu anda çevrimiçi değil!');
                 return;
             }
-            
+
+            if (currentCall || outgoingCallInfo) {
+                alert('Zaten bir aramada bulunuyorsunuz!');
+                return;
+            }
+
+            // Orijinal arama fonksiyonunuzu burada çağırabilirsiniz
             showNotification(`${user.name} (${userId}) aranıyor...`, 'info');
+            console.log(`📞 ${user.name} (${userId}) kullanıcısı aranıyor...`);
+            
+            // TODO: Gerçek arama fonksiyonunu entegre edin
         }
         
-        function refreshUserList() {
-            // Simüle edilmiş yenileme
-            showNotification('Kullanıcı listesi yenilendi', 'success');
-            filterAndSortUsers();
+        function editUser(userId) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            const newName = prompt(`${user.name} için yeni isim:`, user.name);
+            if (newName && newName.trim() !== user.name) {
+                // API güncelleme burada yapılabilir, şimdilik local güncelleme
+                user.name = newName.trim();
+                saveApprovedUsers();
+                filterAndSortUsers();
+                showNotification(`Kullanıcı ismi güncellendi: ${newName}`, 'success');
+            }
+        }
+        async function refreshUserList() {
+            console.log('🔄 Veriler API\'den yenileniyor...');
+            const refreshButton = document.querySelector('button[onclick="refreshUserList()"]');
+            const originalText = refreshButton.innerHTML;
+            
+            refreshButton.disabled = true;
+            refreshButton.innerHTML = '⏳ Yenileniyor...';
+            
+            try {
+                await loadUsersFromAPI();
+                showNotification('Veriler başarıyla yenilendi!', 'success');
+                console.log('✅ Tüm veriler API\'den güncellendi');
+            } catch (error) {
+                console.log('❌ Veri yenileme hatası: ' + error.message);
+                alert('Veri yenileme hatası: ' + error.message);
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.innerHTML = originalText;
+            }
         }
         
         function showNotification(message, type = 'info') {
