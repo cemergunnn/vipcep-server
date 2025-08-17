@@ -82,120 +82,7 @@
             gap: 8px;
         }
         
-        /* Arama Durumları */
-        .incoming-call {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            animation: callPulse 1.5s infinite;
-            box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
-        }
-        
-        .outgoing-call {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            animation: callPulse 1.5s infinite;
-            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
-        }
-        
-        .call-cancelled {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
-        }
-        
-        .active-call {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
-        }
-        
-        @keyframes callPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-        }
-        
-        .call-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            filter: brightness(1.1);
-        }
-        
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-accept {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
-        }
-        
-        .btn-reject {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        }
-        
-        .btn-call {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: white;
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 6px;
-            margin-left: 8px;
-            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
-        }
-        
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 6px;
-        }
-        
-        /* Kullanıcı Yönetimi */
+        /* Kullanıcı Yönetimi Geliştirmeleri */
         .form-section {
             background: #f8fafc;
             padding: 20px;
@@ -226,17 +113,31 @@
             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
         }
         
-        /* Arama Kutusu */
+        /* Sorting ve Filtering */
+        .filter-section {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #cbd5e1;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 15px;
+            align-items: center;
+        }
+        
         .search-container {
             position: relative;
-            margin-bottom: 20px;
         }
         
         .search-input {
             width: 100%;
-            padding: 14px 45px 14px 16px;
+            padding: 12px 40px 12px 16px;
             border: 2px solid #e5e7eb;
-            border-radius: 10px;
+            border-radius: 8px;
             font-size: 15px;
             background: white;
             transition: all 0.3s ease;
@@ -250,15 +151,24 @@
         
         .search-icon {
             position: absolute;
-            right: 15px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
             color: #6b7280;
         }
         
+        .sort-select {
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
         /* Kullanıcı Listesi */
         .user-list {
-            max-height: 450px;
+            max-height: 500px;
             overflow-y: auto;
         }
         
@@ -266,66 +176,202 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            margin-bottom: 10px;
+            padding: 18px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            margin-bottom: 12px;
             background: white;
             transition: all 0.3s ease;
+            position: relative;
         }
         
         .user-item:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
             border-color: #22c55e;
+            transform: translateY(-2px);
         }
         
+        /* Online kullanıcı vurgusu */
         .user-item.online-user {
             background: linear-gradient(135deg, #dcfce7, #bbf7d0);
             border-color: #22c55e;
+            border-width: 3px;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+        }
+        
+        .user-item.online-user::before {
+            content: "🟢 ÇEVRİMİÇİ";
+            position: absolute;
+            top: -8px;
+            left: 15px;
+            background: #22c55e;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
         
         .user-info {
             flex: 1;
+            margin-right: 15px;
         }
         
         .user-id {
             font-weight: 700;
             color: #2563eb;
             font-family: 'Courier New', monospace;
-            font-size: 16px;
+            font-size: 18px;
+            margin-bottom: 4px;
         }
         
         .user-name {
             color: #374151;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 600;
-            margin: 2px 0;
+            margin-bottom: 6px;
+        }
+        
+        .user-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .user-detail-item {
+            background: rgba(255,255,255,0.8);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .user-detail-label {
+            font-weight: 600;
+            color: #64748b;
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .user-detail-value {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 13px;
         }
         
         .user-credits {
             color: #059669;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        .user-credits.low-credits {
+            color: #dc2626;
+        }
+        
+        .user-credits.zero-credits {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
         }
         
         .user-status {
-            color: #6b7280;
             font-size: 12px;
-            margin-top: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .user-status.online {
-            color: #22c55e;
-            font-weight: 600;
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .user-status.offline {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
         }
         
         .user-actions {
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
         }
         
-        /* İstatistikler */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-call {
+            background: linear-gradient(135deg, #059669, #047857);
+            color: white;
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+        }
+        
+        .btn-call:disabled {
+            background: #9ca3af;
+        }
+        
+        .btn-edit {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-delete {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .credit-input {
+            width: 80px;
+            padding: 6px 8px;
+            border: 2px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .credit-input:focus {
+            outline: none;
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1);
+        }
+        
+        /* Statistics */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -357,99 +403,30 @@
             letter-spacing: 0.5px;
         }
         
-        /* Aktif Bağlantılar */
-        .connected-user {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            border: 1px solid #e5e7eb;
+        /* Filter Results */
+        .filter-results {
+            background: #eff6ff;
+            padding: 12px 16px;
             border-radius: 8px;
-            margin-bottom: 8px;
-            background: white;
+            margin-bottom: 15px;
+            border-left: 4px solid #3b82f6;
+            font-size: 14px;
+            color: #1e40af;
         }
         
-        .user-online-dot {
-            width: 10px;
-            height: 10px;
-            background: #22c55e;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        
-        .user-offline-dot {
-            width: 10px;
-            height: 10px;
-            background: #6b7280;
-            border-radius: 50%;
-        }
-        
-        /* Bildirimler */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            max-width: 350px;
-        }
-        
-        .notification {
-            background: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            border-left: 4px solid #22c55e;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        
-        .notification.slide-out {
-            animation: slideOut 0.3s ease-in;
-        }
-        
-        @keyframes slideOut {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); }
-        }
-        
-        /* Log */
-        .log-container {
-            background: #1f2937;
-            color: #f9fafb;
-            padding: 15px;
+        .no-results {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+            background: #f9fafb;
             border-radius: 8px;
-            height: 200px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            margin-top: 20px;
+            border: 2px dashed #d1d5db;
         }
         
-        .log-container div {
-            margin-bottom: 4px;
-            opacity: 0.9;
-        }
-        
-        /* Utility Classes */
-        .hidden {
-            display: none !important;
-        }
-        
-        .loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        
-        .highlighted {
-            background: #fef3c7;
-            font-weight: 600;
-            padding: 0 2px;
-            border-radius: 2px;
+        .no-results-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
         }
         
         /* Responsive */
@@ -459,30 +436,24 @@
                 gap: 20px;
             }
             
-            .form-row {
+            .form-row, .filter-row {
                 grid-template-columns: 1fr;
                 gap: 10px;
             }
+            
+            .user-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .user-actions {
+                justify-content: center;
+            }
         }
         
-        /* Quick Actions */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #64748b, #475569);
-            color: white;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: white;
-            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
@@ -495,8 +466,8 @@
                 <p style="font-size: 16px; opacity: 0.9;">Voice IP Communication Emergency Protocol</p>
             </div>
             <div class="status">
-                <div class="status-dot disconnected" id="statusDot"></div>
-                <span id="statusText">Bağlanıyor...</span>
+                <div class="status-dot connected" id="statusDot"></div>
+                <span id="statusText">Bağlı</span>
             </div>
         </div>
         
@@ -521,79 +492,9 @@
         </div>
         
         <div class="main-content">
-            <!-- Sol Panel - Arama Yönetimi -->
-            <div class="panel">
-                <h3>📞 Arama Yönetimi</h3>
-                
-                <!-- Gelen Arama -->
-                <div id="incomingCall" class="incoming-call hidden">
-                    <h3>📞 GELEN ARAMA</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
-                        <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
-                            ✅ Kabul Et
-                        </button>
-                        <button class="btn btn-reject" onclick="rejectCall()">
-                            ❌ Reddet
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Giden Arama -->
-                <div id="outgoingCall" class="outgoing-call hidden">
-                    <h3>📞 GİDEN ARAMA</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
-                        <p style="opacity: 0.9;">Kredi: <span id="outgoingCredits">-</span> dakika</p>
-                    </div>
-                    <div style="margin: 15px 0; opacity: 0.9; font-size: 14px;">
-                        📱 Müşteriye arama bildirimi gönderildi...
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-reject" onclick="cancelOutgoingCall()">
-                            ❌ İptal Et
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Arama İptal Bildirimi -->
-                <div id="callCancelled" class="call-cancelled hidden">
-                    <h3>❌ ARAMA İPTAL EDİLDİ</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="cancelledId">-</span></p>
-                        <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
-                    </div>
-                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">
-                       ✔️ Tamam
-                    </button>
-                </div>
-                
-                <!-- Aktif Görüşme -->
-                <div id="activeCall" class="active-call hidden">
-                    <h3>🔊 GÖRÜŞME AKTİF</h3>
-                    <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
-                    <div style="font-size: 32px; font-weight: 800; margin: 15px 0; font-family: 'Courier New', monospace;" id="callTimer">00:00</div>
-                    <button class="btn btn-reject" onclick="endCall()">
-                        📞 Görüşmeyi Bitir
-                    </button>
-                </div>
-                
-                <!-- Sistem Logları -->
-                <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
-                <div class="log-container" id="logContainer">
-                    <div>[Sistem] Admin panel başlatılıyor...</div>
-                </div>
-            </div>
-            
-            <!-- Orta Panel - Kullanıcı Yönetimi -->
-            <div class="panel">
-                <h3>🆔 Kullanıcı Yönetimi</h3>
+            <!-- Kullanıcı Yönetimi Panel -->
+            <div class="panel" style="grid-column: span 2;">
+                <h3>👥 Kullanıcı Yönetimi</h3>
                 
                 <!-- Yeni Kullanıcı Ekleme -->
                 <div class="form-section">
@@ -602,27 +503,43 @@
                         <input type="text" id="newUserId" placeholder="4 haneli ID" maxlength="4" class="form-input">
                         <input type="text" id="newUserName" placeholder="Ad Soyad" class="form-input">
                         <input type="number" id="newUserCredits" placeholder="Kredi" min="0" class="form-input">
-                        <button class="btn btn-primary" onclick="addApprovedUser()">➕ Ekle</button>
+                        <button class="btn btn-edit" onclick="addApprovedUser()">➕ Ekle</button>
                     </div>
                 </div>
 
-                <!-- Arama Kutusu -->
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
-                    <div class="search-icon">
-                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
-                        </svg>
+                <!-- Filtreleme ve Sıralama -->
+                <div class="filter-section">
+                    <div class="filter-row">
+                        <div class="search-container">
+                            <input type="text" id="searchInput" class="search-input" 
+                                   placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="filterAndSortUsers()">
+                            <div class="search-icon">
+                                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <select id="sortSelect" class="sort-select" onchange="filterAndSortUsers()">
+                            <option value="online-first">🟢 Çevrimiçi Önce</option>
+                            <option value="credits-desc">💰 Yüksek Kredi Önce</option>
+                            <option value="credits-asc">💸 Düşük Kredi Önce</option>
+                            <option value="name-asc">📝 A-Z (İsim)</option>
+                            <option value="name-desc">📝 Z-A (İsim)</option>
+                            <option value="id-asc">🔢 ID (Küçük-Büyük)</option>
+                            <option value="id-desc">🔢 ID (Büyük-Küçük)</option>
+                            <option value="recent-first">⏰ Son Eklenenler</option>
+                        </select>
+                        <button class="btn btn-edit" onclick="refreshUserList()">🔄 Yenile</button>
                     </div>
                 </div>
 
-                <!-- Arama Sonucu Bilgisi -->
-                <div id="searchResults" style="font-size: 13px; color: #6b7280; margin-bottom: 15px; padding: 8px 15px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #22c55e;" class="hidden"></div>
+                <!-- Filtreleme Sonucu -->
+                <div id="filterResults" class="filter-results hidden"></div>
                 
-                <!-- Onaylı Kullanıcılar -->
+                <!-- Kullanıcı Listesi -->
                 <div class="user-list" id="approvedUsersList">
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                    <div class="no-results">
+                        <div class="no-results-icon">👥</div>
                         <div>Henüz onaylı kullanıcı yok</div>
                     </div>
                 </div>
@@ -630,66 +547,83 @@
             
             <!-- Sağ Panel - Aktif Bağlantılar -->
             <div class="panel">
-                <h3>👥 Aktif Bağlantılar</h3>
+                <h3>💥 Aktif Bağlantılar</h3>
                 <div id="userList" style="margin-top: 15px;">
                     <div style="text-align: center; color: #6b7280; padding: 30px;">
                         <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
                         <div>Henüz kullanıcı bağlanmadı</div>
                     </div>
                 </div>
-                
-                <!-- Hızlı İşlemler -->
-                <div class="quick-actions">
-                    <button class="btn btn-secondary" onclick="refreshData()">
-                        🔄 Verileri Yenile
-                    </button>
-                    <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
-                        💬 WhatsApp Destek
-                    </button>
-                </div>
             </div>
         </div>
     </div>
     
-    <!-- Bildirim Konteyner -->
-    <div id="creditNotifications" class="notification-container"></div>
-    
-    <!-- Gizli ses elementi -->
-    <audio id="remoteAudio" autoplay></audio>
-    
     <script>
         // Global değişkenler
-        let socket = null;
-        let peerConnection = null;
-        let localStream = null;
-        let currentCall = null;
-        let callTimer = null;
-        let callDuration = 0;
+        let approvedUsers = [];
         let connectedUsers = [];
-        let approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
         let filteredUsers = [];
-        let outgoingCallInfo = null;
         
-        const adminId = "ADMIN001";
-        const serverUrl = window.location.hostname === 'localhost' 
-            ? 'ws://localhost:8080'
-            : `wss://vipcep-server-production.up.railway.app`;
+        // Demo data
+        const demoUsers = [
+            {
+                id: '1234',
+                name: 'Test Kullanıcı',
+                credits: 10,
+                createdAt: new Date('2024-01-15').toLocaleString(),
+                totalCalls: 5,
+                lastCall: new Date('2024-03-20').toLocaleString()
+            },
+            {
+                id: '0005',
+                name: 'VIP Müşteri',
+                credits: 25,
+                createdAt: new Date('2024-02-10').toLocaleString(),
+                totalCalls: 12,
+                lastCall: new Date('2024-03-19').toLocaleString()
+            },
+            {
+                id: '0007',
+                name: 'Cenk Zortu',
+                credits: 999,
+                createdAt: new Date('2024-01-05').toLocaleString(),
+                totalCalls: 45,
+                lastCall: new Date('2024-03-21').toLocaleString()
+            },
+            {
+                id: '9999',
+                name: 'Demo User',
+                credits: 0,
+                createdAt: new Date('2024-03-01').toLocaleString(),
+                totalCalls: 2,
+                lastCall: new Date('2024-03-10').toLocaleString()
+            },
+            {
+                id: '0001',
+                name: 'Premium Kullanıcı',
+                credits: 50,
+                createdAt: new Date('2024-01-20').toLocaleString(),
+                totalCalls: 23,
+                lastCall: new Date('2024-03-18').toLocaleString()
+            }
+        ];
         
-        console.log('🔗 Admin WebSocket URL:', serverUrl);
+        // Demo bağlı kullanıcılar
+        const demoConnectedUsers = [
+            { id: '1234', name: 'Test Kullanıcı', userType: 'customer', online: true },
+            { id: '0005', name: 'VIP Müşteri', userType: 'customer', online: true },
+            { id: '0007', name: 'Cenk Zortu', userType: 'customer', online: true }
+        ];
         
-        // WebRTC yapılandırması
-        const rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
-
-        // Sayfa yüklendiğinde başlat
+        // Sayfa yüklendiğinde
         window.onload = function() {
-            log('🚀 Admin panel başlatılıyor...');
-            loadApprovedUsers();
-            connectToServer();
+            // Demo verileri yükle
+            approvedUsers = [...demoUsers];
+            connectedUsers = [...demoConnectedUsers];
+            
+            updateStats();
+            filterAndSortUsers();
+            updateConnectedUsersList();
             
             // ID input sadece sayı kabul etsin
             document.getElementById('newUserId').addEventListener('input', function(e) {
@@ -697,211 +631,209 @@
             });
         };
         
-        // Onaylı kullanıcıları yükle
-        function loadApprovedUsers() {
-            loadUsersFromAPI();
-            renderApprovedUsers();
-            updateStats();
-        }
-
-        // API'den kullanıcıları yükle
-        async function loadUsersFromAPI() {
-            try {
-                log('📡 API\'den kullanıcılar yükleniyor...');
-                const response = await fetch('/api/approved-users');
-                if (response.ok) {
-                    const apiUsers = await response.json();
-                    
-                    // API'den gelen kullanıcıları local format'a çevir
-                    approvedUsers = apiUsers.map(user => ({
-                        id: user.id,
-                        name: user.name,
-                        credits: user.credits || 0,
-                        createdAt: user.created_at ? new Date(user.created_at).toLocaleString() : new Date().toLocaleString(),
-                        totalCalls: user.total_calls || 0,
-                        lastCall: user.last_call ? new Date(user.last_call).toLocaleString() : null
-                    }));
-                    
-                    // LocalStorage'ı API verisi ile güncelle (önemli!)
-                    saveApprovedUsers();
-                    renderApprovedUsers();
-                    updateStats();
-                    
-                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
-                } else {
-                    log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
-                }
-            } catch (error) {
-                log('⚠️ API bağlantı hatası: ' + error.message);
-            }
+        function isUserOnline(userId) {
+            return connectedUsers.some(u => u.id === userId && u.userType === 'customer' && u.online);
         }
         
-        // Onaylı kullanıcıları kaydet
-        function saveApprovedUsers() {
-            localStorage.setItem('vipcep_approved_users', JSON.stringify(approvedUsers));
-        }
-
-        function searchUsers() {
+        function filterAndSortUsers() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            const resultsDiv = document.getElementById('searchResults');
+            const sortType = document.getElementById('sortSelect').value;
+            const resultsDiv = document.getElementById('filterResults');
             
-            if (searchTerm === '') {
-                filteredUsers = [...approvedUsers];
-                resultsDiv.classList.add('hidden');
-            } else {
-                filteredUsers = approvedUsers.filter(user => {
+            // Filtreleme
+            let filtered = approvedUsers;
+            
+            if (searchTerm) {
+                filtered = approvedUsers.filter(user => {
                     const nameMatch = user.name.toLowerCase().includes(searchTerm);
                     const idMatch = user.id.includes(searchTerm);
                     return nameMatch || idMatch;
                 });
-                
-                if (filteredUsers.length === 0) {
-                    resultsDiv.innerHTML = `❌ "${searchTerm}" için sonuç bulunamadı`;
-                    resultsDiv.classList.remove('hidden');
-                } else if (filteredUsers.length === approvedUsers.length) {
-                    resultsDiv.classList.add('hidden');
-                } else {
-                    resultsDiv.innerHTML = `🔍 "${searchTerm}" için ${filteredUsers.length} sonuç bulundu`;
-                    resultsDiv.classList.remove('hidden');
-                }
             }
             
-            renderApprovedUsers();
+            // Sıralama
+            filtered.sort((a, b) => {
+                switch (sortType) {
+                    case 'online-first':
+                        const aOnline = isUserOnline(a.id);
+                        const bOnline = isUserOnline(b.id);
+                        if (aOnline && !bOnline) return -1;
+                        if (!aOnline && bOnline) return 1;
+                        return b.credits - a.credits; // Sonra krediye göre
+                        
+                    case 'credits-desc':
+                        return b.credits - a.credits;
+                        
+                    case 'credits-asc':
+                        return a.credits - b.credits;
+                        
+                    case 'name-asc':
+                        return a.name.localeCompare(b.name, 'tr');
+                        
+                    case 'name-desc':
+                        return b.name.localeCompare(a.name, 'tr');
+                        
+                    case 'id-asc':
+                        return a.id.localeCompare(b.id);
+                        
+                    case 'id-desc':
+                        return b.id.localeCompare(a.id);
+                        
+                    case 'recent-first':
+                        return new Date(b.createdAt) - new Date(a.createdAt);
+                        
+                    default:
+                        return 0;
+                }
+            });
+            
+            filteredUsers = filtered;
+            
+            // Sonuç bilgisi
+            if (searchTerm) {
+                if (filtered.length === 0) {
+                    resultsDiv.innerHTML = `❌ "${searchTerm}" için sonuç bulunamadı`;
+                    resultsDiv.classList.remove('hidden');
+                } else {
+                    resultsDiv.innerHTML = `🔍 "${searchTerm}" için ${filtered.length} sonuç bulundu`;
+                    resultsDiv.classList.remove('hidden');
+                }
+            } else {
+                resultsDiv.classList.add('hidden');
+            }
+            
+            renderUserList();
         }
-
+        
+        function renderUserList() {
+            const container = document.getElementById('approvedUsersList');
+            const usersToShow = filteredUsers.length > 0 ? filteredUsers : approvedUsers;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            if (usersToShow.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <div class="no-results-icon">${searchTerm ? '🔍' : '👥'}</div>
+                        <div>${searchTerm ? 'Arama sonucu bulunamadı' : 'Henüz onaylı kullanıcı yok'}</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = usersToShow.map(user => {
+                const isOnline = isUserOnline(user.id);
+                const onlineClass = isOnline ? 'online-user' : '';
+                
+                // Kredi renk ve stil
+                let creditClass = 'user-credits';
+                if (user.credits === 0) creditClass += ' zero-credits';
+                else if (user.credits <= 5) creditClass += ' low-credits';
+                
+                return `
+                    <div class="user-item ${onlineClass}">
+                        <div class="user-info">
+                            <div class="user-id">#${highlightText(user.id, searchTerm)}</div>
+                            <div class="user-name">${highlightText(user.name, searchTerm)}</div>
+                            
+                            <div class="user-details">
+                                <div class="user-detail-item">
+                                    <span class="user-detail-label">Kredi</span>
+                                    <span class="user-detail-value ${creditClass}">${user.credits} dk</span>
+                                </div>
+                                <div class="user-detail-item">
+                                    <span class="user-detail-label">Durum</span>
+                                    <span class="user-status ${isOnline ? 'online' : 'offline'}">
+                                        ${isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı'}
+                                    </span>
+                                </div>
+                                <div class="user-detail-item">
+                                    <span class="user-detail-label">Toplam Arama</span>
+                                    <span class="user-detail-value">${user.totalCalls || 0}</span>
+                                </div>
+                                <div class="user-detail-item">
+                                    <span class="user-detail-label">Son Arama</span>
+                                    <span class="user-detail-value" style="font-size: 11px;">
+                                        ${user.lastCall ? new Date(user.lastCall).toLocaleDateString() : 'Hiç'}
+                                    </span>
+                                </div>
+                                <div class="user-detail-item">
+                                    <span class="user-detail-label">Kayıt Tarihi</span>
+                                    <span class="user-detail-value" style="font-size: 11px;">
+                                        ${new Date(user.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="user-actions">
+                            <input type="number" value="${user.credits}" min="0" 
+                                   class="credit-input" 
+                                   onchange="updateCredits('${user.id}', this.value)" 
+                                   title="Kredi güncelle">
+                            
+                            <button class="btn btn-call ${!isOnline ? 'disabled' : ''}" 
+                                    ${!isOnline ? 'disabled' : ''} 
+                                    onclick="callUser('${user.id}')" 
+                                    title="${isOnline ? 'Bu kullanıcıyı ara' : 'Kullanıcı çevrimdışı'}">
+                                📞 Ara
+                            </button>
+                            
+                            <button class="btn btn-edit" 
+                                    onclick="editUser('${user.id}')" 
+                                    title="Kullanıcı düzenle">
+                                ✏️ Düzenle
+                            </button>
+                            
+                            <button class="btn btn-delete" 
+                                    onclick="removeApprovedUser('${user.id}')" 
+                                    title="Kullanıcıyı sil">
+                                🗑️ Sil
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
         function highlightText(text, searchTerm) {
             if (!searchTerm || searchTerm === '') return text;
             
             const regex = new RegExp(`(${searchTerm})`, 'gi');
-            return text.replace(regex, '<span class="highlighted">$1</span>');
-        }
-
-        function callUser(userId) {
-            const user = approvedUsers.find(u => u.id === userId);
-            if (!user) {
-                alert('Kullanıcı bulunamadı!');
-                return;
-            }
-
-            const onlineUser = connectedUsers.find(u => u.id === userId && u.userType === 'customer');
-            if (!onlineUser) {
-                alert('Bu kullanıcı şu anda çevrimiçi değil!');
-                return;
-            }
-
-            if (currentCall || outgoingCallInfo) {
-                alert('Zaten bir aramada bulunuyorsunuz!');
-                return;
-            }
-
-            outgoingCallInfo = {
-                userId: userId,
-                userName: user.name,
-                credits: user.credits,
-                startTime: Date.now()
-            };
-
-            showOutgoingCall(outgoingCallInfo);
-            playAdminRingbackTone();
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'admin-call-request',
-                    targetId: userId,
-                    adminId: adminId,
-                    adminName: 'USTAM'
-                }));
-                
-                log(`📞 ${user.name} (${userId}) kullanıcısı aranıyor...`);
-            } else {
-                alert('Sunucu bağlantısı yok!');
-                cancelOutgoingCall();
-            }
-        }
-
-        function showOutgoingCall(callInfo) {
-            document.getElementById('outgoingName').textContent = callInfo.userName;
-            document.getElementById('outgoingId').textContent = callInfo.userId;
-            document.getElementById('outgoingCredits').textContent = callInfo.credits;
-            document.getElementById('outgoingCall').classList.remove('hidden');
-            
-            document.getElementById('incomingCall').classList.add('hidden');
-            document.getElementById('callCancelled').classList.add('hidden');
-            
-            log(`🔔 Giden arama: ${callInfo.userName} (${callInfo.userId})`);
-        }
-
-        let adminRingbackAudio = null;
-
-        function playAdminRingbackTone() {
-            try {
-                if (adminRingbackAudio) {
-                    stopAdminRingbackTone();
-                }
-                
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                function playTone() {
-                    if (!outgoingCallInfo) return;
-                    
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    
-                    oscillator.frequency.setValueAtTime(425, audioContext.currentTime);
-                    oscillator.type = 'sine';
-                    
-                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
-                    gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.1);
-                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
-                    
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 1.0);
-                    
-                    setTimeout(playTone, 4000);
-                }
-                
-                playTone();
-                adminRingbackAudio = { audioContext, stop: () => {} };
-                
-                console.log('🔊 Admin çeviri sesi başlatıldı');
-            } catch (error) {
-                console.log('Admin çeviri sesi çalınamadı:', error);
-            }
+            return text.replace(regex, '<span style="background: #fef3c7; font-weight: 600; padding: 0 2px; border-radius: 2px;">$1</span>');
         }
         
-        function stopAdminRingbackTone() {
-            if (adminRingbackAudio) {
-                try {
-                    if (adminRingbackAudio.audioContext && adminRingbackAudio.audioContext.state === 'running') {
-                        adminRingbackAudio.audioContext.suspend();
-                    }
-                } catch (error) {
-                    console.log('Admin çeviri sesi durdurma hatası:', error);
-                }
-                adminRingbackAudio = null;
-                console.log('🔇 Admin çeviri sesi durduruldu');
-            }
+        function updateStats() {
+            document.getElementById('totalApproved').textContent = approvedUsers.length;
+            document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
+            document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
+            document.getElementById('todayCalls').textContent = '12'; // Demo değer
         }
-
-        function cancelOutgoingCall() {
-            stopAdminRingbackTone();
+        
+        function updateConnectedUsersList() {
+            const userListDiv = document.getElementById('userList');
             
-            if (outgoingCallInfo && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'admin-call-cancelled',
-                    targetId: outgoingCallInfo.userId,
-                    adminId: adminId,
-                    reason: 'Admin aramayı iptal etti'
-                }));
-                
-                log(`📞 Giden arama iptal edildi: ${outgoingCallInfo.userName}`);
+            if (connectedUsers.length === 0) {
+                userListDiv.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>
+                `;
+                return;
             }
             
-            document.getElementById('outgoingCall').classList.add('hidden');
-            outgoingCallInfo = null;
+            userListDiv.innerHTML = connectedUsers.map(user => {
+                const isApproved = approvedUsers.find(u => u.id === user.id);
+                return `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 8px; background: white;">
+                        <div style="width: 10px; height: 10px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 14px;">${user.name} ${isApproved ? '✅' : '❌'}</div>
+                            <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
         
         function addApprovedUser() {
@@ -924,93 +856,38 @@
                 return;
             }
             
-            // Loading state
-            const addButton = document.querySelector('button[onclick="addApprovedUser()"]');
-            const originalText = addButton.textContent;
-            addButton.disabled = true;
-            addButton.textContent = '⏳ Ekleniyor...';
-            addButton.classList.add('loading');
+            const newUser = {
+                id: userId,
+                name: userName,
+                credits: userCredits,
+                createdAt: new Date().toLocaleString(),
+                totalCalls: 0,
+                lastCall: null
+            };
             
-            // API'ye kullanıcı ekleme isteği gönder
-            fetch('/api/approved-users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: userId,
-                    name: userName,
-                    credits: userCredits
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.user) {
-                    // Local storage'a da ekle
-                    const newUser = {
-                        id: data.user.id,
-                        name: data.user.name,
-                        credits: data.user.credits,
-                        createdAt: data.user.created_at ? new Date(data.user.created_at).toLocaleString() : new Date().toLocaleString(),
-                        totalCalls: data.user.total_calls || 0,
-                        lastCall: data.user.last_call ? new Date(data.user.last_call).toLocaleString() : null
-                    };
-                    
-                    approvedUsers.push(newUser);
-                    saveApprovedUsers();
-                    searchUsers();
-                    updateStats();
-                    
-                    // Form'u temizle
-                    document.getElementById('newUserId').value = '';
-                    document.getElementById('newUserName').value = '';
-                    document.getElementById('newUserCredits').value = '';
-                    
-                    log(`✅ Kullanıcı başarıyla eklendi: ${userName} (${userId}) - ${userCredits} dk`);
-                    
-                    // Başarı bildirimi
-                    showSuccessNotification(`Kullanıcı eklendi: ${userName} (${userId})`);
-                    
-                } else {
-                    throw new Error(data.error || 'Kullanıcı eklenemedi');
-                }
-            })
-            .catch(error => {
-                console.error('Kullanıcı ekleme hatası:', error);
-                alert('Kullanıcı ekleme hatası: ' + error.message);
-                log(`❌ Kullanıcı ekleme hatası: ${error.message}`);
-            })
-            .finally(() => {
-                // Loading state'i kaldır
-                addButton.disabled = false;
-                addButton.textContent = originalText;
-                addButton.classList.remove('loading');
-            });
+            approvedUsers.push(newUser);
+            
+            // Form'u temizle
+            document.getElementById('newUserId').value = '';
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserCredits').value = '';
+            
+            updateStats();
+            filterAndSortUsers();
+            
+            // Başarı mesajı
+            showNotification(`Kullanıcı eklendi: ${userName} (${userId})`, 'success');
         }
         
         function removeApprovedUser(userId) {
-            if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
-                // API'ye silme isteği gönder
-                fetch(`/api/approved-users/${userId}`, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Local storage'dan da sil
-                        approvedUsers = approvedUsers.filter(u => u.id !== userId);
-                        saveApprovedUsers();
-                        searchUsers();
-                        updateStats();
-                        log(`🗑️ Kullanıcı silindi: ${userId}`);
-                        showSuccessNotification(`Kullanıcı silindi: ${userId}`);
-                    } else {
-                        throw new Error(data.error || 'Kullanıcı silinemedi');
-                    }
-                })
-                .catch(error => {
-                    console.error('Kullanıcı silme hatası:', error);
-                    alert('Kullanıcı silme hatası: ' + error.message);
-                    log(`❌ Kullanıcı silme hatası: ${error.message}`);
-                });
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            if (confirm(`${user.name} (${userId}) kullanıcısını silmek istediğinizden emin misiniz?`)) {
+                approvedUsers = approvedUsers.filter(u => u.id !== userId);
+                updateStats();
+                filterAndSortUsers();
+                showNotification(`Kullanıcı silindi: ${user.name}`, 'info');
             }
         }
         
@@ -1022,1041 +899,91 @@
             }
             
             const oldCredits = user.credits;
+            user.credits = parseInt(newCredits) || 0;
             
-            // API'ye kredi güncelleme isteği gönder
-            fetch(`/api/approved-users/${userId}/credits`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    credits: parseInt(newCredits) || 0,
-                    reason: `Admin tarafından güncellendi: ${oldCredits} → ${newCredits}`
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Local storage'ı güncelle
-                    user.credits = parseInt(newCredits) || 0;
-                    saveApprovedUsers();
-                    renderApprovedUsers();
-                    updateStats();
-                    
-                    // WebSocket ile tüm client'lara bildir
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'credit-update-broadcast',
-                            userId: userId,
-                            newCredits: user.credits,
-                            updatedBy: 'admin'
-                        }));
-                    }
-                    
-                    log(`💳 Kredi başarıyla güncellendi: ${userId} -> ${newCredits} dk`);
-                    
-                    // Görsel bildirim göster
-                    showCreditUpdateNotification(userId, user.name, oldCredits, user.credits);
-                } else {
-                    alert('Kredi güncellenemedi: ' + (data.error || 'Bilinmeyen hata'));
-                    log(`❌ Kredi güncelleme hatası: ${userId} -> ${data.error}`);
-                }
-            })
-            .catch(error => {
-                console.error('Kredi güncelleme hatası:', error);
-                alert('Kredi güncelleme sırasında hata oluştu!');
-                log(`❌ Kredi güncelleme API hatası: ${error.message}`);
-            });
-        }
-
-        // Başarı bildirimi göster
-        function showSuccessNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.borderLeft = '4px solid #22c55e';
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="color: #22c55e; font-size: 18px;">✅</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #22c55e;">Başarılı</div>
-                        <div style="font-size: 13px; color: #374151;">${message}</div>
-                    </div>
-                </div>
-            `;
+            updateStats();
+            filterAndSortUsers();
             
-            const container = document.getElementById('creditNotifications');
-            container.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('slide-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }
-            }, 3000);
-        }
-
-        // Kredi güncelleme bildirimi göster
-        function showCreditUpdateNotification(userId, userName, oldCredits, newCredits) {
-            const change = newCredits - oldCredits;
-            const changeText = change > 0 ? `+${change}` : `${change}`;
-            const changeColor = change > 0 ? '#22c55e' : '#ef4444';
-            
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.borderLeft = `4px solid ${changeColor}`;
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="color: ${changeColor}; font-size: 18px;">💳</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #374151;">${userName} (${userId})</div>
-                        <div style="font-size: 13px; color: #64748b;">
-                            📊 Kredi: ${oldCredits} → ${newCredits} dk (${changeText})<br>
-                            ⏰ ${new Date().toLocaleTimeString()}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const container = document.getElementById('creditNotifications');
-            container.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('slide-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }
-            }, 5000);
+            showNotification(`${user.name} kredi güncellendi: ${oldCredits} → ${user.credits} dk`, 'success');
         }
         
-        function renderApprovedUsers() {
-            const container = document.getElementById('approvedUsersList');
-            const usersToShow = filteredUsers.length > 0 ? filteredUsers : approvedUsers;
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            
-            if (usersToShow.length === 0) {
-                if (searchTerm) {
-                    container.innerHTML = `
-                        <div style="text-align: center; color: #6b7280; padding: 30px;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">🔍</div>
-                            <div>Arama sonucu bulunamadı</div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = `
-                        <div style="text-align: center; color: #6b7280; padding: 30px;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
-                            <div>Henüz onaylı kullanıcı yok</div>
-                        </div>
-                    `;
-                }
-                return;
-            }
-            
-            container.innerHTML = usersToShow.map(user => {
-                const onlineUser = connectedUsers.find(u => u.id === user.id && u.userType === 'customer');
-                const isOnline = !!onlineUser;
-                const statusText = isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı';
-                const statusClass = isOnline ? 'online-user' : '';
-                
-                const canCall = isOnline && !currentCall && !outgoingCallInfo;
-                const callButtonHtml = canCall 
-                    ? `<button class="btn btn-call" onclick="callUser('${user.id}')" title="Bu kullanıcıyı ara">📞 Ara</button>`
-                    : `<button class="btn btn-call" disabled title="${!isOnline ? 'Kullanıcı çevrimdışı' : 'Zaten bir aramada bulunuyorsunuz'}" style="opacity: 0.5;">📞 Ara</button>`;
-                
-                return `
-                    <div class="user-item ${statusClass}">
-                        <div class="user-info">
-                            <div class="user-id">#${highlightText(user.id, searchTerm)}</div>
-                            <div class="user-name">${highlightText(user.name, searchTerm)}</div>
-                            <div class="user-credits">${user.credits} dakika kredi</div>
-                            <div class="user-status ${isOnline ? 'online' : ''}">${statusText}</div>
-                        </div>
-                        <div class="user-actions">
-                            <input type="number" value="${user.credits}" min="0" style="width: 70px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;" 
-                                   onchange="updateCredits('${user.id}', this.value)" title="Kredi güncelle">
-                            ${callButtonHtml}
-                            <button class="btn btn-reject btn-small" onclick="removeApprovedUser('${user.id}')" title="Kullanıcıyı sil">🗑️</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        function updateStats() {
-            document.getElementById('totalApproved').textContent = approvedUsers.length;
-            document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
-            document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
-            
-            // API'den güncel istatistik al
-            fetch('/api/stats')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('todayCalls').textContent = data.todayCalls || 0;
-                })
-                .catch(error => {
-                    console.log('İstatistik yükleme hatası:', error);
-                });
-        }
-        
-        function isUserApproved(userId) {
-            const user = approvedUsers.find(u => u.id === userId);
-            return user;
-        }
-        
-        function connectToServer() {
-            try {
-                console.log('🔗 WebSocket bağlantısı kuruluyor:', serverUrl);
-                socket = new WebSocket(serverUrl);
-                
-                socket.onopen = function() {
-                    updateStatus('connected');
-                    log('✅ Server\'a bağlandı');
-                    
-                    socket.send(JSON.stringify({
-                        type: 'register',
-                        userId: adminId,
-                        name: 'Admin',
-                        userType: 'admin'
-                    }));
-                };
-                
-                socket.onclose = function() {
-                    updateStatus('disconnected');
-                    log('❌ Bağlantı koptu, yeniden bağlanılıyor...');
-                    setTimeout(connectToServer, 3000);
-                };
-                
-                socket.onerror = function() {
-                    updateStatus('error');
-                    log('❌ WebSocket hatası!');
-                };
-                
-                socket.onmessage = function(event) {
-                    const message = JSON.parse(event.data);
-                    handleMessage(message);
-                };
-                
-            } catch (error) {
-                log('❌ Bağlantı hatası: ' + error.message);
-                updateStatus('error');
-            }
-        }
-        
-        function handleMessage(message) {
-            log('📨 Mesaj alındı: ' + message.type);
-            
-            switch (message.type) {
-                case 'incoming-call':
-                    console.log('🔔 GELEN ARAMA MESAJI ALINDI!', message);
-                    
-                    const user = isUserApproved(message.userId);
-                    
-                    if (!user) {
-                        socket.send(JSON.stringify({
-                            type: 'reject-call',
-                            userId: message.userId,
-                            reason: 'unauthorized'
-                        }));
-                        log(`❌ Onaylanmamış kullanıcı arama yapmaya çalıştı: ${message.userId}`);
-                        return;
-                    }
-                    
-                    if (outgoingCallInfo) {
-                        cancelOutgoingCall();
-                    }
-                    
-                    hideCallCancelled();
-                    
-                    const callerData = {
-                        userId: message.userId,
-                        userName: user.name,
-                        credits: user.credits
-                    };
-                    
-                    showIncomingCall(callerData);
-                    break;
-
-                case 'admin-call-accepted':
-                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
-                        log(`✅ ${outgoingCallInfo.userName} aramayı kabul etti`);
-                        stopAdminRingbackTone();
-                        
-                        document.getElementById('outgoingCall').classList.add('hidden');
-                        setupOutgoingPeerConnection();
-                    }
-                    break;
-
-                case 'admin-call-rejected':
-                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
-                        log(`❌ ${outgoingCallInfo.userName} aramayı reddetti: ${message.reason}`);
-                        stopAdminRingbackTone();
-                        
-                        showCallCancelled({
-                            userId: outgoingCallInfo.userId,
-                            userName: outgoingCallInfo.userName,
-                            reason: message.reason || 'Müşteri aramayı reddetti'
-                        });
-                        
-                        cancelOutgoingCall();
-                    }
-                    break;
-
-                case 'admin-call-timeout':
-                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
-                        log(`⏰ ${outgoingCallInfo.userName} aramayı cevaplamadı`);
-                        stopAdminRingbackTone();
-                        
-                        showCallCancelled({
-                            userId: outgoingCallInfo.userId,
-                            userName: outgoingCallInfo.userName,
-                            reason: 'Müşteri aramayı cevaplamadı (30 saniye zaman aşımı)'
-                        });
-                        
-                        cancelOutgoingCall();
-                    }
-                    break;
-                    
-                case 'call-cancelled':
-                    log(`📞 Arama iptal edildi: ${message.userName}`);
-                    document.getElementById('incomingCall').classList.add('hidden');
-                    
-                    showCallCancelled({
-                        userId: message.userId,
-                        userName: message.userName,
-                        reason: message.reason
-                    });
-                    break;
-                    
-                case 'offer':
-                    console.log('📤 WebRTC Offer alındı');
-                    handleOffer(message);
-                    break;
-
-                case 'answer':
-                    console.log('📥 WebRTC Answer alındı');
-                    handleAnswer(message);
-                    break;
-                    
-                case 'ice-candidate':
-                    console.log('🧊 ICE Candidate alındı');
-                    handleIceCandidate(message);
-                    break;
-                    
-                case 'end-call':
-                case 'call-ended':
-                    console.log('📞 Arama sonlandırılıyor');
-                    if (message.duration && message.creditsUsed) {
-                        showCreditNotification(message.userId, message.creditsUsed, message.duration);
-                        
-                        const user = approvedUsers.find(u => u.id === message.userId);
-                        if (user) {
-                            user.credits = Math.max(0, user.credits - message.creditsUsed);
-                            user.totalCalls = (user.totalCalls || 0) + 1;
-                            user.lastCall = new Date().toLocaleString();
-                            saveApprovedUsers();
-                            searchUsers();
-                            updateStats();
-                        }
-                    }
-                    endCall();
-                    break;
-                    
-                case 'credit-updated':
-                    console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
-                    const updatedUser = approvedUsers.find(u => u.id === message.userId);
-                    if (updatedUser) {
-                        // Kredi bilgisini güncelle
-                        updatedUser.credits = message.newCredits;
-                        updatedUser.totalCalls = (updatedUser.totalCalls || 0) + 1;
-                        updatedUser.lastCall = new Date().toLocaleString();
-                        
-                        // localStorage'ı güncelle (önemli!)
-                        saveApprovedUsers();
-                        renderApprovedUsers();
-                        updateStats();
-                        
-                        if (message.creditsUsed && message.duration) {
-                            showCreditNotification(message.userId, message.creditsUsed, message.duration);
-                        }
-                        
-                        log(`💳 ${updatedUser.name} kredi güncellendi: ${message.newCredits} dk`);
-                    }
-                    break;
-                    case 'auto-credit-update':
-    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
-    const userToUpdate = approvedUsers.find(u => u.id === message.userId);
-    if (userToUpdate) {
-        userToUpdate.credits = message.newCredits;
-        saveApprovedUsers();
-        renderApprovedUsers();
-        updateStats();
-        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
-    }
-    break;
-                    
-                case 'user-list-update':
-                    console.log(`👥 Kullanıcı listesi güncellendi: ${message.users?.length || 0} kullanıcı`);
-                    updateUserList(message.users || []);
-                    break;
-                    
-                case 'user-online':
-                    log('👋 Yeni kullanıcı: ' + message.userName);
-                    break;
-            }
-        }
-
-        // Gelen arama göster
-        function showIncomingCall(caller) {
-            try {
-                currentCall = caller;
-                
-                const callerNameElement = document.getElementById('callerName');
-                const callerIdElement = document.getElementById('callerId');
-                const callerCreditsElement = document.getElementById('callerCredits');
-                const incomingCallElement = document.getElementById('incomingCall');
-                const acceptBtnElement = document.getElementById('acceptBtn');
-                
-                if (!callerNameElement || !callerIdElement || !callerCreditsElement || !incomingCallElement) {
-                    console.error('❌ Gerekli DOM elementleri bulunamadı!');
-                    return;
-                }
-                
-                callerNameElement.textContent = caller.userName;
-                callerIdElement.textContent = caller.userId;
-                callerCreditsElement.textContent = caller.credits;
-                
-                incomingCallElement.classList.remove('hidden');
-                
-                if (acceptBtnElement) {
-                    acceptBtnElement.disabled = false;
-                }
-                
-                log(`📞 Gelen arama: ${caller.userName} (${caller.credits} dk)`);
-                playNotificationSound();
-                
-            } catch (error) {
-                console.error('❌ showIncomingCall hatası:', error);
-            }
-        }
-        
-        function showCallCancelled(cancelInfo) {
-            document.getElementById('cancelledName').textContent = cancelInfo.userName;
-            document.getElementById('cancelledId').textContent = cancelInfo.userId;
-            document.getElementById('cancelledReason').textContent = cancelInfo.reason;
-            
-            const cancelledDiv = document.getElementById('callCancelled');
-            cancelledDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                hideCallCancelled();
-            }, 5000);
-        }
-        
-        function hideCallCancelled() {
-            const cancelledDiv = document.getElementById('callCancelled');
-            if (!cancelledDiv.classList.contains('hidden')) {
-                cancelledDiv.classList.add('slide-out');
-                setTimeout(() => {
-                    cancelledDiv.classList.add('hidden');
-                    cancelledDiv.classList.remove('slide-out');
-                }, 300);
-            }
-        }
-        
-        function dismissCancelledCall() {
-            hideCallCancelled();
-        }
-        
-        function showCreditNotification(userId, creditsUsed, duration) {
+        function editUser(userId) {
             const user = approvedUsers.find(u => u.id === userId);
             if (!user) return;
             
-            const mins = Math.floor(duration / 60);
-            const secs = duration % 60;
-            const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            const newName = prompt(`${user.name} için yeni isim:`, user.name);
+            if (newName && newName.trim() !== user.name) {
+                user.name = newName.trim();
+                filterAndSortUsers();
+                showNotification(`Kullanıcı ismi güncellendi: ${newName}`, 'success');
+            }
+        }
+        
+        function callUser(userId) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user) {
+                alert('Kullanıcı bulunamadı!');
+                return;
+            }
             
+            const isOnline = isUserOnline(userId);
+            if (!isOnline) {
+                alert('Bu kullanıcı şu anda çevrimiçi değil!');
+                return;
+            }
+            
+            showNotification(`${user.name} (${userId}) aranıyor...`, 'info');
+        }
+        
+        function refreshUserList() {
+            // Simüle edilmiş yenileme
+            showNotification('Kullanıcı listesi yenilendi', 'success');
+            filterAndSortUsers();
+        }
+        
+        function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.borderLeft = '4px solid #059669';
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="color: #059669; font-size: 18px;">💳</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #374151;">${user.name} (${userId})</div>
-                        <div style="font-size: 13px; color: #64748b;">
-                            ⏱️ Görüşme: ${durationText} → ${creditsUsed} kredi düşüldü<br>
-                            💰 Kalan: ${user.credits} dakika
-                        </div>
-                    </div>
-                </div>
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 1000;
+                font-weight: 600;
+                animation: slideIn 0.3s ease-out;
             `;
+            notification.textContent = message;
             
-            const container = document.getElementById('creditNotifications');
-            container.appendChild(notification);
+            document.body.appendChild(notification);
             
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('slide-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }
-            }, 8000);
-            
-            log(`💳 Kredi düşürüldü: ${user.name} -${creditsUsed} dk (${durationText})`);
-        }
-        
-        function playNotificationSound() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                const frequencies = [800, 1000, 800, 1000];
-                let currentTone = 0;
-                
-                function playTone() {
-                    if (currentTone >= frequencies.length) {
-                        setTimeout(() => {
-                            if (document.getElementById('incomingCall').classList.contains('hidden')) {
-                                return;
-                            }
-                            currentTone = 0;
-                            playTone();
-                        }, 2000);
-                        return;
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
                     }
-                    
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    
-                    oscillator.frequency.setValueAtTime(frequencies[currentTone], audioContext.currentTime);
-                    oscillator.type = 'sine';
-                    
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                    
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.5);
-                    
-                    currentTone++;
-                    setTimeout(playTone, 600);
-                }
-                
-                playTone();
-                
-            } catch (error) {
-                console.log('Ses çalınamadı:', error);
-            }
+                }, 300);
+            }, 3000);
         }
         
-        // Arama kabul et
-        async function acceptCall() {
-            console.log('✅ Arama kabul ediliyor...');
-            
-            if (document.getElementById('incomingCall').classList.contains('hidden')) {
-                alert('Bu arama iptal edilmiş!');
-                return;
+        // CSS animasyonları
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(100%); }
+                to { opacity: 1; transform: translateX(0); }
             }
             
-            try {
-                log('📞 Arama kabul ediliyor...');
-                
-                document.getElementById('acceptBtn').disabled = true;
-                document.getElementById('acceptBtn').textContent = '🔄 Bağlanıyor...';
-                
-                // Mikrofon erişimi al
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
-                });
-                
-                console.log('🎤 Admin mikrofon erişimi alındı');
-                
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                
-                // Local stream'i ekle
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                    console.log('🎤 Admin local track eklendi (gelen arama):', track.kind);
-                });
-                
-                // Remote stream handler
-                peerConnection.ontrack = function(event) {
-                    console.log('📡 Admin remote track alındı (gelen arama):', event.track.kind);
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (event.streams && event.streams[0]) {
-                        remoteAudio.srcObject = event.streams[0];
-                        console.log('🔊 Admin remote audio stream atandı (gelen arama)');
-                        
-                        remoteAudio.play().then(() => {
-                            console.log('✅ Admin remote audio oynatılmaya başladı (gelen arama)');
-                        }).catch(e => {
-                            console.log('⚠️ Admin remote audio oynatma hatası (gelen arama):', e);
-                        });
-                    }
-                };
-                
-                // ICE candidate handler
-                peerConnection.onicecandidate = function(event) {
-                    if (event.candidate && socket) {
-                        socket.send(JSON.stringify({
-                            type: 'ice-candidate',
-                            candidate: event.candidate,
-                            targetId: currentCall.userId
-                        }));
-                        console.log('📡 Admin ICE candidate gönderildi (gelen arama):', event.candidate.type);
-                    } else if (!event.candidate) {
-                        console.log('📡 Admin ICE gathering tamamlandı (gelen arama)');
-                    }
-                };
-
-                // Bağlantı durumu takibi
-                peerConnection.onconnectionstatechange = function() {
-                    console.log('🔗 Admin Connection State (gelen arama):', peerConnection.connectionState);
-                    switch (peerConnection.connectionState) {
-                        case 'connected':
-                            console.log('✅ Admin WebRTC TAM OLARAK BAĞLANDI (gelen arama)!');
-                            document.getElementById('incomingCall').classList.add('hidden');
-                            document.getElementById('activeCaller').textContent = currentCall.userName;
-                            document.getElementById('activeCall').classList.remove('hidden');
-                            startCallTimer();
-                            break;
-                        case 'connecting':
-                            console.log('🔗 Admin WebRTC bağlanıyor (gelen arama)...');
-                            break;
-                        case 'failed':
-                            console.log('❌ Admin WebRTC bağlantısı başarısız (gelen arama)');
-                            endCall();
-                            break;
-                        case 'disconnected':
-                            console.log('📞 Admin WebRTC bağlantısı koptu (gelen arama)');
-                            endCall();
-                            break;
-                    }
-                };
-
-                // ICE bağlantı durumu takibi
-                peerConnection.oniceconnectionstatechange = function() {
-                    console.log('🧊 Admin ICE Connection State (gelen arama):', peerConnection.iceConnectionState);
-                    switch (peerConnection.iceConnectionState) {
-                        case 'connected':
-                        case 'completed':
-                            console.log('✅ Admin ICE bağlantısı kuruldu (gelen arama)');
-                            if (peerConnection.connectionState === 'connecting') {
-                                setTimeout(() => {
-                                    if (peerConnection.connectionState === 'connecting') {
-                                        console.log('🔄 Admin ICE connected oldu (gelen arama), call state güncelleniyor');
-                                        document.getElementById('incomingCall').classList.add('hidden');
-                                        document.getElementById('activeCaller').textContent = currentCall.userName;
-                                        document.getElementById('activeCall').classList.remove('hidden');
-                                        startCallTimer();
-                                    }
-                                }, 1000);
-                            }
-                            break;
-                        case 'failed':
-                            console.log('❌ Admin ICE bağlantısı başarısız (gelen arama)');
-                            endCall();
-                            break;
-                    }
-                };
-                
-                // Sunucuya arama kabul mesajı gönder
-                socket.send(JSON.stringify({
-                    type: 'accept-call',
-                    userId: currentCall.userId
-                }));
-                
-                log('✅ Görüşme kabul edildi, WebRTC kuruluyor...');
-                
-            } catch (error) {
-                console.error('❌ Admin arama kabul hatası:', error);
-                log('❌ Arama kabul hatası: ' + error.message);
-                alert('Mikrofon erişimi gerekli!');
-                
-                document.getElementById('acceptBtn').disabled = false;
-                document.getElementById('acceptBtn').textContent = '✅ Kabul Et';
+            @keyframes slideOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(100%); }
             }
-        }
-        
-        function rejectCall() {
-            console.log('❌ Arama reddediliyor');
-            if (currentCall && socket) {
-                socket.send(JSON.stringify({
-                    type: 'reject-call',
-                    userId: currentCall.userId
-                }));
-                
-                document.getElementById('incomingCall').classList.add('hidden');
-                log('❌ Arama reddedildi: ' + currentCall.userName);
-                currentCall = null;
-            }
-        }
-        
-        function endCall() {
-            console.log('📞 Görüşme sonlandırılıyor');
-            if (callTimer) {
-                clearInterval(callTimer);
-                callTimer = null;
-            }
-            
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            
-            if (currentCall && socket) {
-                socket.send(JSON.stringify({
-                    type: 'end-call',
-                    userId: adminId,
-                    targetId: currentCall.userId,
-                    duration: callDuration,
-                    userType: 'admin',
-                    endedBy: 'admin'
-                }));
-                
-                log(`📞 Admin görüşmeyi sonlandırdı: ${currentCall.userName}`);
-            }
-            
-            document.getElementById('activeCall').classList.add('hidden');
-            document.getElementById('incomingCall').classList.add('hidden');
-            document.getElementById('outgoingCall').classList.add('hidden');
-            
-            if (currentCall) {
-                log(`📞 Görüşme sona erdi: ${currentCall.userName} (${Math.floor(callDuration/60)}:${(callDuration%60).toString().padStart(2,'0')})`);
-            }
-            
-            currentCall = null;
-            outgoingCallInfo = null;
-            callDuration = 0;
-            
-            renderApprovedUsers();
-        }
-        
-        // WebRTC işleyicileri
-        async function setupOutgoingPeerConnection() {
-            try {
-                console.log('🔗 Giden arama için WebRTC kuruluyor...');
-                
-                // Mikrofon erişimi al
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
-                });
-                
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                
-                // Local stream'i ekle
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                    console.log('🎤 Admin local track eklendi:', track.kind);
-                });
-                
-                // Remote stream handler
-                peerConnection.ontrack = function(event) {
-                    console.log('📡 Admin remote track alındı:', event.track.kind);
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (event.streams && event.streams[0]) {
-                        remoteAudio.srcObject = event.streams[0];
-                        console.log('🔊 Admin remote audio stream atandı');
-                        
-                        remoteAudio.play().then(() => {
-                            console.log('✅ Admin remote audio oynatılmaya başladı');
-                        }).catch(e => {
-                            console.log('⚠️ Admin remote audio oynatma hatası:', e);
-                        });
-                    }
-                };
-                
-                // ICE candidate handler
-                peerConnection.onicecandidate = function(event) {
-                    if (event.candidate && socket && outgoingCallInfo) {
-                        socket.send(JSON.stringify({
-                            type: 'ice-candidate',
-                            candidate: event.candidate,
-                            targetId: outgoingCallInfo.userId
-                        }));
-                        console.log('📡 Admin ICE candidate gönderildi:', event.candidate.type);
-                    } else if (!event.candidate) {
-                        console.log('📡 Admin ICE gathering tamamlandı');
-                    }
-                };
-
-                // Bağlantı durumu takibi
-                peerConnection.onconnectionstatechange = function() {
-                    console.log('🔗 Admin Connection State:', peerConnection.connectionState);
-                    switch (peerConnection.connectionState) {
-                        case 'connected':
-                            console.log('✅ Admin WebRTC TAM OLARAK BAĞLANDI!');
-                            currentCall = outgoingCallInfo;
-                            outgoingCallInfo = null;
-                            
-                            document.getElementById('activeCaller').textContent = currentCall.userName;
-                            document.getElementById('activeCall').classList.remove('hidden');
-                            startCallTimer();
-                            break;
-                        case 'connecting':
-                            console.log('🔗 Admin WebRTC bağlanıyor...');
-                            break;
-                        case 'failed':
-                            console.log('❌ Admin WebRTC bağlantısı başarısız');
-                            endCall();
-                            break;
-                        case 'disconnected':
-                            console.log('📞 Admin WebRTC bağlantısı koptu');
-                            endCall();
-                            break;
-                    }
-                };
-
-                // ICE bağlantı durumu takibi
-                peerConnection.oniceconnectionstatechange = function() {
-                    console.log('🧊 Admin ICE Connection State:', peerConnection.iceConnectionState);
-                    switch (peerConnection.iceConnectionState) {
-                        case 'connected':
-                        case 'completed':
-                            console.log('✅ Admin ICE bağlantısı kuruldu');
-                            if (peerConnection.connectionState === 'connecting') {
-                                setTimeout(() => {
-                                    if (peerConnection.connectionState === 'connecting') {
-                                        console.log('🔄 Admin ICE connected oldu, call state güncelleniyor');
-                                        currentCall = outgoingCallInfo;
-                                        outgoingCallInfo = null;
-                                        
-                                        document.getElementById('activeCaller').textContent = currentCall.userName;
-                                        document.getElementById('activeCall').classList.remove('hidden');
-                                        startCallTimer();
-                                    }
-                                }, 1000);
-                            }
-                            break;
-                        case 'failed':
-                            console.log('❌ Admin ICE bağlantısı başarısız');
-                            endCall();
-                            break;
-                    }
-                };
-
-                // Offer oluştur ve gönder
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                console.log('📤 Admin offer oluşturuldu ve local description ayarlandı');
-                
-                socket.send(JSON.stringify({
-                    type: 'offer',
-                    offer: offer,
-                    targetId: outgoingCallInfo.userId,
-                    userId: adminId,
-                    userName: 'Teknik Destek'
-                }));
-                console.log('📨 Admin offer müşteriye gönderildi');
-                
-                log('🎤 Giden arama WebRTC hazır - Answer bekleniyor...');
-                
-            } catch (error) {
-                console.error('❌ Admin giden arama WebRTC hatası:', error);
-                log('❌ Giden arama WebRTC hatası: ' + error.message);
-                alert('Mikrofon erişimi gerekli!');
-                cancelOutgoingCall();
-            }
-        }
-        
-        async function handleOffer(message) {
-            if (peerConnection) {
-                try {
-                    console.log('📥 Admin offer alındı');
-                    
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                    console.log('✅ Admin remote description (offer) ayarlandı');
-                    
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    console.log('📤 Admin answer oluşturuldu ve local description ayarlandı');
-                    
-                    socket.send(JSON.stringify({
-                        type: 'answer',
-                        answer: answer,
-                        targetId: message.userId
-                    }));
-                    console.log('📞 Admin answer gönderildi');
-                    
-                } catch (error) {
-                    console.error('❌ Admin offer işleme hatası:', error);
-                    endCall();
-                }
-            }
-        }
-
-        async function handleAnswer(message) {
-            if (peerConnection) {
-                try {
-                    console.log('📥 Admin answer alındı');
-                    
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                    console.log('✅ Admin remote description (answer) ayarlandı');
-                    console.log('⏳ Admin ICE bağlantısı bekleniyor...');
-                    
-                } catch (error) {
-                    console.error('❌ Admin answer işleme hatası:', error);
-                    endCall();
-                }
-            }
-        }
-        
-        async function handleIceCandidate(message) {
-            if (peerConnection) {
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                    console.log('📡 Admin ICE candidate eklendi:', message.candidate.type);
-                } catch (error) {
-                    console.error('❌ Admin ICE candidate hatası:', error);
-                }
-            }
-        }
-        
-        function startCallTimer() {
-            callDuration = 0;
-            callTimer = setInterval(function() {
-                callDuration++;
-                const mins = Math.floor(callDuration / 60);
-                const secs = callDuration % 60;
-                document.getElementById('callTimer').textContent = 
-                    mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
-            }, 1000);
-        }
-        
-        function updateUserList(users) {
-            connectedUsers = users;
-            const userListDiv = document.getElementById('userList');
-            
-            updateStats();
-            renderApprovedUsers();
-            
-            if (users.length === 0) {
-                userListDiv.innerHTML = `
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
-                        <div>Henüz kullanıcı bağlanmadı</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            userListDiv.innerHTML = '';
-            users.forEach(user => {
-                const userDiv = document.createElement('div');
-                const isApproved = isUserApproved(user.id);
-                userDiv.className = 'connected-user' + (isApproved ? ' online-user' : '');
-                userDiv.innerHTML = `
-                    <div class="${user.online ? 'user-online-dot' : 'user-offline-dot'}"></div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; font-size: 14px;">${user.name} ${isApproved ? '✅' : '❌'}</div>
-                        <div style="font-size: 12px; color: #6b7280;">ID: ${user.id} • ${user.userType}</div>
-                        <div style="font-size: 11px; color: #9ca3af;">${user.registeredAt}</div>
-                    </div>
-                `;
-                userListDiv.appendChild(userDiv);
-            });
-        }
-        
-        function updateStatus(status) {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            
-            statusDot.className = 'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
-            statusText.textContent = status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
-        }
-        
-        function log(message) {
-            const logContainer = document.getElementById('logContainer');
-            const time = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.textContent = `[${time}] ${message}`;
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-            
-            // Son 50 log'u tut
-            if (logContainer.children.length > 50) {
-                logContainer.removeChild(logContainer.firstChild);
-            }
-        }
-        
-        function downloadCustomerApp() {
-            const appUrl = `${window.location.origin}/customer-app.html`;
-            prompt('Müşteri Uygulaması URL\'si (kopyalayın):', appUrl);
-        }
-        
-        // Verileri API'den yenile
-        async function refreshData() {
-            log('🔄 Veriler API\'den yenileniyor...');
-            const refreshButton = document.querySelector('button[onclick="refreshData()"]');
-            const originalText = refreshButton.textContent;
-            
-            refreshButton.disabled = true;
-            refreshButton.textContent = '⏳ Yenileniyor...';
-            
-            try {
-                await loadUsersFromAPI();
-                showSuccessNotification('Veriler başarıyla yenilendi!');
-                log('✅ Tüm veriler API\'den güncellendi');
-            } catch (error) {
-                log('❌ Veri yenileme hatası: ' + error.message);
-                alert('Veri yenileme hatası: ' + error.message);
-            } finally {
-                refreshButton.disabled = false;
-                refreshButton.textContent = originalText;
-            }
-        }
-        
-        function testIncomingCall() {
-            console.log('🧪 TEST: Manual gelen arama tetikleniyor');
-            
-            const testUser = approvedUsers.find(u => u.id === '1234') || 
-                            approvedUsers.find(u => u.id === '0005') || 
-                            approvedUsers[0];
-            
-            if (!testUser) {
-                alert('Test için onaylı kullanıcı gerekli!');
-                return;
-            }
-            
-            console.log(`✅ TEST: Test kullanıcısı bulundu: ${testUser.name} (${testUser.id})`);
-            
-            // Manuel gelen arama simülasyonu
-            const testMessage = {
-                type: 'incoming-call',
-                userId: testUser.id,
-                userName: testUser.name,
-                credits: testUser.credits
-            };
-            
-            console.log('📨 TEST: Simüle incoming-call mesajı işleniyor');
-            handleMessage(testMessage);
-        }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
-
-
-
