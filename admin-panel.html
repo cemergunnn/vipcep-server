@@ -1157,8 +1157,16 @@
                 }
                 return;
             }
-            
-            container.innerHTML = usersToShow.map(user => {
+            // ONLINE KULLANICILARI ÖNE ALMAK İÇİN SIRALAMA
+const sortedUsers = [...usersToShow].sort((a, b) => {
+    const aOnline = connectedUsers.some(u => u.id === a.id && u.userType === 'customer');
+    const bOnline = connectedUsers.some(u => u.id === b.id && u.userType === 'customer');
+    
+    if (aOnline && !bOnline) return -1;
+    if (!aOnline && bOnline) return 1;
+    return a.name.localeCompare(b.name);
+});
+            container.innerHTML = sortedUsers.map(user => {
                 const onlineUser = connectedUsers.find(u => u.id === user.id && u.userType === 'customer');
                 const isOnline = !!onlineUser;
                 const statusText = isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı';
@@ -2057,6 +2065,7 @@
     </script>
 </body>
 </html>
+
 
 
 
