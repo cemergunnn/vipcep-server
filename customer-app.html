@@ -987,8 +987,7 @@
             }
         }
 
-        // KVKK functions
-                async function saveKVKKConsent() {
+        async function saveKVKKConsent() {
             return new Promise((resolve) => {
                 let responseReceived = false;
                 
@@ -1003,6 +1002,22 @@
                             resolve(message.success);
                         }
                     };
+                    
+                    socket.addEventListener('message', messageHandler);
+                    
+                    setTimeout(() => {
+                        if (!responseReceived) {
+                            console.log('⚠️ KVKK save timeout - 10 saniye içinde response alınamadı, onay kabul edildi');
+                            socket.removeEventListener('message', messageHandler);
+                            resolve(true);
+                        }
+                    }, 10000);
+                } else {
+                    console.log('⚠️ WebSocket bağlantısı yok, KVKK onayı offline kabul edildi');
+                    resolve(true);
+                }
+            });
+        }
                     
                     socket.addEventListener('message', messageHandler);
                     
@@ -2003,5 +2018,6 @@
     </script>
 </body>
 </html>
+
 
 
