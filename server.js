@@ -1404,4 +1404,20 @@ app.get('/api/stats', async (req, res) => {
     try {
         const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
         const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
-        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_
+        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
+        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
+        const activeCallsCount = activeHeartbeats.size;
+        
+        res.json({
+            totalUsers: parseInt(totalUsers.rows[0].count),
+            totalCalls: parseInt(totalCalls.rows[0].count),
+            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
+            todayCalls: parseInt(todayCalls.rows[0].count),
+            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
+            activeCalls: activeCallsCount
+        });
+    } catch (error) {
+        console.log('💾 PostgreSQL istatistik hatası:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
