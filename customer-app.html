@@ -67,7 +67,6 @@
             box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
         }
 
-        /* Language Toggle */
         .lang-toggle {
             position: absolute;
             top: 15px;
@@ -110,6 +109,78 @@
         
         .app-content {
             padding: 20px;
+        }
+
+        /* KVKK Onay Ekranı */
+        .kvkk-screen {
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .kvkk-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .kvkk-content {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #22c55e;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #374151;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .kvkk-content h4 {
+            color: #1e293b;
+            margin: 15px 0 8px 0;
+            font-size: 15px;
+        }
+
+        .kvkk-content h4:first-child {
+            margin-top: 0;
+        }
+
+        .kvkk-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .kvkk-checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            border: 2px solid #bbf7d0;
+            margin-bottom: 20px;
+        }
+
+        .kvkk-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .kvkk-checkbox-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #16a34a;
+            cursor: pointer;
+        }
+
+        .kvkk-buttons {
+            display: flex;
+            gap: 10px;
         }
         
         .form-group {
@@ -225,6 +296,18 @@
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-kvkk-accept {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-kvkk-decline {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            flex: 1;
         }
         
         .user-info {
@@ -486,7 +569,6 @@
                 <span id="connectionText" data-text-tr="Bağlanıyor..." data-text-en="Connecting...">Bağlanıyor...</span>
             </div>
             
-            <!-- Language Toggle -->
             <div class="lang-toggle" onclick="toggleLanguage()">
                 <span id="currentFlag">🇹🇷</span>
                 <span id="currentLang">TR</span>
@@ -501,9 +583,57 @@
             <div class="app-subtitle" data-text-tr="Teknik Servis Danışmanlığı" data-text-en="Technical Support Service">Teknik Servis Danışmanlığı</div>
         </div>
         
+        <!-- KVKK Onay Ekranı -->
+        <div id="kvkkScreen" class="kvkk-screen">
+            <div class="kvkk-title" data-text-tr="📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme" data-text-en="📋 Personal Data Protection Information">📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme</div>
+            
+            <div class="kvkk-content">
+                <h4 data-text-tr="1. Veri İşleme ve Gizlilik" data-text-en="1. Data Processing and Privacy">1. Veri İşleme ve Gizlilik</h4>
+                <p data-text-tr="Bu hizmet kapsamında kullanıcıların sesli görüşmeleri kayıt altına alınmamaktadır. Görüşme içerikleri tarafımızca saklanmaz, üçüncü kişilerle paylaşılmaz." data-text-en="Under this service, users' voice conversations are not recorded. Conversation contents are not stored or shared with third parties by us.">Bu hizmet kapsamında kullanıcıların sesli görüşmeleri kayıt altına alınmamaktadır. Görüşme içerikleri tarafımızca saklanmaz, üçüncü kişilerle paylaşılmaz.</p>
+                
+                <h4 data-text-tr="2. Anonim Kullanım" data-text-en="2. Anonymous Usage">2. Anonim Kullanım</h4>
+                <p data-text-tr="Sistemi kullanmak için kimlik, ad-soyad, telefon numarası, e-posta gibi herhangi bir kişisel bilgi talep edilmez veya saklanmaz. Kullanıcılar tamamen anonim olarak hizmetten yararlanır." data-text-en="No personal information such as identity, name-surname, phone number, e-mail is requested or stored to use the system. Users benefit from the service completely anonymously.">Sistemi kullanmak için kimlik, ad-soyad, telefon numarası, e-posta gibi herhangi bir kişisel bilgi talep edilmez veya saklanmaz. Kullanıcılar tamamen anonim olarak hizmetten yararlanır.</p>
+                
+                <h4 data-text-tr="3. KVKK Uyarısı" data-text-en="3. GDPR Notice">3. KVKK Uyarısı</h4>
+                <p data-text-tr="6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") kapsamında, sistem yalnızca teknik olarak gerekli anonim oturum bilgilerini (örneğin tarayıcı tipi, bağlantı süresi, hata kayıtları) geçici olarak işleyebilir. Bu veriler kimliğinizi tespit etmeyecek şekilde tutulur ve sistem performansı amacıyla kısa süreli saklanır." data-text-en="Within the scope of the Personal Data Protection Law No. 6698 (\"GDPR\"), the system can only temporarily process technically necessary anonymous session information (e.g. browser type, connection time, error logs). This data is kept in a way that will not identify you and is stored for a short time for system performance purposes.">6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında, sistem yalnızca teknik olarak gerekli anonim oturum bilgilerini (örneğin tarayıcı tipi, bağlantı süresi, hata kayıtları) geçici olarak işleyebilir. Bu veriler kimliğinizi tespit etmeyecek şekilde tutulur ve sistem performansı amacıyla kısa süreli saklanır.</p>
+                
+                <h4 data-text-tr="4. Kullanıcı Sorumluluğu" data-text-en="4. User Responsibility">4. Kullanıcı Sorumluluğu</h4>
+                <p data-text-tr="Bu hizmet, teknik destek amacıyla sunulur. Görüşme esnasında kullanıcı tarafından iletilen her türlü bilgi, belge veya kişisel veri paylaşımı tamamen kullanıcının kendi sorumluluğundadır." data-text-en="This service is provided for technical support purposes. Any information, documents or personal data shared by the user during the conversation is entirely the user's own responsibility.">Bu hizmet, teknik destek amacıyla sunulur. Görüşme esnasında kullanıcı tarafından iletilen her türlü bilgi, belge veya kişisel veri paylaşımı tamamen kullanıcının kendi sorumluluğundadır.</p>
+                
+                <h4 data-text-tr="5. Onay" data-text-en="5. Consent">5. Onay</h4>
+                <p data-text-tr="Bu metni onaylayarak:" data-text-en="By approving this text:">Bu metni onaylayarak:</p>
+                <ul>
+                    <li data-text-tr="Ses kayıtlarının tutulmayacağını," data-text-en="That voice recordings will not be kept,">Ses kayıtlarının tutulmayacağını,</li>
+                    <li data-text-tr="Kimliğimin tespitine imkân verecek herhangi bir bilginin talep edilmediğini," data-text-en="That no information that would allow identification of my identity is requested,">Kimliğimin tespitine imkân verecek herhangi bir bilginin talep edilmediğini,</li>
+                    <li data-text-tr="Görüşme sırasında kendi isteğimle paylaşacağım bilgilerden yalnızca kendimin sorumlu olacağımı" data-text-en="That I will be solely responsible for the information I share voluntarily during the conversation">Görüşme sırasında kendi isteğimle paylaşacağım bilgilerden yalnızca kendimin sorumlu olacağımı</li>
+                </ul>
+                <p data-text-tr="kabul ve beyan ediyorum." data-text-en="I accept and declare.">kabul ve beyan ediyorum.</p>
+            </div>
+            
+            <div class="kvkk-checkbox-container">
+                <input type="checkbox" id="kvkkCheckbox" class="kvkk-checkbox">
+                <label for="kvkkCheckbox" class="kvkk-checkbox-label" data-text-tr="Okudum, anladım, onaylıyorum" data-text-en="I have read, understood and approve">Okudum, anladım, onaylıyorum</label>
+            </div>
+            
+            <div class="kvkk-buttons">
+                <button class="btn btn-kvkk-decline" onclick="declineKVKK()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <span data-text-tr="Reddet" data-text-en="Decline">Reddet</span>
+                </button>
+                <button class="btn btn-kvkk-accept" id="kvkkAcceptBtn" disabled onclick="acceptKVKK()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span data-text-tr="Onaylıyorum" data-text-en="I Approve">Onaylıyorum</span>
+                </button>
+            </div>
+        </div>
+        
         <div class="app-content">
             <!-- Giriş Ekranı -->
-            <div id="loginScreen">
+            <div id="loginScreen" class="hidden">
                 <div class="form-group">
                     <label class="form-label" data-text-tr="4 Haneli ID Kodunuz" data-text-en="Your 4-Digit ID Code">4 Haneli ID Kodunuz</label>
                     <input type="text" class="form-input user-id-input" id="userIdInput" 
@@ -518,8 +648,8 @@
                 <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="rememberMe" style="width: auto; margin: 0;">
                     <label for="rememberMe" style="margin: 0; font-size: 14px; color: #374151; cursor: pointer;" 
-                           data-text-tr="🔐 Beni Hatırla" data-text-en="🔐 Remember Me">
-                        🔐 Beni Hatırla
+                           data-text-tr="🔒 Beni Hatırla" data-text-en="🔒 Remember Me">
+                        🔒 Beni Hatırla
                     </label>
                 </div>
                 <button class="btn btn-login" id="loginButton">
@@ -532,7 +662,7 @@
                 <div class="contact-info">
                     <strong data-text-tr="💳 Kredi Talebi" data-text-en="💳 Credit Request">💳 Kredi Talebi</strong>
                     <div style="margin-top: 10px;">
-                        <button class="btn btn-whatsapp" id="requestCreditButton">
+                        <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
                             <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
                                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
                             </svg>
@@ -581,13 +711,13 @@
                             Aramayı kabul ediyor musunuz?
                         </div>
                         <div class="incoming-call-buttons">
-                            <button class="btn btn-accept" id="acceptCallButton">
+                            <button class="btn btn-accept" onclick="acceptIncomingCall()">
                                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                                 </svg>
                                 <span data-text-tr="Kabul Et" data-text-en="Accept">Kabul Et</span>
                             </button>
-                            <button class="btn btn-reject" id="rejectCallButton">
+                            <button class="btn btn-reject" onclick="rejectIncomingCall()">
                                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                                 </svg>
@@ -599,21 +729,21 @@
                 
                 <!-- Boş Durum -->
                 <div id="idleState">
-                    <button class="btn btn-call" id="callButton">
+                    <button class="btn btn-call" onclick="startCall()">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                         </svg>
                         <span data-text-tr="Ustamı Ara" data-text-en="Call Master">Ustamı Ara</span>
                     </button>
                     
-                    <button class="btn btn-whatsapp" id="requestCreditButtonMain">
+                    <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
                         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
                         </svg>
                         <span data-text-tr="WhatsApp Kredi Talebi" data-text-en="WhatsApp Credit Request">WhatsApp Kredi Talebi</span>
                     </button>
                     
-                    <button class="btn btn-logout" id="logoutButton">
+                    <button class="btn btn-logout" onclick="logoutUser()">
                         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                         </svg>
@@ -631,7 +761,7 @@
                         <div style="font-size: 14px; color: #64748b; margin-top: 8px;" 
                              data-text-tr="Lütfen bekleyin" data-text-en="Please wait">Lütfen bekleyin</div>
                     </div>
-                    <button class="btn btn-end" id="cancelCallButton">
+                    <button class="btn btn-end" onclick="cancelCall()">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                         </svg>
@@ -656,7 +786,7 @@
                              data-text-tr="📊 Görüşme Aktif" data-text-en="📊 Call Active">📊 Görüşme Aktif</div>
                         <div class="call-timer" id="callTimer">00:00</div>
                     </div>
-                    <button class="btn btn-end" id="endCallButton">
+                    <button class="btn btn-end" onclick="endCall()">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                         </svg>
@@ -695,7 +825,7 @@
                      data-text-tr="0 dakika" data-text-en="0 minutes">0 dakika</div>
             </div>
             
-            <button class="credit-modal-close" id="closeCreditModalButton">
+            <button class="credit-modal-close" onclick="closeCreditModal()">
                 <span data-text-tr="✓ Tamam" data-text-en="✓ OK">✓ Tamam</span>
             </button>
         </div>
@@ -708,6 +838,64 @@
     <script>
         // Language support
         let currentLanguage = 'tr';
+        let socket = null;
+        let peerConnection = null;
+        let localStream = null;
+        let callState = 'idle';
+        let callTimer = null;
+        let callDuration = 0;
+        let callStartTime = null;
+        let isLoggedIn = false;
+        let serverUrl = 'wss://vipcep-server-production.up.railway.app';
+        let ringbackAudio = null;
+        let incomingCallInfo = null;
+        let kvkkApproved = false;
+        
+        let userInfo = {
+            id: '',
+            name: '',
+            credits: 0,
+            adminId: "ADMIN001"
+        };
+        
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        
+        // Sayfa yüklendiğinde başlat
+        window.onload = function() {
+            init();
+        };
+        
+        function init() {
+            setupEventListeners();
+            loadSavedUserInfo();
+            connectToServer();
+            
+            const savedLang = localStorage.getItem('vipcep_language');
+            if (savedLang && (savedLang === 'tr' || savedLang === 'en')) {
+                currentLanguage = savedLang;
+            }
+            updateLanguage();
+        }
+        
+        function setupEventListeners() {
+            // KVKK checkbox
+            document.getElementById('kvkkCheckbox').addEventListener('change', (e) => {
+                document.getElementById('kvkkAcceptBtn').disabled = !e.target.checked;
+            });
+
+            // Login form
+            document.getElementById('userIdInput').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
+            
+            document.getElementById('userIdInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loginUser();
+            });
+            
+            document.getElementById('userNameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') loginUser();
+            });
+        }
         
         function toggleLanguage() {
             currentLanguage = currentLanguage === 'tr' ? 'en' : 'tr';
@@ -716,25 +904,21 @@
         }
         
         function updateLanguage() {
-            // Update flag and language code
             document.getElementById('currentFlag').textContent = currentLanguage === 'tr' ? '🇹🇷' : '🇺🇸';
             document.getElementById('currentLang').textContent = currentLanguage.toUpperCase();
             
-            // Update all text elements
             document.querySelectorAll('[data-text-tr]').forEach(element => {
                 const trText = element.getAttribute('data-text-tr');
                 const enText = element.getAttribute('data-text-en');
                 element.textContent = currentLanguage === 'tr' ? trText : enText;
             });
             
-            // Update placeholders
             document.querySelectorAll('[data-placeholder-tr]').forEach(element => {
                 const trPlaceholder = element.getAttribute('data-placeholder-tr');
                 const enPlaceholder = element.getAttribute('data-placeholder-en');
                 element.placeholder = currentLanguage === 'tr' ? trPlaceholder : enPlaceholder;
             });
             
-            // Update connection status text
             updateConnectionStatus();
         }
         
@@ -748,189 +932,916 @@
                 connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı Yok' : 'Disconnected';
             }
         }
-        
-        // WhatsApp message generator with language support
-        function generateWhatsAppMessage() {
-            const name = userInfo.name || document.getElementById('userNameInput').value || (currentLanguage === 'tr' ? 'Belirtilmedi' : 'Not specified');
-            const id = userInfo.id || document.getElementById('userIdInput').value || (currentLanguage === 'tr' ? 'Belirtilmedi' : 'Not specified');
-            
-            if (currentLanguage === 'tr') {
-                return `🎯 VIPCEP Kredi Talebi\n\n👤 Ad: ${name}\n🆔 ID: ${id}\n💳 Kredi talep ediyorum\n\nLütfen bana kredi yükleyip arama yapmamı sağlayın. Teşekkürler.`;
-            } else {
-                return `🎯 VIPCEP Credit Request\n\n👤 Name: ${name}\n🆔 ID: ${id}\n💳 I request credit\n\nPlease load credit for me to make calls. Thank you.`;
-            }
-        }
-        
-        // Global variables (unchanged from original)
-        let socket = null;
-        let peerConnection = null;
-        let localStream = null;
-        let callState = 'idle';
-        let callTimer = null;
-        let callDuration = 0;
-        let callStartTime = null;
-        let isLoggedIn = false;
-        let serverUrl = 'wss://vipcep-server-production.up.railway.app';
-        let ringbackAudio = null;
-        let incomingCallInfo = null;
-        
-        // User info
-        let userInfo = {
-            id: '',
-            name: '',
-            credits: 0,
-            adminId: "ADMIN001"
-        };
-        
-        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-        
-        // Application class (unchanged from original, just keeping the core functionality)
-        class VIPCEPApp {
-            constructor() {
-                this.init();
-            }
-            
-            init() {
-                this.setupEventListeners();
-                this.loadSavedUserInfo();
-                this.connectToServer();
-                
-                // Load saved language
-                const savedLang = localStorage.getItem('vipcep_language');
-                if (savedLang && (savedLang === 'tr' || savedLang === 'en')) {
-                    currentLanguage = savedLang;
+
+        // KVKK functions
+        async function checkKVKKConsent() {
+            return new Promise((resolve) => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'kvkk-check' }));
+                    
+                    const messageHandler = (event) => {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'kvkk-status') {
+                            socket.removeEventListener('message', messageHandler);
+                            resolve(message.hasConsent);
+                        }
+                    };
+                    
+                    socket.addEventListener('message', messageHandler);
+                    
+                    setTimeout(() => {
+                        socket.removeEventListener('message', messageHandler);
+                        resolve(false);
+                    }, 5000);
+                } else {
+                    resolve(false);
                 }
-                updateLanguage();
-            }
+            });
+        }
+
+        async function saveKVKKConsent() {
+            return new Promise((resolve) => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'kvkk-consent' }));
+                    
+                    const messageHandler = (event) => {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'kvkk-consent-response') {
+                            socket.removeEventListener('message', messageHandler);
+                            resolve(message.success);
+                        }
+                    };
+                    
+                    socket.addEventListener('message', messageHandler);
+                    
+                    setTimeout(() => {
+                        socket.removeEventListener('message', messageHandler);
+                        resolve(false);
+                    }, 5000);
+                } else {
+                    resolve(false);
+                }
+            });
+        }
+
+        async function acceptKVKK() {
+            if (!document.getElementById('kvkkCheckbox').checked) return;
             
-            setupEventListeners() {
-                // Login form event listeners
-                document.getElementById('userIdInput').addEventListener('input', (e) => {
-                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                });
+            const success = await saveKVKKConsent();
+            if (success) {
+                kvkkApproved = true;
+                document.getElementById('kvkkScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
                 
-                document.getElementById('userIdInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.loginUser();
-                });
-                
-                document.getElementById('userNameInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.loginUser();
-                });
-                
-                // Button event listeners
-                document.getElementById('loginButton').addEventListener('click', () => this.loginUser());
-                document.getElementById('callButton').addEventListener('click', () => this.startCall());
-                document.getElementById('cancelCallButton').addEventListener('click', () => this.cancelCall());
-                document.getElementById('endCallButton').addEventListener('click', () => this.endCall());
-                document.getElementById('acceptCallButton').addEventListener('click', () => this.acceptIncomingCall());
-                document.getElementById('rejectCallButton').addEventListener('click', () => this.rejectIncomingCall());
-                document.getElementById('logoutButton').addEventListener('click', () => this.logoutUser());
-                document.getElementById('requestCreditButton').addEventListener('click', () => this.requestCreditWhatsApp());
-                document.getElementById('requestCreditButtonMain').addEventListener('click', () => this.requestCreditWhatsApp());
-                document.getElementById('closeCreditModalButton').addEventListener('click', () => this.closeCreditModal());
-            }
-            
-            loadSavedUserInfo() {
+                const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
                 const savedUserId = localStorage.getItem('vipcep_user_id');
                 const savedUserName = localStorage.getItem('vipcep_user_name');
-                const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
                 
                 if (rememberMe && savedUserId && savedUserName) {
-                    document.getElementById('userIdInput').value = savedUserId;
-                    document.getElementById('userNameInput').value = savedUserName;
-                    document.getElementById('rememberMe').checked = true;
-                    
                     setTimeout(() => {
                         const welcomeMsg = currentLanguage === 'tr' 
                             ? `Hoş geldiniz ${savedUserName}! Otomatik giriş yapılıyor...`
                             : `Welcome ${savedUserName}! Auto-login in progress...`;
-                        this.showLoginMessage(welcomeMsg, 'success');
+                        showLoginMessage(welcomeMsg, 'success');
                         
                         setTimeout(() => {
-                            this.loginUser();
+                            loginUser();
                         }, 1500);
                     }, 500);
                 }
+            } else {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Onay kaydedilemedi. Lütfen tekrar deneyin.'
+                    : 'Consent could not be saved. Please try again.';
+                alert(errorMsg);
+            }
+        }
+
+        function declineKVKK() {
+            const message = currentLanguage === 'tr' 
+                ? 'KVKK onayı olmadan sistemi kullanamazsınız.'
+                : 'You cannot use the system without GDPR consent.';
+            alert(message);
+            window.close();
+        }
+        
+        function loadSavedUserInfo() {
+            const savedUserId = localStorage.getItem('vipcep_user_id');
+            const savedUserName = localStorage.getItem('vipcep_user_name');
+            const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
+            
+            if (rememberMe && savedUserId && savedUserName) {
+                document.getElementById('userIdInput').value = savedUserId;
+                document.getElementById('userNameInput').value = savedUserName;
+                document.getElementById('rememberMe').checked = true;
+            }
+        }
+        
+        function saveUserInfo() {
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            if (rememberMe) {
+                localStorage.setItem('vipcep_user_id', userInfo.id);
+                localStorage.setItem('vipcep_user_name', userInfo.name);
+                localStorage.setItem('vipcep_remember_me', 'true');
+            } else {
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+                localStorage.removeItem('vipcep_remember_me');
+            }
+        }
+        
+        function requestCreditWhatsApp() {
+            const name = userInfo.name || document.getElementById('userNameInput').value || (currentLanguage === 'tr' ? 'Belirtilmedi' : 'Not specified');
+            const id = userInfo.id || document.getElementById('userIdInput').value || (currentLanguage === 'tr' ? 'Belirtilmedi' : 'Not specified');
+            
+            let message;
+            if (currentLanguage === 'tr') {
+                message = `🎯 VIPCEP Kredi Talebi\n\n👤 Ad: ${name}\n🆔 ID: ${id}\n💳 Kredi talep ediyorum\n\nLütfen bana kredi yükleyip arama yapmamı sağlayın. Teşekkürler.`;
+            } else {
+                message = `🎯 VIPCEP Credit Request\n\n👤 Name: ${name}\n🆔 ID: ${id}\n💳 I request credit\n\nPlease load credit for me to make calls. Thank you.`;
             }
             
-            saveUserInfo() {
-                const rememberMe = document.getElementById('rememberMe').checked;
+            const phoneNumber = '905374792403';
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        function connectToServer() {
+            try {
+                socket = new WebSocket(serverUrl);
                 
-                if (rememberMe) {
-                    localStorage.setItem('vipcep_user_id', userInfo.id);
-                    localStorage.setItem('vipcep_user_name', userInfo.name);
-                    localStorage.setItem('vipcep_remember_me', 'true');
-                } else {
-                    localStorage.removeItem('vipcep_user_id');
-                    localStorage.removeItem('vipcep_user_name');
-                    localStorage.removeItem('vipcep_remember_me');
-                }
-            }
-            
-            loginUser() {
-                const userId = document.getElementById('userIdInput').value.trim();
-                const userName = document.getElementById('userNameInput').value.trim();
-                
-                if (!userId || userId.length !== 4) {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Lütfen 4 haneli ID kodunuzu girin!'
-                        : 'Please enter your 4-digit ID code!';
-                    this.showLoginMessage(errorMsg, 'error');
-                    return;
-                }
-                
-                if (!userName || userName.length < 2) {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Lütfen adınızı ve soyadınızı girin!'
-                        : 'Please enter your first and last name!';
-                    this.showLoginMessage(errorMsg, 'error');
-                    return;
-                }
-                
-                userInfo.id = userId;
-                userInfo.name = userName;
-                this.saveUserInfo();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'login-request',
-                        userId: userId,
-                        userName: userName
-                    }));
+                socket.onopen = async () => {
+                    setConnectionStatus('connected');
                     
-                    document.getElementById('loginButton').disabled = true;
-                    const checkingText = currentLanguage === 'tr' ? '🔄 Kontrol Ediliyor...' : '🔄 Checking...';
-                    document.getElementById('loginButton').innerHTML = checkingText;
-                } else {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Sunucu bağlantısı yok. Lütfen bekleyin...'
-                        : 'No server connection. Please wait...';
-                    this.showLoginMessage(errorMsg, 'error');
-                }
+                    const hasConsent = await checkKVKKConsent();
+                    if (hasConsent) {
+                        kvkkApproved = true;
+                        document.getElementById('kvkkScreen').classList.add('hidden');
+                        document.getElementById('loginScreen').classList.remove('hidden');
+                        
+                        const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
+                        const savedUserId = localStorage.getItem('vipcep_user_id');
+                        const savedUserName = localStorage.getItem('vipcep_user_name');
+                        
+                        if (rememberMe && savedUserId && savedUserName) {
+                            setTimeout(() => {
+                                const welcomeMsg = currentLanguage === 'tr' 
+                                    ? `Hoş geldiniz ${savedUserName}! Otomatik giriş yapılıyor...`
+                                    : `Welcome ${savedUserName}! Auto-login in progress...`;
+                                showLoginMessage(welcomeMsg, 'success');
+                                
+                                setTimeout(() => {
+                                    loginUser();
+                                }, 1500);
+                            }, 500);
+                        }
+                    }
+                };
+                
+                socket.onclose = () => {
+                    setConnectionStatus('disconnected');
+                    isLoggedIn = false;
+                    setTimeout(() => connectToServer(), 3000);
+                };
+                
+                socket.onerror = () => {
+                    setConnectionStatus('disconnected');
+                };
+                
+                socket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                };
+                
+            } catch (error) {
+                setConnectionStatus('error');
+            }
+        }
+        
+        function setConnectionStatus(status) {
+            const connectionDot = document.getElementById('connectionDot');
+            
+            switch (status) {
+                case 'connected':
+                    connectionDot.className = 'status-dot status-connected';
+                    break;
+                case 'disconnected':
+                    connectionDot.className = 'status-dot status-disconnected';
+                    break;
             }
             
-            loginSuccess() {
-                isLoggedIn = true;
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                
-                document.getElementById('displayUserName').textContent = userInfo.name;
-                document.getElementById('displayUserId').textContent = '#' + userInfo.id;
-                this.updateCreditsDisplay();
-                
+            updateConnectionStatus();
+        }
+        
+        function loginUser() {
+            const userId = document.getElementById('userIdInput').value.trim();
+            const userName = document.getElementById('userNameInput').value.trim();
+            
+            if (!userId || userId.length !== 4) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Lütfen 4 haneli ID kodunuzu girin!'
+                    : 'Please enter your 4-digit ID code!';
+                showLoginMessage(errorMsg, 'error');
+                return;
+            }
+            
+            if (!userName || userName.length < 2) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Lütfen adınızı ve soyadınızı girin!'
+                    : 'Please enter your first and last name!';
+                showLoginMessage(errorMsg, 'error');
+                return;
+            }
+            
+            userInfo.id = userId;
+            userInfo.name = userName;
+            saveUserInfo();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
-                    type: 'register',
+                    type: 'login-request',
+                    userId: userId,
+                    userName: userName
+                }));
+                
+                document.getElementById('loginButton').disabled = true;
+                const checkingText = currentLanguage === 'tr' ? '🔄 Kontrol Ediliyor...' : '🔄 Checking...';
+                document.getElementById('loginButton').innerHTML = checkingText;
+            } else {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Sunucu bağlantısı yok. Lütfen bekleyin...'
+                    : 'No server connection. Please wait...';
+                showLoginMessage(errorMsg, 'error');
+            }
+        }
+        
+        function loginSuccess() {
+            isLoggedIn = true;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            document.getElementById('displayUserName').textContent = userInfo.name;
+            document.getElementById('displayUserId').textContent = '#' + userInfo.id;
+            updateCreditsDisplay();
+            
+            socket.send(JSON.stringify({
+                type: 'register',
+                userId: userInfo.id,
+                name: userInfo.name,
+                userType: 'customer'
+            }));
+        }
+        
+        function loginFailed(reason) {
+            const defaultReason = currentLanguage === 'tr' 
+                ? 'Giriş başarısız! ID kodunuzu kontrol edin.'
+                : 'Login failed! Please check your ID code.';
+            showLoginMessage(reason || defaultReason, 'error');
+            
+            document.getElementById('loginButton').disabled = false;
+            const loginText = currentLanguage === 'tr' ? 'Giriş Yap' : 'Sign In';
+            document.getElementById('loginButton').innerHTML = `
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                ${loginText}
+            `;
+        }
+        
+        function showLoginMessage(message, type) {
+            const messageDiv = document.getElementById('loginMessage');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function updateCreditsDisplay() {
+            const creditsElement = document.getElementById('displayUserCredits');
+            const creditsText = currentLanguage === 'tr' ? `${userInfo.credits} dk` : `${userInfo.credits} min`;
+            creditsElement.textContent = creditsText;
+            creditsElement.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').classList.add('hidden');
+        }
+        
+        function setState(newState) {
+            callState = newState;
+            
+            document.getElementById('idleState').classList.add('hidden');
+            document.getElementById('callingState').classList.add('hidden');
+            document.getElementById('connectingState').classList.add('hidden');
+            document.getElementById('connectedState').classList.add('hidden');
+            document.getElementById('incomingCallState').classList.add('hidden');
+            
+            const statusElement = document.getElementById('displayUserStatus');
+            
+            switch (newState) {
+                case 'idle':
+                    document.getElementById('idleState').classList.remove('hidden');
+                    statusElement.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
+                    break;
+                case 'calling':
+                    document.getElementById('callingState').classList.remove('hidden');
+                    statusElement.textContent = currentLanguage === 'tr' ? 'Aranıyor...' : 'Calling...';
+                    break;
+                case 'connecting':
+                    document.getElementById('connectingState').classList.remove('hidden');
+                    statusElement.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                    break;
+                case 'connected':
+                    document.getElementById('connectedState').classList.remove('hidden');
+                    statusElement.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In Call';
+                    startCallTimer();
+                    break;
+                case 'incoming':
+                    document.getElementById('incomingCallState').classList.remove('hidden');
+                    statusElement.textContent = currentLanguage === 'tr' ? 'Gelen Arama' : 'Incoming Call';
+                    break;
+            }
+        }
+        
+        function handleMessage(message) {
+            console.log('Message received:', message.type);
+            
+            switch (message.type) {
+                case 'login-response':
+                    if (message.success) {
+                        userInfo.credits = message.credits || 0;
+                        loginSuccess();
+                    } else {
+                        loginFailed(message.reason);
+                    }
+                    break;
+
+                case 'admin-call-request':
+                    incomingCallInfo = {
+                        adminId: message.adminId,
+                        adminName: message.adminName || 'Technical Support',
+                        startTime: Date.now()
+                    };
+                    
+                    setState('incoming');
+                    playIncomingCallSound();
+                    
+                    setTimeout(() => {
+                        if (incomingCallInfo && callState === 'incoming') {
+                            rejectIncomingCall('timeout');
+                        }
+                    }, 30000);
+                    break;
+
+                case 'admin-call-cancelled':
+                    if (incomingCallInfo) {
+                        hideIncomingCall();
+                        const errorMsg = currentLanguage === 'tr' 
+                            ? 'Teknik destek aramayı iptal etti.'
+                            : 'Technical support cancelled the call.';
+                        showError(errorMsg);
+                        stopIncomingCallSound();
+                    }
+                    break;
+                    
+                case 'call-accepted':
+                    stopRingbackTone();
+                    setupPeerConnection();
+                    setState('connecting');
+                    break;
+                    
+                case 'call-rejected':
+                    stopRingbackTone();
+                    setState('idle');
+                    if (message.reason === 'unauthorized') {
+                        const errorMsg = currentLanguage === 'tr' 
+                            ? 'ID kodunuz onaylanmamış! Lütfen kredi talep edin.'
+                            : 'Your ID code is not approved! Please request credit.';
+                        showError(errorMsg);
+                    } else {
+                        const errorMsg = currentLanguage === 'tr' 
+                            ? 'Arama reddedildi veya usta müsait değil.'
+                            : 'Call rejected or master not available.';
+                        showError(errorMsg);
+                    }
+                    break;
+                    
+                case 'ice-candidate':
+                    if (peerConnection) {
+                        peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    }
+                    break;
+                    
+                case 'answer':
+                    if (peerConnection) {
+                        peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
+                            .then(() => {
+                                console.log('✅ Remote description (answer) set');
+                            })
+                            .catch(error => {
+                                console.error('❌ Remote description error:', error);
+                                endCall();
+                            });
+                    }
+                    break;
+
+                case 'offer':
+                    if (incomingCallInfo && peerConnection) {
+                        handleIncomingOffer(message);
+                    }
+                    break;
+                    
+                case 'call-ended':
+                    if (message.creditsUsed && message.creditsUsed > 0) {
+                        userInfo.credits = Math.max(0, userInfo.credits - message.creditsUsed);
+                        updateCreditsDisplay();
+                        showCreditModal(message.duration, message.creditsUsed, userInfo.credits);
+                    }
+                    endCall();
+                    break;
+                    
+                case 'credit-update':
+                    userInfo.credits = message.credits;
+                    updateCreditsDisplay();
+                    break;
+            }
+        }
+
+        function acceptIncomingCall() {
+            if (!incomingCallInfo) return;
+            
+            stopIncomingCallSound();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-accepted',
                     userId: userInfo.id,
-                    name: userInfo.name,
-                    userType: 'customer'
+                    adminId: incomingCallInfo.adminId
                 }));
             }
             
-            loginFailed(reason) {
-                const defaultReason = currentLanguage === 'tr' 
-                    ? 'Giriş başarısız! ID kodunuzu kontrol edin.'
-                    : 'Login failed! Please check your ID code.';
-                this.showLoginMessage(reason || defaultReason, 'error');
+            setupIncomingPeerConnection();
+        }
+
+        function rejectIncomingCall(reason = 'user_rejected') {
+            if (!incomingCallInfo) return;
+            
+            stopIncomingCallSound();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const rejectReason = reason === 'timeout' 
+                    ? (currentLanguage === 'tr' 
+                        ? 'Müşteri aramayı cevaplamadı (30 saniye zaman aşımı)'
+                        : 'Customer did not answer call (30 second timeout)')
+                    : (currentLanguage === 'tr' 
+                        ? 'Müşteri aramayı reddetti'
+                        : 'Customer rejected the call');
+                    
+                socket.send(JSON.stringify({
+                    type: 'admin-call-rejected',
+                    userId: userInfo.id,
+                    adminId: incomingCallInfo.adminId,
+                    reason: rejectReason
+                }));
+            }
+            
+            hideIncomingCall();
+            
+            if (reason === 'timeout') {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Gelen arama zaman aşımına uğradı.'
+                    : 'Incoming call timed out.';
+                showError(errorMsg);
+            }
+        }
+
+        function hideIncomingCall() {
+            incomingCallInfo = null;
+            setState('idle');
+        }
+
+        async function setupIncomingPeerConnection() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                localStream = stream;
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                stream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, stream);
+                });
+                
+                peerConnection.ontrack = (event) => {
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (event.streams && event.streams[0]) {
+                        remoteAudio.srcObject = event.streams[0];
+                        remoteAudio.play().catch(e => console.log('Remote audio play error:', e));
+                    }
+                };
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && socket && incomingCallInfo) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: incomingCallInfo.adminId
+                        }));
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    switch (peerConnection.connectionState) {
+                        case 'connected':
+                            setState('connected');
+                            callStartTime = Date.now();
+                            incomingCallInfo = null;
+                            break;
+                        case 'connecting':
+                            setState('connecting');
+                            break;
+                        case 'failed':
+                        case 'disconnected':
+                            endCall();
+                            break;
+                    }
+                };
+                
+                setState('connecting');
+                
+            } catch (error) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Mikrofon erişimi gerekli!'
+                    : 'Microphone access required!';
+                showError(errorMsg);
+                rejectIncomingCall('mic_error');
+            }
+        }
+
+        async function handleIncomingOffer(message) {
+            if (!peerConnection) return;
+            
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                socket.send(JSON.stringify({
+                    type: 'answer',
+                    answer: answer,
+                    targetId: incomingCallInfo.adminId,
+                    userId: userInfo.id
+                }));
+                
+            } catch (error) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'WebRTC bağlantı hatası oluştu.'
+                    : 'WebRTC connection error occurred.';
+                showError(errorMsg);
+                rejectIncomingCall('webrtc_error');
+            }
+        }
+
+        function playIncomingCallSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const playRing = () => {
+                    if (callState !== 'incoming') return;
+                    
+                    const oscillator1 = audioContext.createOscillator();
+                    const oscillator2 = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator1.connect(gainNode);
+                    oscillator2.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator1.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator2.frequency.setValueAtTime(880, audioContext.currentTime);
+                    oscillator1.type = 'sine';
+                    oscillator2.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    
+                    oscillator1.start(audioContext.currentTime);
+                    oscillator2.start(audioContext.currentTime);
+                    oscillator1.stop(audioContext.currentTime + 1.0);
+                    oscillator2.stop(audioContext.currentTime + 1.0);
+                    
+                    setTimeout(playRing, 1500);
+                };
+                
+                playRing();
+            } catch (error) {
+                console.log('Ring sound could not play:', error);
+            }
+        }
+
+        function stopIncomingCallSound() {
+            // Sound stops automatically when callState changes
+        }
+        
+        function playRingbackTone() {
+            try {
+                if (ringbackAudio) stopRingbackTone();
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const playTone = () => {
+                    if (callState !== 'calling') return;
+                    
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(425, audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 1.0);
+                    
+                    setTimeout(playTone, 4000);
+                };
+                
+                playTone();
+                ringbackAudio = { audioContext };
+                
+            } catch (error) {
+                console.log('Ringback tone could not play:', error);
+            }
+        }
+        
+        function stopRingbackTone() {
+            if (ringbackAudio) {
+                try {
+                    if (ringbackAudio.audioContext && ringbackAudio.audioContext.state === 'running') {
+                        ringbackAudio.audioContext.suspend();
+                    }
+                } catch (error) {
+                    console.log('Ringback tone stop error:', error);
+                }
+                ringbackAudio = null;
+            }
+        }
+        
+        async function setupPeerConnection() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } 
+                });
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                peerConnection.ontrack = (event) => {
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (event.streams && event.streams[0]) {
+                        remoteAudio.srcObject = event.streams[0];
+                        remoteAudio.play().catch(e => console.log('Remote audio play error:', e));
+                    }
+                };
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && socket) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: userInfo.adminId
+                        }));
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    switch (peerConnection.connectionState) {
+                        case 'connected':
+                            setState('connected');
+                            callStartTime = Date.now();
+                            break;
+                        case 'connecting':
+                            setState('connecting');
+                            break;
+                        case 'failed':
+                        case 'disconnected':
+                            endCall();
+                            break;
+                    }
+                };
+                
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                socket.send(JSON.stringify({
+                    type: 'offer',
+                    offer: offer,
+                    targetId: userInfo.adminId,
+                    userId: userInfo.id,
+                    userName: userInfo.name
+                }));
+                
+            } catch (error) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Mikrofon erişimi gerekli.'
+                    : 'Microphone access required.';
+                showError(errorMsg);
+                setState('idle');
+            }
+        }
+        
+        function startCall() {
+            if (!isLoggedIn) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Lütfen önce giriş yapın!'
+                    : 'Please login first!';
+                showError(errorMsg);
+                return;
+            }
+            
+            if (userInfo.credits <= 0) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Yetersiz kredi! Kredi talep etmek için "Kredi Talep Et" butonunu kullanın.'
+                    : 'Insufficient credit! Use "Request Credit" button to request credit.';
+                showError(errorMsg);
+                return;
+            }
+            
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Sunucu bağlantısı yok. Lütfen bekleyin...'
+                    : 'No server connection. Please wait...';
+                showError(errorMsg);
+                return;
+            }
+            
+            setState('calling');
+            hideError();
+            playRingbackTone();
+            
+            socket.send(JSON.stringify({
+                type: 'call-request',
+                userId: userInfo.id,
+                userName: userInfo.name,
+                credits: userInfo.credits,
+                targetId: userInfo.adminId
+            }));
+            
+            setTimeout(() => {
+                if (callState === 'calling') {
+                    setState('idle');
+                    const errorMsg = currentLanguage === 'tr' 
+                        ? 'Arama zaman aşımına uğradı.'
+                        : 'Call timed out.';
+                    showError(errorMsg);
+                }
+            }, 30000);
+        }
+        
+        function cancelCall() {
+            if (socket && callState === 'calling') {
+                const reason = currentLanguage === 'tr' 
+                    ? 'Müşteri aramayı iptal etti'
+                    : 'Customer cancelled the call';
+                    
+                socket.send(JSON.stringify({
+                    type: 'call-cancelled',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    reason: reason
+                }));
+            }
+            
+            endCall();
+        }
+        
+        function endCall() {
+            stopRingbackTone();
+            stopIncomingCallSound();
+            
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (socket && callState === 'connected' && callStartTime) {
+                const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
+                const creditsUsed = Math.ceil(actualDuration / 60);
+                
+                socket.send(JSON.stringify({
+                    type: 'end-call',
+                    userId: userInfo.id,
+                    duration: actualDuration,
+                    creditsUsed: creditsUsed,
+                    targetId: userInfo.adminId
+                }));
+            }
+            
+            if (incomingCallInfo) {
+                incomingCallInfo = null;
+            }
+            
+            setState('idle');
+            callDuration = 0;
+            callStartTime = null;
+        }
+        
+        function startCallTimer() {
+            callDuration = 0;
+            callTimer = setInterval(() => {
+                callDuration++;
+                const mins = Math.floor(callDuration / 60);
+                const secs = callDuration % 60;
+                document.getElementById('callTimer').textContent = 
+                    mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+            }, 1000);
+        }
+        
+        function showCreditModal(duration, creditsUsed, remainingCredits) {
+            const mins = Math.floor(duration / 60);
+            const secs = duration % 60;
+            const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            
+            document.getElementById('modalDuration').textContent = durationText;
+            
+            const creditsUsedText = currentLanguage === 'tr' ? `${creditsUsed} dakika` : `${creditsUsed} minutes`;
+            const remainingText = currentLanguage === 'tr' ? `${remainingCredits} dakika` : `${remainingCredits} minutes`;
+            
+            document.getElementById('modalCreditsUsed').textContent = creditsUsedText;
+            document.getElementById('modalRemainingCredits').textContent = remainingText;
+            
+            document.getElementById('creditModalOverlay').classList.remove('hidden');
+        }
+        
+        function closeCreditModal() {
+            document.getElementById('creditModalOverlay').classList.add('hidden');
+        }
+        
+        function logoutUser() {
+            const confirmMsg = currentLanguage === 'tr' 
+                ? 'Çıkış yapmak istediğinizden emin misiniz?'
+                : 'Are you sure you want to sign out?';
+                
+            if (confirm(confirmMsg)) {
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+                localStorage.removeItem('vipcep_remember_me');
+                
+                if (callState !== 'idle') {
+                    endCall();
+                }
+                
+                if (socket) {
+                    socket.close();
+                }
+                
+                isLoggedIn = false;
+                userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
+                
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                
+                document.getElementById('userIdInput').value = '';
+                document.getElementById('userNameInput').value = '';
+                document.getElementById('rememberMe').checked = false;
                 
                 document.getElementById('loginButton').disabled = false;
                 const loginText = currentLanguage === 'tr' ? 'Giriş Yap' : 'Sign In';
@@ -940,940 +1851,17 @@
                     </svg>
                     ${loginText}
                 `;
-            }
-            
-            showLoginMessage(message, type) {
-                const messageDiv = document.getElementById('loginMessage');
-                messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-                messageDiv.textContent = message;
-                messageDiv.classList.remove('hidden');
+                
+                const successMsg = currentLanguage === 'tr' 
+                    ? 'Başarıyla çıkış yaptınız!'
+                    : 'Successfully signed out!';
+                showLoginMessage(successMsg, 'success');
                 
                 setTimeout(() => {
-                    messageDiv.classList.add('hidden');
-                }, 5000);
-            }
-            
-            updateCreditsDisplay() {
-                const creditsElement = document.getElementById('displayUserCredits');
-                const creditsText = currentLanguage === 'tr' ? `${userInfo.credits} dk` : `${userInfo.credits} min`;
-                creditsElement.textContent = creditsText;
-                creditsElement.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
-                
-                const callButton = document.getElementById('callButton');
-                if (userInfo.credits <= 0) {
-                    callButton.disabled = true;
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Yetersiz kredi! Kredi talep etmek için "Kredi Talep Et" butonunu kullanın.'
-                        : 'Insufficient credit! Use "Request Credit" button to request credit.';
-                    this.showError(errorMsg);
-                } else {
-                    callButton.disabled = false;
-                    this.hideError();
-                }
-            }
-            
-            requestCreditWhatsApp() {
-                const phoneNumber = '905374792403';
-                const message = encodeURIComponent(generateWhatsAppMessage());
-                const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
-                window.open(whatsappUrl, '_blank');
-            }
-            
-            showCreditModal(duration, creditsUsed, remainingCredits) {
-                const mins = Math.floor(duration / 60);
-                const secs = duration % 60;
-                const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
-                
-                document.getElementById('modalDuration').textContent = durationText;
-                
-                const creditsUsedText = currentLanguage === 'tr' ? `${creditsUsed} dakika` : `${creditsUsed} minutes`;
-                const remainingText = currentLanguage === 'tr' ? `${remainingCredits} dakika` : `${remainingCredits} minutes`;
-                
-                document.getElementById('modalCreditsUsed').textContent = creditsUsedText;
-                document.getElementById('modalRemainingCredits').textContent = remainingText;
-                
-                document.getElementById('creditModalOverlay').classList.remove('hidden');
-                
-                console.log(`💳 Credit modal shown: ${durationText} / ${creditsUsed} credits / ${remainingCredits} remaining`);
-            }
-            
-            closeCreditModal() {
-                document.getElementById('creditModalOverlay').classList.add('hidden');
-            }
-            
-            connectToServer() {
-                try {
-                    console.log('Connecting to:', serverUrl);
-                    socket = new WebSocket(serverUrl);
-                    
-                    socket.onopen = () => {
-                        this.updateConnectionStatus('connected');
-                        console.log('Connected to server:', serverUrl);
-                    };
-                    
-                    socket.onclose = () => {
-                        this.updateConnectionStatus('disconnected');
-                        isLoggedIn = false;
-                        console.log('Connection lost, will retry...');
-                        setTimeout(() => this.connectToServer(), 3000);
-                    };
-                    
-                    socket.onerror = (error) => {
-                        this.updateConnectionStatus('disconnected');
-                        console.error('WebSocket error:', error);
-                    };
-                    
-                    socket.onmessage = (event) => {
-                        const message = JSON.parse(event.data);
-                        this.handleMessage(message);
-                    };
-                    
-                } catch (error) {
-                    this.updateConnectionStatus('error');
-                    console.error('Connection error:', error);
-                }
-            }
-            
-            updateConnectionStatus(status) {
-                const connectionDot = document.getElementById('connectionDot');
-                
-                switch (status) {
-                    case 'connected':
-                        connectionDot.className = 'status-dot status-connected';
-                        break;
-                    case 'disconnected':
-                        connectionDot.className = 'status-dot status-disconnected';
-                        break;
-                }
-                
-                updateConnectionStatus(); // Update text based on current language
-            }
-            
-            showError(message) {
-                const errorElement = document.getElementById('errorMessage');
-                errorElement.textContent = message;
-                errorElement.classList.remove('hidden');
-            }
-            
-            hideError() {
-                document.getElementById('errorMessage').classList.add('hidden');
-            }
-            
-            setState(newState) {
-                callState = newState;
-                
-                document.getElementById('idleState').classList.add('hidden');
-                document.getElementById('callingState').classList.add('hidden');
-                document.getElementById('connectingState').classList.add('hidden');
-                document.getElementById('connectedState').classList.add('hidden');
-                document.getElementById('incomingCallState').classList.add('hidden');
-                
-                const statusElement = document.getElementById('displayUserStatus');
-                
-                switch (newState) {
-                    case 'idle':
-                        document.getElementById('idleState').classList.remove('hidden');
-                        statusElement.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
-                        break;
-                    case 'calling':
-                        document.getElementById('callingState').classList.remove('hidden');
-                        statusElement.textContent = currentLanguage === 'tr' ? 'Aranıyor...' : 'Calling...';
-                        break;
-                    case 'connecting':
-                        document.getElementById('connectingState').classList.remove('hidden');
-                        statusElement.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
-                        break;
-                    case 'connected':
-                        document.getElementById('connectedState').classList.remove('hidden');
-                        statusElement.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In Call';
-                        this.startCallTimer();
-                        break;
-                    case 'incoming':
-                        break;
-                }
-            }
-            
-            // Rest of the methods remain the same as original...
-            // (handleMessage, startCall, endCall, etc. - keeping original functionality)
-            
-            handleMessage(message) {
-                console.log('Message received:', message.type);
-                
-                switch (message.type) {
-                    case 'login-response':
-                        if (message.success) {
-                            userInfo.credits = message.credits || 0;
-                            this.loginSuccess();
-                        } else {
-                            this.loginFailed(message.reason);
-                        }
-                        break;
-
-                    case 'admin-call-request':
-                        console.log('🔔 Admin call received:', message);
-                        
-                        incomingCallInfo = {
-                            adminId: message.adminId,
-                            adminName: message.adminName || 'Technical Support',
-                            startTime: Date.now()
-                        };
-                        
-                        this.showIncomingCall();
-                        this.playIncomingCallSound();
-                        
-                        setTimeout(() => {
-                            if (incomingCallInfo && callState === 'incoming') {
-                                console.log('⏰ Incoming call timeout');
-                                this.rejectIncomingCall('timeout');
-                            }
-                        }, 30000);
-                        break;
-
-                    case 'admin-call-cancelled':
-                        console.log('📞 Admin cancelled call');
-                        if (incomingCallInfo) {
-                            this.hideIncomingCall();
-                            const errorMsg = currentLanguage === 'tr' 
-                                ? 'Teknik destek aramayı iptal etti.'
-                                : 'Technical support cancelled the call.';
-                            this.showError(errorMsg);
-                            this.stopIncomingCallSound();
-                        }
-                        break;
-                        
-                    case 'call-accepted':
-                        this.stopRingbackTone();
-                        this.setupPeerConnection();
-                        this.setState('connecting');
-                        break;
-                        
-                    case 'call-rejected':
-                        this.stopRingbackTone();
-                        this.setState('idle');
-                        if (message.reason === 'unauthorized') {
-                            const errorMsg = currentLanguage === 'tr' 
-                                ? 'ID kodunuz onaylanmamış! Lütfen kredi talep edin.'
-                                : 'Your ID code is not approved! Please request credit.';
-                            this.showError(errorMsg);
-                        } else {
-                            const errorMsg = currentLanguage === 'tr' 
-                                ? 'Arama reddedildi veya usta müsait değil.'
-                                : 'Call rejected or master not available.';
-                            this.showError(errorMsg);
-                        }
-                        break;
-                        
-                    case 'ice-candidate':
-                        if (peerConnection) {
-                            peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                        }
-                        break;
-                        
-                    case 'answer':
-                        if (peerConnection) {
-                            console.log('📥 Answer received from admin');
-                            peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
-                                .then(() => {
-                                    console.log('✅ Remote description (answer) set');
-                                    console.log('⏳ Waiting for ICE connection...');
-                                })
-                                .catch(error => {
-                                    console.error('❌ Remote description error:', error);
-                                    this.endCall();
-                                });
-                        }
-                        break;
-
-                    case 'offer':
-                        if (incomingCallInfo && peerConnection) {
-                            this.handleIncomingOffer(message);
-                        }
-                        break;
-                        
-                    case 'call-ended':
-                        if (message.creditsUsed && message.creditsUsed > 0) {
-                            userInfo.credits = Math.max(0, userInfo.credits - message.creditsUsed);
-                            this.updateCreditsDisplay();
-                            this.showCreditModal(message.duration, message.creditsUsed, userInfo.credits);
-                        }
-                        this.endCall();
-                        break;
-                        
-                    case 'credit-update':
-                        userInfo.credits = message.credits;
-                        this.updateCreditsDisplay();
-                        break;
-                }
-            }
-
-            showIncomingCall() {
-                callState = 'incoming';
-                
-                document.getElementById('idleState').classList.add('hidden');
-                document.getElementById('callingState').classList.add('hidden');
-                document.getElementById('connectingState').classList.add('hidden');
-                document.getElementById('connectedState').classList.add('hidden');
-                
-                document.getElementById('incomingCallState').classList.remove('hidden');
-                const statusText = currentLanguage === 'tr' ? 'Gelen Arama' : 'Incoming Call';
-                document.getElementById('displayUserStatus').textContent = statusText;
-                
-                console.log('📱 Incoming call UI shown');
-            }
-
-            hideIncomingCall() {
-                document.getElementById('incomingCallState').classList.add('hidden');
-                incomingCallInfo = null;
-                callState = 'idle';
-                this.setState('idle');
-            }
-
-            acceptIncomingCall() {
-                if (!incomingCallInfo) {
-                    console.log('❌ No incoming call info found');
-                    return;
-                }
-
-                console.log('✅ Accepting incoming call...');
-                
-                this.stopIncomingCallSound();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'admin-call-accepted',
-                        userId: userInfo.id,
-                        adminId: incomingCallInfo.adminId
-                    }));
-                }
-                
-                this.setupIncomingPeerConnection();
-            }
-
-            rejectIncomingCall(reason = 'user_rejected') {
-                if (!incomingCallInfo) return;
-                
-                console.log('❌ Rejecting incoming call:', reason);
-                
-                this.stopIncomingCallSound();
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    const rejectReason = reason === 'timeout' 
-                        ? (currentLanguage === 'tr' 
-                            ? 'Müşteri aramayı cevaplamadı (30 saniye zaman aşımı)'
-                            : 'Customer did not answer call (30 second timeout)')
-                        : (currentLanguage === 'tr' 
-                            ? 'Müşteri aramayı reddetti'
-                            : 'Customer rejected the call');
-                        
-                    socket.send(JSON.stringify({
-                        type: 'admin-call-rejected',
-                        userId: userInfo.id,
-                        adminId: incomingCallInfo.adminId,
-                        reason: rejectReason
-                    }));
-                }
-                
-                this.hideIncomingCall();
-                
-                if (reason === 'timeout') {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Gelen arama zaman aşımına uğradı.'
-                        : 'Incoming call timed out.';
-                    this.showError(errorMsg);
-                }
-            }
-
-            async setupIncomingPeerConnection() {
-                try {
-                    console.log('🔗 Setting up WebRTC for incoming call...');
-                    
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        } 
-                    });
-                    localStream = stream;
-                    
-                    peerConnection = new RTCPeerConnection(rtcConfig);
-                    
-                    // Add local stream
-                    stream.getTracks().forEach(track => {
-                        peerConnection.addTrack(track, stream);
-                        console.log('🎤 Local track added:', track.kind);
-                    });
-                    
-                    // Remote stream handler
-                    peerConnection.ontrack = (event) => {
-                        console.log('📡 Remote track received:', event.track.kind);
-                        const remoteAudio = document.getElementById('remoteAudio');
-                        if (event.streams && event.streams[0]) {
-                            remoteAudio.srcObject = event.streams[0];
-                            console.log('📊 Remote audio stream assigned');
-                            
-                            remoteAudio.play().then(() => {
-                                console.log('✅ Remote audio started playing');
-                            }).catch(e => {
-                                console.log('⚠️ Remote audio play error:', e);
-                            });
-                        }
-                    };
-                    
-                    // ICE candidate handler
-                    peerConnection.onicecandidate = (event) => {
-                        if (event.candidate && socket && incomingCallInfo) {
-                            socket.send(JSON.stringify({
-                                type: 'ice-candidate',
-                                candidate: event.candidate,
-                                targetId: incomingCallInfo.adminId
-                            }));
-                            console.log('📡 ICE candidate sent:', event.candidate.type);
-                        } else if (!event.candidate) {
-                            console.log('📡 ICE gathering complete');
-                        }
-                    };
-                    
-                    // Connection state monitoring
-                    peerConnection.onconnectionstatechange = () => {
-                        console.log('🔗 Connection State:', peerConnection.connectionState);
-                        switch (peerConnection.connectionState) {
-                            case 'connected':
-                                console.log('✅ WebRTC FULLY CONNECTED!');
-                                this.setState('connected');
-                                callStartTime = Date.now();
-                                incomingCallInfo = null;
-                                break;
-                            case 'connecting':
-                                console.log('🔗 WebRTC connecting...');
-                                this.setState('connecting');
-                                break;
-                            case 'failed':
-                                console.log('❌ WebRTC connection failed');
-                                this.endCall();
-                                break;
-                            case 'disconnected':
-                                console.log('📞 WebRTC connection lost');
-                                this.endCall();
-                                break;
-                        }
-                    };
-                    
-                    // ICE connection state monitoring
-                    peerConnection.oniceconnectionstatechange = () => {
-                        console.log('🧊 ICE Connection State:', peerConnection.iceConnectionState);
-                        switch (peerConnection.iceConnectionState) {
-                            case 'connected':
-                            case 'completed':
-                                console.log('✅ ICE connection established');
-                                if (peerConnection.connectionState === 'connecting') {
-                                    setTimeout(() => {
-                                        if (peerConnection.connectionState === 'connecting') {
-                                            console.log('🔄 ICE connected, updating call state');
-                                            this.setState('connected');
-                                            callStartTime = Date.now();
-                                            incomingCallInfo = null;
-                                        }
-                                    }, 1000);
-                                }
-                                break;
-                            case 'failed':
-                                console.log('❌ ICE connection failed');
-                                this.endCall();
-                                break;
-                        }
-                    };
-                    
-                    this.setState('connecting');
-                    console.log('🎤 Incoming call WebRTC ready - Waiting for offer...');
-                    
-                } catch (error) {
-                    console.error('❌ Incoming call WebRTC error:', error);
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Mikrofon erişimi gerekli!'
-                        : 'Microphone access required!';
-                    this.showError(errorMsg);
-                    this.rejectIncomingCall('mic_error');
-                }
-            }
-
-            async handleIncomingOffer(message) {
-                if (!peerConnection) {
-                    console.log('❌ PeerConnection not ready');
-                    return;
-                }
-                
-                try {
-                    console.log('📥 Offer received from admin');
-                    
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                    console.log('✅ Remote description (offer) set');
-                    
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    console.log('📤 Answer created and local description set');
-                    
-                    socket.send(JSON.stringify({
-                        type: 'answer',
-                        answer: answer,
-                        targetId: incomingCallInfo.adminId,
-                        userId: userInfo.id
-                    }));
-                    
-                    console.log('📞 Incoming call answered - Answer sent');
-                    
-                } catch (error) {
-                    console.error('❌ Offer processing error:', error);
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'WebRTC bağlantı hatası oluştu.'
-                        : 'WebRTC connection error occurred.';
-                    this.showError(errorMsg);
-                    this.rejectIncomingCall('webrtc_error');
-                }
-            }
-
-            playIncomingCallSound() {
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    const playRing = () => {
-                        if (callState !== 'incoming') return;
-                        
-                        const oscillator1 = audioContext.createOscillator();
-                        const oscillator2 = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator1.connect(gainNode);
-                        oscillator2.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator1.frequency.setValueAtTime(440, audioContext.currentTime);
-                        oscillator2.frequency.setValueAtTime(880, audioContext.currentTime);
-                        oscillator1.type = 'sine';
-                        oscillator2.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
-                        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
-                        gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
-                        
-                        oscillator1.start(audioContext.currentTime);
-                        oscillator2.start(audioContext.currentTime);
-                        oscillator1.stop(audioContext.currentTime + 1.0);
-                        oscillator2.stop(audioContext.currentTime + 1.0);
-                        
-                        setTimeout(playRing, 1500);
-                    };
-                    
-                    playRing();
-                    console.log('🔔 Incoming call ring started');
-                    
-                } catch (error) {
-                    console.log('🔇 Ring sound could not play:', error);
-                }
-            }
-
-            stopIncomingCallSound() {
-                console.log('🔇 Incoming call ring stopped');
-            }
-            
-            createRingbackTone() {
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    const sampleRate = audioContext.sampleRate;
-                    const duration = 1.0;
-                    const frameCount = sampleRate * duration;
-                    const arrayBuffer = audioContext.createBuffer(1, frameCount, sampleRate);
-                    const channelData = arrayBuffer.getChannelData(0);
-                    
-                    for (let i = 0; i < frameCount; i++) {
-                        const t = i / sampleRate;
-                        if (t < 1.0) {
-                            channelData[i] = Math.sin(2 * Math.PI * 425 * t) * 0.3;
-                        }
-                    }
-                    
-                    return arrayBuffer;
-                } catch (error) {
-                    console.log('Ringback tone could not be created:', error);
-                    return null;
-                }
-            }
-            
-            playRingbackTone() {
-                try {
-                    if (ringbackAudio) {
-                        this.stopRingbackTone();
-                    }
-                    
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const buffer = this.createRingbackTone();
-                    
-                    if (!buffer) return;
-                    
-                    const playTone = () => {
-                        if (callState !== 'calling') return;
-                        
-                        const source = audioContext.createBufferSource();
-                        source.buffer = buffer;
-                        source.connect(audioContext.destination);
-                        source.start();
-                        
-                        setTimeout(playTone, 4000);
-                    };
-                    
-                    playTone();
-                    ringbackAudio = { audioContext, stop: () => {} };
-                    
-                    console.log('📊 Ringback tone started');
-                } catch (error) {
-                    console.log('Ringback tone could not play:', error);
-                    this.playSimpleRingback();
-                }
-            }
-            
-            playSimpleRingback() {
-                try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    const playBeep = () => {
-                        if (callState !== 'calling') return;
-                        
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-                        oscillator.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                        
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.3);
-                        
-                        setTimeout(playBeep, 2000);
-                    };
-                    
-                    playBeep();
-                    ringbackAudio = { audioContext, stop: () => {} };
-                    
-                    console.log('📊 Simple ringback tone started');
-                } catch (error) {
-                    console.log('Sound could not play:', error);
-                }
-            }
-            
-            stopRingbackTone() {
-                if (ringbackAudio) {
-                    try {
-                        if (ringbackAudio.audioContext && ringbackAudio.audioContext.state === 'running') {
-                            ringbackAudio.audioContext.suspend();
-                        }
-                    } catch (error) {
-                        console.log('Ringback tone stop error:', error);
-                    }
-                    ringbackAudio = null;
-                    console.log('🔇 Ringback tone stopped');
-                }
-            }
-            
-            async setupPeerConnection() {
-                try {
-                    console.log('🔗 Setting up WebRTC for normal call...');
-                    
-                    localStream = await navigator.mediaDevices.getUserMedia({ 
-                        audio: {
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true
-                        } 
-                    });
-                    peerConnection = new RTCPeerConnection(rtcConfig);
-                    
-                    // Add local stream
-                    localStream.getTracks().forEach(track => {
-                        peerConnection.addTrack(track, localStream);
-                        console.log('🎤 Local track added:', track.kind);
-                    });
-                    
-                    // Remote stream handler
-                    peerConnection.ontrack = (event) => {
-                        console.log('📡 Remote track received:', event.track.kind);
-                        const remoteAudio = document.getElementById('remoteAudio');
-                        if (event.streams && event.streams[0]) {
-                            remoteAudio.srcObject = event.streams[0];
-                            console.log('📊 Remote audio stream assigned');
-                            
-                            remoteAudio.play().then(() => {
-                                console.log('✅ Remote audio started playing');
-                            }).catch(e => {
-                                console.log('⚠️ Remote audio play error:', e);
-                            });
-                        }
-                    };
-                    
-                    // ICE candidate handler
-                    peerConnection.onicecandidate = (event) => {
-                        if (event.candidate && socket) {
-                            socket.send(JSON.stringify({
-                                type: 'ice-candidate',
-                                candidate: event.candidate,
-                                targetId: userInfo.adminId
-                            }));
-                            console.log('📡 ICE candidate sent:', event.candidate.type);
-                        } else if (!event.candidate) {
-                            console.log('📡 ICE gathering complete');
-                        }
-                    };
-                    
-                    // Connection state monitoring
-                    peerConnection.onconnectionstatechange = () => {
-                        console.log('🔗 Connection State:', peerConnection.connectionState);
-                        switch (peerConnection.connectionState) {
-                            case 'connected':
-                                console.log('✅ WebRTC FULLY CONNECTED!');
-                                this.setState('connected');
-                                callStartTime = Date.now();
-                                break;
-                            case 'connecting':
-                                console.log('🔗 WebRTC connecting...');
-                                this.setState('connecting');
-                                break;
-                            case 'failed':
-                                console.log('❌ WebRTC connection failed');
-                                this.endCall();
-                                break;
-                            case 'disconnected':
-                                console.log('📞 WebRTC connection lost');
-                                this.endCall();
-                                break;
-                        }
-                    };
-                    
-                    // ICE connection state monitoring
-                    peerConnection.oniceconnectionstatechange = () => {
-                        console.log('🧊 ICE Connection State:', peerConnection.iceConnectionState);
-                        switch (peerConnection.iceConnectionState) {
-                            case 'connected':
-                            case 'completed':
-                                console.log('✅ ICE connection established');
-                                if (peerConnection.connectionState === 'connecting') {
-                                    setTimeout(() => {
-                                        if (peerConnection.connectionState === 'connecting') {
-                                            console.log('🔄 ICE connected, updating call state');
-                                            this.setState('connected');
-                                            callStartTime = Date.now();
-                                        }
-                                    }, 1000);
-                                }
-                                break;
-                            case 'failed':
-                                console.log('❌ ICE connection failed');
-                                this.endCall();
-                                break;
-                        }
-                    };
-                    
-                    // Create and send offer
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    console.log('📤 Offer created and local description set');
-                    
-                    socket.send(JSON.stringify({
-                        type: 'offer',
-                        offer: offer,
-                        targetId: userInfo.adminId,
-                        userId: userInfo.id,
-                        userName: userInfo.name
-                    }));
-                    console.log('📨 Offer sent to admin');
-                    
-                } catch (error) {
-                    console.error('❌ WebRTC setup error:', error);
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Mikrofon erişimi gerekli.'
-                        : 'Microphone access required.';
-                    this.showError(errorMsg);
-                    this.setState('idle');
-                }
-            }
-            
-            startCall() {
-                if (!isLoggedIn) {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Lütfen önce giriş yapın!'
-                        : 'Please login first!';
-                    this.showError(errorMsg);
-                    return;
-                }
-                
-                if (userInfo.credits <= 0) {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Yetersiz kredi! Kredi talep etmek için "Kredi Talep Et" butonunu kullanın.'
-                        : 'Insufficient credit! Use "Request Credit" button to request credit.';
-                    this.showError(errorMsg);
-                    return;
-                }
-                
-                if (!socket || socket.readyState !== WebSocket.OPEN) {
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Sunucu bağlantısı yok. Lütfen bekleyin...'
-                        : 'No server connection. Please wait...';
-                    this.showError(errorMsg);
-                    return;
-                }
-                
-                this.setState('calling');
-                this.hideError();
-                
-                this.playRingbackTone();
-                
-                socket.send(JSON.stringify({
-                    type: 'call-request',
-                    userId: userInfo.id,
-                    userName: userInfo.name,
-                    credits: userInfo.credits,
-                    targetId: userInfo.adminId
-                }));
-                
-                setTimeout(() => {
-                    if (callState === 'calling') {
-                        this.setState('idle');
-                        const errorMsg = currentLanguage === 'tr' 
-                            ? 'Arama zaman aşımına uğradı.'
-                            : 'Call timed out.';
-                        this.showError(errorMsg);
-                    }
-                }, 30000);
-            }
-            
-            cancelCall() {
-                if (socket && callState === 'calling') {
-                    const reason = currentLanguage === 'tr' 
-                        ? 'Müşteri aramayı iptal etti'
-                        : 'Customer cancelled the call';
-                        
-                    socket.send(JSON.stringify({
-                        type: 'call-cancelled',
-                        userId: userInfo.id,
-                        userName: userInfo.name,
-                        reason: reason
-                    }));
-                }
-                
-                this.endCall();
-            }
-            
-            endCall() {
-                this.stopRingbackTone();
-                this.stopIncomingCallSound();
-                
-                if (callTimer) {
-                    clearInterval(callTimer);
-                    callTimer = null;
-                }
-                
-                if (peerConnection) {
-                    peerConnection.close();
-                    peerConnection = null;
-                }
-                
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                    localStream = null;
-                }
-                
-                if (socket && callState === 'connected' && callStartTime) {
-                    const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
-                    const creditsUsed = Math.ceil(actualDuration / 60);
-                    
-                    socket.send(JSON.stringify({
-                        type: 'end-call',
-                        userId: userInfo.id,
-                        duration: actualDuration,
-                        creditsUsed: creditsUsed,
-                        targetId: userInfo.adminId
-                    }));
-                    
-                    console.log(`Call ended: ${actualDuration} seconds, ${creditsUsed} credits`);
-                }
-                
-                if (incomingCallInfo) {
-                    incomingCallInfo = null;
-                }
-                
-                this.setState('idle');
-                callDuration = 0;
-                callStartTime = null;
-            }
-            
-            startCallTimer() {
-                callDuration = 0;
-                callTimer = setInterval(() => {
-                    callDuration++;
-                    const mins = Math.floor(callDuration / 60);
-                    const secs = callDuration % 60;
-                    document.getElementById('callTimer').textContent = 
-                        mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+                    connectToServer();
                 }, 1000);
             }
-            
-            logoutUser() {
-                const confirmMsg = currentLanguage === 'tr' 
-                    ? 'Çıkış yapmak istediğinizden emin misiniz?'
-                    : 'Are you sure you want to sign out?';
-                    
-                if (confirm(confirmMsg)) {
-                    localStorage.removeItem('vipcep_user_id');
-                    localStorage.removeItem('vipcep_user_name');
-                    localStorage.removeItem('vipcep_remember_me');
-                    
-                    if (callState !== 'idle') {
-                        this.endCall();
-                    }
-                    
-                    if (socket) {
-                        socket.close();
-                    }
-                    
-                    isLoggedIn = false;
-                    userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
-                    
-                    document.getElementById('mainApp').classList.add('hidden');
-                    document.getElementById('loginScreen').classList.remove('hidden');
-                    
-                    document.getElementById('userIdInput').value = '';
-                    document.getElementById('userNameInput').value = '';
-                    document.getElementById('rememberMe').checked = false;
-                    
-                    document.getElementById('loginButton').disabled = false;
-                    const loginText = currentLanguage === 'tr' ? 'Giriş Yap' : 'Sign In';
-                    document.getElementById('loginButton').innerHTML = `
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        ${loginText}
-                    `;
-                    
-                    const successMsg = currentLanguage === 'tr' 
-                        ? 'Başarıyla çıkış yaptınız!'
-                        : 'Successfully signed out!';
-                    this.showLoginMessage(successMsg, 'success');
-                    
-                    setTimeout(() => {
-                        this.connectToServer();
-                    }, 1000);
-                }
-            }
         }
-        
-        // Initialize the application when page loads
-        window.addEventListener('DOMContentLoaded', () => {
-            new VIPCEPApp();
-        });
     </script>
 </body>
 </html>
