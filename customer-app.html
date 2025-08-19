@@ -990,12 +990,15 @@
         // KVKK functions
         async function checkKVKKConsent() {
             return new Promise((resolve) => {
+                let responseReceived = false;
+                
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({ type: 'kvkk-check' }));
                     
                     const messageHandler = (event) => {
                         const message = JSON.parse(event.data);
                         if (message.type === 'kvkk-status') {
+                            responseReceived = true;
                             socket.removeEventListener('message', messageHandler);
                             resolve(message.hasConsent);
                         }
@@ -1003,41 +1006,20 @@
                     
                     socket.addEventListener('message', messageHandler);
                     
+                    // 🚨 YENİ: 5 saniye timeout - response gelmezse false döndür
                     setTimeout(() => {
-                        socket.removeEventListener('message', messageHandler);
-                        resolve(false);
-                    }, 5000);
-                } else {
-                    resolve(false);
-                }
-            });
-        }
-
-        async function saveKVKKConsent() {
-            return new Promise((resolve) => {
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'kvkk-consent' }));
-                    
-                    const messageHandler = (event) => {
-                        const message = JSON.parse(event.data);
-                        if (message.type === 'kvkk-consent-response') {
+                        if (!responseReceived) {
+                            console.log('⚠️ KVKK check timeout - 5 saniye içinde response alınamadı');
                             socket.removeEventListener('message', messageHandler);
-                            resolve(message.success);
+                            resolve(false); // Timeout durumunda false döndür (KVKK ekranını zorla göster)
                         }
-                    };
-                    
-                    socket.addEventListener('message', messageHandler);
-                    
-                    setTimeout(() => {
-                        socket.removeEventListener('message', messageHandler);
-                        resolve(false);
                     }, 5000);
                 } else {
+                    console.log('⚠️ WebSocket bağlantısı yok, KVKK ekranı gösterilecek');
                     resolve(false);
                 }
             });
         }
-
         async function acceptKVKK() {
             if (!document.getElementById('kvkkCheckbox').checked) return;
             
@@ -2004,3 +1986,4 @@
     </script>
 </body>
 </html>
+
