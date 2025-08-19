@@ -394,6 +394,48 @@
             gap: 10px;
         }
         
+        /* 🚨 YENÄ°: Rate Limit Bildirimi */
+        .rate-limit-warning {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #92400e;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            border: 2px solid #fcd34d;
+            text-align: center;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .rate-limit-warning .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .rate-limit-warning .title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .rate-limit-warning .message {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+        
+        .rate-limit-warning .countdown {
+            font-size: 24px;
+            font-weight: 800;
+            font-family: monospace;
+            color: #dc2626;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
         .error-message {
             background: #fef2f2;
             color: #dc2626;
@@ -632,6 +674,14 @@
         </div>
         
         <div class="app-content">
+            <!-- 🚨 YENI: Rate Limit Uyarısı -->
+            <div id="rateLimitWarning" class="rate-limit-warning hidden">
+                <div class="icon">⚠️</div>
+                <div class="title" data-text-tr="Çok Fazla Başarısız Deneme!" data-text-en="Too Many Failed Attempts!">Çok Fazla Başarısız Deneme!</div>
+                <div class="message" data-text-tr="Güvenlik nedeniyle giriş yapmamız engellenmiştir. Lütfen bekleyiniz." data-text-en="Login has been blocked for security reasons. Please wait.">Güvenlik nedeniyle giriş yapmamız engellenmiştir. Lütfen bekleyiniz.</div>
+                <div class="countdown" id="rateLimitCountdown">--:--</div>
+            </div>
+            
             <!-- Giriş Ekranı -->
             <div id="loginScreen" class="hidden">
                 <div class="form-group">
@@ -850,6 +900,10 @@
         let ringbackAudio = null;
         let incomingCallInfo = null;
         let kvkkApproved = false;
+        
+        // 🚨 YENİ: Rate Limit değişkenleri
+        let rateLimitEndTime = null;
+        let rateLimitTimer = null;
         
         let userInfo = {
             id: '',
@@ -1135,6 +1189,12 @@
         }
         
         function loginUser() {
+            // 🚨 Rate limit kontrolü ÖNCE
+            if (rateLimitEndTime && Date.now() < rateLimitEndTime) {
+                showRateLimitWarning();
+                return;
+            }
+            
             const userId = document.getElementById('userIdInput').value.trim();
             const userName = document.getElementById('userNameInput').value.trim();
             
@@ -1194,6 +1254,12 @@
         }
         
         function loginFailed(reason) {
+            // 🚨 Rate limit kontrolü - 30 dakika ban mesajını yakala
+            if (reason && reason.includes('30 dakika')) {
+                handleRateLimit(reason);
+                return;
+            }
+            
             const defaultReason = currentLanguage === 'tr' 
                 ? 'Giriş başarısız! ID kodunuzu kontrol edin.'
                 : 'Login failed! Please check your ID code.';
@@ -1207,6 +1273,74 @@
                 </svg>
                 ${loginText}
             `;
+        }
+        
+        // 🚨 YENİ: Rate limit işleme
+        function handleRateLimit(message) {
+            console.log('🚨 Rate limit algılandı:', message);
+            
+            // 30 dakika ban süresi ayarla
+            rateLimitEndTime = Date.now() + (30 * 60 * 1000); // 30 dakika
+            localStorage.setItem('vipcep_rate_limit_end', rateLimitEndTime.toString());
+            
+            showRateLimitWarning();
+        }
+        
+        function showRateLimitWarning() {
+            // Login formu gizle, rate limit uyarısını göster
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('rateLimitWarning').classList.remove('hidden');
+            
+            startRateLimitCountdown();
+        }
+        
+        function startRateLimitCountdown() {
+            const countdownElement = document.getElementById('rateLimitCountdown');
+            
+            if (rateLimitTimer) {
+                clearInterval(rateLimitTimer);
+            }
+            
+            rateLimitTimer = setInterval(() => {
+                const now = Date.now();
+                const timeLeft = rateLimitEndTime - now;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(rateLimitTimer);
+                    rateLimitTimer = null;
+                    rateLimitEndTime = null;
+                    localStorage.removeItem('vipcep_rate_limit_end');
+                    
+                    // Rate limit uyarısını gizle, login ekranını göster
+                    document.getElementById('rateLimitWarning').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.remove('hidden');
+                    
+                    const successMsg = currentLanguage === 'tr' 
+                        ? '✅ Artık tekrar giriş yapabilirsiniz!'
+                        : '✅ You can now login again!';
+                    showLoginMessage(successMsg, 'success');
+                    return;
+                }
+                
+                const minutes = Math.floor(timeLeft / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                
+                countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        // Sayfa yüklendiğinde rate limit kontrolü
+        function checkSavedRateLimit() {
+            const savedRateLimitEnd = localStorage.getItem('vipcep_rate_limit_end');
+            if (savedRateLimitEnd) {
+                const endTime = parseInt(savedRateLimitEnd);
+                if (Date.now() < endTime) {
+                    rateLimitEndTime = endTime;
+                    showRateLimitWarning();
+                } else {
+                    localStorage.removeItem('vipcep_rate_limit_end');
+                }
+            }
         }
         
         function showLoginMessage(message, type) {
@@ -1862,6 +1996,11 @@
                 }, 1000);
             }
         }
+        
+        // 🚨 Sayfa yüklendiğinde rate limit kontrolü ekle
+        window.addEventListener('load', () => {
+            checkSavedRateLimit();
+        });
     </script>
 </body>
 </html>
