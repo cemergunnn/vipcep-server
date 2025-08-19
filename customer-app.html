@@ -982,25 +982,37 @@
             
             if (statusDot.classList.contains('status-connected')) {
                 connectionText.textContent = currentLanguage === 'tr' ? 'Bağlı' : 'Connected';
-            } else {
-                connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı Yok' : 'Disconnected';
-            }
-        }
-
-        async function saveKVKKConsent() {
-            return new Promise((resolve) => {
-                let responseReceived = false;
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'kvkk-consent' }));
-                    
-                    const messageHandler = (event) => {
-                        const message = JSON.parse(event.data);
-                        if (message.type === 'kvkk-consent-response') {
-                            responseReceived = true;
-                            socket.removeEventListener('message', messageHandler);
-                            resolve(message.success);
-                        }
+async function saveKVKKConsent() {
+   return new Promise((resolve) => {
+       let responseReceived = false;
+       
+       if (socket && socket.readyState === WebSocket.OPEN) {
+           socket.send(JSON.stringify({ type: 'kvkk-consent' }));
+           
+           const messageHandler = (event) => {
+               const message = JSON.parse(event.data);
+               if (message.type === 'kvkk-consent-response') {
+                   responseReceived = true;
+                   socket.removeEventListener('message', messageHandler);
+                   resolve(message.success);
+               }
+           };
+           
+           socket.addEventListener('message', messageHandler);
+           
+           setTimeout(() => {
+               if (!responseReceived) {
+                   console.log('⚠️ KVKK save timeout - 10 saniye içinde response alınamadı, onay kabul edildi');
+                   socket.removeEventListener('message', messageHandler);
+                   resolve(true);
+               }
+           }, 10000);
+       } else {
+           console.log('⚠️ WebSocket bağlantısı yok, KVKK onayı offline kabul edildi');
+           resolve(true);
+       }
+   });
+}
                     };
                     
                     socket.addEventListener('message', messageHandler);
@@ -2018,6 +2030,7 @@
     </script>
 </body>
 </html>
+
 
 
 
