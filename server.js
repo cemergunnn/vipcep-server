@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
+// const pgSession = require('connect-pg-simple')(session);
 
 // PostgreSQL bağlantısı - Railway için güncellenmiş
 const { Pool } = require('pg');
@@ -48,13 +48,9 @@ console.log(`🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
 
 // Session middleware ekle
 app.use(session({
-    store: new pgSession({
-        pool: pool,
-        tableName: 'user_sessions'
-    }),
     secret: SECURITY_CONFIG.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
         secure: false,
         httpOnly: true,
@@ -1795,4 +1791,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
