@@ -1326,18 +1326,35 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'accept-call':
-                    console.log('✅ Arama kabul edildi (Admin tarafından):', message.userId);
+                    console.log('✅ Arama kabul edildi (Admin tarafından):', message.userId, 'by admin:', message.adminId);
                     
                     const callerClient = clients.get(message.userId);
                     if (callerClient && callerClient.ws.readyState === WebSocket.OPEN) {
+                        // 🔥 WebRTC Targeting Fix: Müşteriye kabul eden admin'in unique ID'sini gönder
                         callerClient.ws.send(JSON.stringify({
-                            type: 'call-accepted'
+                            type: 'call-accepted',
+                            acceptedAdminId: message.adminId  // Bu unique ID (örn: ADMIN001_1735061234567_abc12)
                         }));
                     }
                     
+                    // Diğer adminlere aramayı iptal bilgisi gönder (artık aramaları durdurun)
+                    const otherAdmins = Array.from(clients.values())
+                        .filter(c => c.userType === 'admin' && c.uniqueId !== message.adminId);
+                    
+                    otherAdmins.forEach(adminClient => {
+                        if (adminClient.ws.readyState === WebSocket.OPEN) {
+                            adminClient.ws.send(JSON.stringify({
+                                type: 'call-taken',
+                                userId: message.userId,
+                                takenBy: message.adminId,
+                                message: 'Arama başka bir admin tarafından alındı'
+                            }));
+                        }
+                    });
+                    
                     // 🔥 Heartbeat sistemi başlat (normal arama kabul edildiğinde)
-                    const normalCallKey = `${message.userId}-ADMIN001`;
-                    startHeartbeat(message.userId, 'ADMIN001', normalCallKey);
+                    const normalCallKey = `${message.userId}-${message.adminId}`;  // Unique admin ID kullan
+                    startHeartbeat(message.userId, message.adminId, normalCallKey);
                     break;
 
                 case 'reject-call':
@@ -1373,27 +1390,37 @@ wss.on('connection', (ws, req) => {
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
-                    // WebRTC mesajlarını hedef kullanıcıya ilet
-                    const targetClient = clients.get(message.targetId);
+                    // 🔥 WebRTC Targeting Fix: WebRTC mesajlarını hedef kullanıcıya ilet
+                    let targetClient = null;
+                    
+                    // Unique ID ile ara (admin'ler için)
+                    if (message.targetId && message.targetId.includes('_')) {
+                        targetClient = clients.get(message.targetId);
+                    } else {
+                        // Normal müşteri ID'si için
+                        targetClient = clients.get(message.targetId);
+                    }
+                    
                     if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
                         targetClient.ws.send(JSON.stringify(message));
                         console.log(`🔄 ${message.type} iletildi: ${message.userId || 'unknown'} -> ${message.targetId}`);
                     } else {
                         console.log(`❌ ${message.type} hedefi bulunamadı: ${message.targetId}`);
+                        console.log('🔍 Mevcut clients:', Array.from(clients.keys()));
                     }
                     break;
 
                 case 'end-call':
-                    console.log('📞 Görüşme sonlandırılıyor:', message.userId);
+                    console.log('📞 Görüşme sonlandırılıyor:', message.userId, '-> target:', message.targetId);
                     
-                    // Heartbeat'i durdur
+                    // 🔥 WebRTC Targeting Fix: Heartbeat'i durdur - target ID'yi doğru kullan
                     const endCallKey = message.targetId ? `${message.userId}-${message.targetId}` : `${message.userId}-ADMIN001`;
                     stopHeartbeat(endCallKey, 'user_ended');
                     
                     const duration = message.duration || 0;
                     const creditsUsed = Math.ceil(duration / 60); // Yukarı yuvarlamalı
                     
-                    // Hedef kullanıcıya bildir
+                    // Hedef kullanıcıya bildir (unique ID kullan)
                     if (message.targetId) {
                         const endTarget = clients.get(message.targetId);
                         if (endTarget && endTarget.ws.readyState === WebSocket.OPEN) {
