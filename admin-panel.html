@@ -18,6 +18,139 @@
             min-height: 100vh;
         }
         
+        /* Giriş Ekranı Stilleri */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            z-index: 2000;
+        }
+        
+        .login-box {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .login-title {
+            color: #fbbf24;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .login-subtitle {
+            color: rgba(255,255,255,0.8);
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .login-form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .login-label {
+            display: block;
+            color: rgba(255,255,255,0.9);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .login-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .login-input:focus {
+            outline: none;
+            border-color: #fbbf24;
+            background: rgba(255,255,255,0.15);
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1e293b;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+        
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .login-error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .login-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .login-footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Ana Panel Stilleri */
+        .main-app {
+            display: none;
+        }
+        
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -33,6 +166,56 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+        
+        .header-left h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header-left p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .admin-info {
+            text-align: right;
+        }
+        
+        .admin-name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .admin-role {
+            font-size: 12px;
+            opacity: 0.8;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+        
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.5);
+            transform: translateY(-1px);
         }
         
         .status {
@@ -80,6 +263,38 @@
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+        
+        /* İstatistikler */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #22c55e;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: 800;
+            color: #22c55e;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
         
         /* Arama Durumları */
@@ -195,37 +410,6 @@
             border-radius: 6px;
         }
         
-        /* Kullanıcı Yönetimi */
-        .form-section {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 2fr 80px 120px;
-            gap: 12px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .form-input {
-            padding: 10px 14px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #22c55e;
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-        }
-        
         /* Arama Kutusu */
         .search-container {
             position: relative;
@@ -323,38 +507,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-        
-        /* İstatistikler */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            border-left: 4px solid #22c55e;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        
-        .stat-number {
-            font-size: 28px;
-            font-weight: 800;
-            color: #22c55e;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #64748b;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
         }
         
         /* Aktif Bağlantılar */
@@ -458,11 +610,6 @@
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
         }
         
         /* Quick Actions */
@@ -487,165 +634,198 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div>
-                <h1>🎯 VIPCEP Admin Panel</h1>
-                <p style="font-size: 16px; opacity: 0.9;">Voice IP Communication Emergency Protocol</p>
-            </div>
-            <div class="status">
-                <div class="status-dot disconnected" id="statusDot"></div>
-                <span id="statusText">Bağlanıyor...</span>
+    <!-- Giriş Ekranı -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-box">
+            <div class="login-title">🟡 ADMİN GİRİŞİ</div>
+            <div class="login-subtitle">VIPCEP Admin Panel</div>
+            
+            <form id="loginForm" onsubmit="return false;">
+                <div class="login-form-group">
+                    <label class="login-label">👤 Kullanıcı Adı</label>
+                    <input type="text" id="loginUsername" class="login-input" placeholder="Admin kullanıcı adı" autocomplete="username">
+                </div>
+                
+                <div class="login-form-group">
+                    <label class="login-label">🔑 Şifre</label>
+                    <input type="password" id="loginPassword" class="login-input" placeholder="Admin şifresi" autocomplete="current-password">
+                </div>
+                
+                <button type="button" class="login-btn" id="loginBtn" onclick="performLogin()">
+                    🔓 Admin Girişi
+                </button>
+                
+                <div id="loginError" class="login-error"></div>
+                <div id="loginSuccess" class="login-success"></div>
+            </form>
+            
+            <div class="login-footer">
+                VIPCEP Admin Panel v2.0<br>
+                🛡️ Güvenli Giriş Sistemi
             </div>
         </div>
-        
-        <!-- İstatistikler -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number" id="totalApproved">0</div>
-                <div class="stat-label">Onaylı Kullanıcı</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="onlineUsers">0</div>
-                <div class="stat-label">Çevrimiçi</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="totalCredits">0</div>
-                <div class="stat-label">Toplam Kredi</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="todayCalls">0</div>
-                <div class="stat-label">Bugün Arama</div>
-            </div>
-        </div>
-        
-        <div class="main-content">
-            <!-- Sol Panel - Arama Yönetimi -->
-            <div class="panel">
-                <h3>📞 Arama Yönetimi</h3>
-                
-                <!-- Gelen Arama -->
-                <div id="incomingCall" class="incoming-call hidden">
-                    <h3>📞 GELEN ARAMA</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
-                        <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
-                            ✅ Kabul Et
-                        </button>
-                        <button class="btn btn-reject" onclick="rejectCall()">
-                            ❌ Reddet
-                        </button>
-                    </div>
-                </div>
+    </div>
 
-                <!-- Giden Arama -->
-                <div id="outgoingCall" class="outgoing-call hidden">
-                    <h3>📞 GİDEN ARAMA</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
-                        <p style="opacity: 0.9;">Kredi: <span id="outgoingCredits">-</span> dakika</p>
-                    </div>
-                    <div style="margin: 15px 0; opacity: 0.9; font-size: 14px;">
-                        📱 Müşteriye arama bildirimi gönderildi...
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-reject" onclick="cancelOutgoingCall()">
-                            ❌ İptal Et
-                        </button>
-                    </div>
+    <!-- Ana Uygulama -->
+    <div id="mainApp" class="main-app">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-left">
+                    <h1>🎯 VIPCEP Admin Panel</h1>
+                    <p>Voice IP Communication Emergency Protocol</p>
                 </div>
-
-                <!-- Arama İptal Bildirimi -->
-                <div id="callCancelled" class="call-cancelled hidden">
-                    <h3>❌ ARAMA İPTAL EDİLDİ</h3>
-                    <div style="margin: 15px 0;">
-                        <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="cancelledId">-</span></p>
-                        <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
+                <div class="header-right">
+                    <div class="status">
+                        <div class="status-dot disconnected" id="statusDot"></div>
+                        <span id="statusText">Bağlanıyor...</span>
                     </div>
-                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">
-                       ✔️ Tamam
+                    <div class="admin-info">
+                        <div class="admin-name" id="adminName">-</div>
+                        <div class="admin-role">🟡 Normal Admin</div>
+                    </div>
+                    <button class="logout-btn" onclick="performLogout()">
+                        🚪 Çıkış
                     </button>
-                </div>
-                
-                <!-- Aktif Görüşme -->
-                <div id="activeCall" class="active-call hidden">
-                    <h3>🔊 GÖRÜŞME AKTİF</h3>
-                    <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
-                    <div style="font-size: 32px; font-weight: 800; margin: 15px 0; font-family: 'Courier New', monospace;" id="callTimer">00:00</div>
-                    <button class="btn btn-reject" onclick="endCall()">
-                        📞 Görüşmeyi Bitir
-                    </button>
-                </div>
-                
-                <!-- Sistem Logları -->
-                <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
-                <div class="log-container" id="logContainer">
-                    <div>[Sistem] Admin panel başlatılıyor...</div>
                 </div>
             </div>
             
-            <!-- Orta Panel - Kullanıcı Yönetimi -->
-            <div class="panel">
-                <h3>🆔 Kullanıcı Yönetimi</h3>
-                
-                <!-- Yeni Kullanıcı Ekleme -->
-                <div class="form-section">
-                    <h4 style="margin-bottom: 15px; color: #374151;">➕ Yeni Kullanıcı Ekle</h4>
-                    <div class="form-row">
-                        <input type="text" id="newUserId" placeholder="4 haneli ID" maxlength="4" class="form-input">
-                        <input type="text" id="newUserName" placeholder="Ad Soyad" class="form-input">
-                        <input type="number" id="newUserCredits" placeholder="Kredi" min="0" class="form-input">
-                        <button class="btn btn-primary" onclick="addApprovedUser()">➕ Ekle</button>
-                    </div>
+            <!-- İstatistikler -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalApproved">0</div>
+                    <div class="stat-label">Onaylı Kullanıcı</div>
                 </div>
-
-                <!-- Arama Kutusu -->
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
-                    <div class="search-icon">
-                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
-                        </svg>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="onlineUsers">0</div>
+                    <div class="stat-label">Çevrimiçi</div>
                 </div>
-
-                <!-- Arama Sonucu Bilgisi -->
-                <div id="searchResults" style="font-size: 13px; color: #6b7280; margin-bottom: 15px; padding: 8px 15px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #22c55e;" class="hidden"></div>
-                
-                <!-- Onaylı Kullanıcılar -->
-                <div class="user-list" id="approvedUsersList">
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
-                        <div>Henüz onaylı kullanıcı yok</div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCredits">0</div>
+                    <div class="stat-label">Toplam Kredi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayCalls">0</div>
+                    <div class="stat-label">Bugün Arama</div>
                 </div>
             </div>
             
-            <!-- Sağ Panel - Aktif Bağlantılar -->
-            <div class="panel">
-                <h3>👥 Aktif Bağlantılar</h3>
-                <div id="userList" style="margin-top: 15px;">
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
-                        <div>Henüz kullanıcı bağlanmadı</div>
+            <div class="main-content">
+                <!-- Sol Panel - Arama Yönetimi -->
+                <div class="panel">
+                    <h3>📞 Arama Yönetimi</h3>
+                    
+                    <!-- Gelen Arama -->
+                    <div id="incomingCall" class="incoming-call hidden">
+                        <h3>📞 GELEN ARAMA</h3>
+                        <div style="margin: 15px 0;">
+                            <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
+                            <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
+                            <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
+                        </div>
+                        <div class="call-buttons">
+                            <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
+                                ✅ Kabul Et
+                            </button>
+                            <button class="btn btn-reject" onclick="rejectCall()">
+                                ❌ Reddet
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Giden Arama -->
+                    <div id="outgoingCall" class="outgoing-call hidden">
+                        <h3>📞 GİDEN ARAMA</h3>
+                        <div style="margin: 15px 0;">
+                            <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
+                            <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
+                            <p style="opacity: 0.9;">Kredi: <span id="outgoingCredits">-</span> dakika</p>
+                        </div>
+                        <div style="margin: 15px 0; opacity: 0.9; font-size: 14px;">
+                            📱 Müşteriye arama bildirimi gönderildi...
+                        </div>
+                        <div class="call-buttons">
+                            <button class="btn btn-reject" onclick="cancelOutgoingCall()">
+                                ❌ İptal Et
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Arama İptal Bildirimi -->
+                    <div id="callCancelled" class="call-cancelled hidden">
+                        <h3>❌ ARAMA İPTAL EDİLDİ</h3>
+                        <div style="margin: 15px 0;">
+                            <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
+                            <p style="opacity: 0.9;">ID: <span id="cancelledId">-</span></p>
+                            <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
+                        </div>
+                        <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">
+                           ✔️ Tamam
+                        </button>
+                    </div>
+                    
+                    <!-- Aktif Görüşme -->
+                    <div id="activeCall" class="active-call hidden">
+                        <h3>📊 GÖRÜŞME AKTİF</h3>
+                        <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
+                        <div style="font-size: 32px; font-weight: 800; margin: 15px 0; font-family: 'Courier New', monospace;" id="callTimer">00:00</div>
+                        <button class="btn btn-reject" onclick="endCall()">
+                            📞 Görüşmeyi Bitir
+                        </button>
+                    </div>
+                    
+                    <!-- Sistem Logları -->
+                    <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
+                    <div class="log-container" id="logContainer">
+                        <div>[Sistem] Admin panel başlatılıyor...</div>
                     </div>
                 </div>
                 
-                <!-- Hızlı İşlemler -->
-                <div class="quick-actions">
-                    <button class="btn btn-secondary" onclick="refreshData()">
-                        🔄 Verileri Yenile
-                    </button>
-                    <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
-                        💬 WhatsApp Destek
-                    </button>
+                <!-- Orta Panel - Kullanıcı Görüntüleme -->
+                <div class="panel">
+                    <h3>👥 Onaylı Kullanıcılar</h3>
+                    
+                    <!-- Arama Kutusu -->
+                    <div class="search-container">
+                        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
+                        <div class="search-icon">
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Arama Sonucu Bilgisi -->
+                    <div id="searchResults" style="font-size: 13px; color: #6b7280; margin-bottom: 15px; padding: 8px 15px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #22c55e;" class="hidden"></div>
+                    
+                    <!-- Onaylı Kullanıcılar -->
+                    <div class="user-list" id="approvedUsersList">
+                        <div style="text-align: center; color: #6b7280; padding: 30px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                            <div>Kullanıcılar yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sağ Panel - Aktif Bağlantılar -->
+                <div class="panel">
+                    <h3>👥 Aktif Bağlantılar</h3>
+                    <div id="userList" style="margin-top: 15px;">
+                        <div style="text-align: center; color: #6b7280; padding: 30px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                            <div>Henüz kullanıcı bağlanmadı</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hızlı İşlemler -->
+                    <div class="quick-actions">
+                        <button class="btn btn-secondary" onclick="refreshData()">
+                            🔄 Verileri Yenile
+                        </button>
+                        <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
+                            💬 WhatsApp Destek
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -666,9 +846,11 @@
         let callTimer = null;
         let callDuration = 0;
         let connectedUsers = [];
-        let approvedUsers = JSON.parse(localStorage.getItem('vipcep_approved_users') || '[]');
+        let approvedUsers = [];
         let filteredUsers = [];
         let outgoingCallInfo = null;
+        let isLoggedIn = false;
+        let currentAdmin = null;
         
         const adminId = "ADMIN001";
         const serverUrl = window.location.hostname === 'localhost' 
@@ -688,14 +870,170 @@
         // Sayfa yüklendiğinde başlat
         window.onload = function() {
             log('🚀 Admin panel başlatılıyor...');
-            loadApprovedUsers();
-            connectToServer();
-            
-            // ID input sadece sayı kabul etsin
-            document.getElementById('newUserId').addEventListener('input', function(e) {
-                e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            });
+            checkAuthStatus();
+            setupEventListeners();
         };
+        
+        function setupEventListeners() {
+            // Enter tuşu ile giriş
+            document.getElementById('loginUsername').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performLogin();
+            });
+            
+            document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performLogin();
+            });
+        }
+        
+        // Auth durumu kontrol et
+        async function checkAuthStatus() {
+            try {
+                // Session kontrolü - bu endpoint server.js'de eklenmeli
+                const response = await fetch('/auth/check-session', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.authenticated && (data.role === 'normal' || data.role === 'super')) {
+                        loginSuccess(data);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('Auth check error:', error);
+            }
+            
+            // Giriş ekranını göster
+            showLoginScreen();
+        }
+        
+        function showLoginScreen() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+        }
+        
+        function showMainApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }
+        
+        async function performLogin() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const loginBtn = document.getElementById('loginBtn');
+            
+            if (!username || !password) {
+                showLoginMessage('Kullanıcı adı ve şifre gerekli!', 'error');
+                return;
+            }
+            
+            // Loading state
+            loginBtn.disabled = true;
+            loginBtn.textContent = '⏳ Giriş yapılıyor...';
+            
+            try {
+                const response = await fetch('/auth/admin-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showLoginMessage('Giriş başarılı! Panel yükleniyor...', 'success');
+                    setTimeout(() => {
+                        loginSuccess({ username, role: 'normal' });
+                    }, 1000);
+                } else {
+                    showLoginMessage(result.error || 'Giriş başarısız!', 'error');
+                    
+                    // Rate limit uyarısı
+                    if (result.remaining !== undefined && result.remaining <= 2) {
+                        showLoginMessage(`⚠️ Kalan deneme hakkı: ${result.remaining}`, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showLoginMessage('Bağlantı hatası! Lütfen tekrar deneyin.', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '🔓 Admin Girişi';
+            }
+        }
+        
+        function loginSuccess(adminData) {
+            isLoggedIn = true;
+            currentAdmin = adminData;
+            
+            document.getElementById('adminName').textContent = adminData.username || 'Admin';
+            
+            showMainApp();
+            connectToServer();
+            loadApprovedUsers();
+        }
+        
+        function showLoginMessage(message, type) {
+            const errorDiv = document.getElementById('loginError');
+            const successDiv = document.getElementById('loginSuccess');
+            
+            // Tüm mesajları gizle
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            if (type === 'error') {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            } else {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+            }
+            
+            // 5 saniye sonra gizle
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        async function performLogout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                try {
+                    await fetch('/auth/logout', { 
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (error) {
+                    console.log('Logout error:', error);
+                }
+                
+                // WebSocket bağlantısını kapat
+                if (socket) {
+                    socket.close();
+                }
+                
+                // Aktif arama varsa sonlandır
+                if (currentCall) {
+                    endCall();
+                }
+                
+                // Değişkenleri sıfırla
+                isLoggedIn = false;
+                currentAdmin = null;
+                approvedUsers = [];
+                connectedUsers = [];
+                
+                // Giriş ekranına dön
+                showLoginScreen();
+                
+                // Form temizle
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+            }
+        }
         
         // Onaylı kullanıcıları yükle
         function loadApprovedUsers() {
@@ -708,7 +1046,9 @@
         async function loadUsersFromAPI() {
             try {
                 log('📡 API\'den kullanıcılar yükleniyor...');
-                const response = await fetch('/api/approved-users');
+                const response = await fetch('/api/approved-users', {
+                    credentials: 'include'
+                });
                 if (response.ok) {
                     const apiUsers = await response.json();
                     
@@ -722,23 +1062,16 @@
                         lastCall: user.last_call ? new Date(user.last_call).toLocaleString() : null
                     }));
                     
-                    // LocalStorage'ı API verisi ile güncelle (önemli!)
-                    saveApprovedUsers();
                     renderApprovedUsers();
                     updateStats();
                     
-                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi ve güncellendi`);
+                    log(`✅ API'den ${approvedUsers.length} kullanıcı yüklendi`);
                 } else {
-                    log('⚠️ API\'den kullanıcı yüklenemedi, localStorage kullanılıyor');
+                    log('⚠️ API\'den kullanıcı yüklenemedi');
                 }
             } catch (error) {
                 log('⚠️ API bağlantı hatası: ' + error.message);
             }
-        }
-        
-        // Onaylı kullanıcıları kaydet
-        function saveApprovedUsers() {
-            localStorage.setItem('vipcep_approved_users', JSON.stringify(approvedUsers));
         }
 
         function searchUsers() {
@@ -828,7 +1161,7 @@
             document.getElementById('incomingCall').classList.add('hidden');
             document.getElementById('callCancelled').classList.add('hidden');
             
-            log(`🔔 Giden arama: ${callInfo.userName} (${callInfo.userId})`);
+            log(`📟 Giden arama: ${callInfo.userName} (${callInfo.userId})`);
         }
 
         let adminRingbackAudio = null;
@@ -866,7 +1199,7 @@
                 playTone();
                 adminRingbackAudio = { audioContext, stop: () => {} };
                 
-                console.log('🔊 Admin çeviri sesi başlatıldı');
+                console.log('📊 Admin çeviri sesi başlatıldı');
             } catch (error) {
                 console.log('Admin çeviri sesi çalınamadı:', error);
             }
@@ -904,236 +1237,6 @@
             outgoingCallInfo = null;
         }
         
-        function addApprovedUser() {
-            const userId = document.getElementById('newUserId').value.trim();
-            const userName = document.getElementById('newUserName').value.trim();
-            const userCredits = parseInt(document.getElementById('newUserCredits').value) || 0;
-            
-            if (!userId || userId.length !== 4 || !/^\d{4}$/.test(userId)) {
-                alert('Lütfen 4 haneli sayısal ID girin!');
-                return;
-            }
-            
-            if (!userName) {
-                alert('Lütfen kullanıcı adını girin!');
-                return;
-            }
-            
-            if (approvedUsers.find(u => u.id === userId)) {
-                alert('Bu ID zaten kullanılıyor!');
-                return;
-            }
-            
-            // Loading state
-            const addButton = document.querySelector('button[onclick="addApprovedUser()"]');
-            const originalText = addButton.textContent;
-            addButton.disabled = true;
-            addButton.textContent = '⏳ Ekleniyor...';
-            addButton.classList.add('loading');
-            
-            // API'ye kullanıcı ekleme isteği gönder
-            fetch('/api/approved-users', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: userId,
-                    name: userName,
-                    credits: userCredits
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.user) {
-                    // Local storage'a da ekle
-                    const newUser = {
-                        id: data.user.id,
-                        name: data.user.name,
-                        credits: data.user.credits,
-                        createdAt: data.user.created_at ? new Date(data.user.created_at).toLocaleString() : new Date().toLocaleString(),
-                        totalCalls: data.user.total_calls || 0,
-                        lastCall: data.user.last_call ? new Date(data.user.last_call).toLocaleString() : null
-                    };
-                    
-                    approvedUsers.push(newUser);
-                    saveApprovedUsers();
-                    searchUsers();
-                    updateStats();
-                    
-                    // Form'u temizle
-                    document.getElementById('newUserId').value = '';
-                    document.getElementById('newUserName').value = '';
-                    document.getElementById('newUserCredits').value = '';
-                    
-                    log(`✅ Kullanıcı başarıyla eklendi: ${userName} (${userId}) - ${userCredits} dk`);
-                    
-                    // Başarı bildirimi
-                    showSuccessNotification(`Kullanıcı eklendi: ${userName} (${userId})`);
-                    
-                } else {
-                    throw new Error(data.error || 'Kullanıcı eklenemedi');
-                }
-            })
-            .catch(error => {
-                console.error('Kullanıcı ekleme hatası:', error);
-                alert('Kullanıcı ekleme hatası: ' + error.message);
-                log(`❌ Kullanıcı ekleme hatası: ${error.message}`);
-            })
-            .finally(() => {
-                // Loading state'i kaldır
-                addButton.disabled = false;
-                addButton.textContent = originalText;
-                addButton.classList.remove('loading');
-            });
-        }
-        
-        function removeApprovedUser(userId) {
-            if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
-                // API'ye silme isteği gönder
-                fetch(`/api/approved-users/${userId}`, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Local storage'dan da sil
-                        approvedUsers = approvedUsers.filter(u => u.id !== userId);
-                        saveApprovedUsers();
-                        searchUsers();
-                        updateStats();
-                        log(`🗑️ Kullanıcı silindi: ${userId}`);
-                        showSuccessNotification(`Kullanıcı silindi: ${userId}`);
-                    } else {
-                        throw new Error(data.error || 'Kullanıcı silinemedi');
-                    }
-                })
-                .catch(error => {
-                    console.error('Kullanıcı silme hatası:', error);
-                    alert('Kullanıcı silme hatası: ' + error.message);
-                    log(`❌ Kullanıcı silme hatası: ${error.message}`);
-                });
-            }
-        }
-        
-        function updateCredits(userId, newCredits) {
-            const user = approvedUsers.find(u => u.id === userId);
-            if (!user) {
-                alert('Kullanıcı bulunamadı!');
-                return;
-            }
-            
-            const oldCredits = user.credits;
-            
-            // API'ye kredi güncelleme isteği gönder
-            fetch(`/api/approved-users/${userId}/credits`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    credits: parseInt(newCredits) || 0,
-                    reason: `Admin tarafından güncellendi: ${oldCredits} → ${newCredits}`
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Local storage'ı güncelle
-                    user.credits = parseInt(newCredits) || 0;
-                    saveApprovedUsers();
-                    renderApprovedUsers();
-                    updateStats();
-                    
-                    // WebSocket ile tüm client'lara bildir
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'credit-update-broadcast',
-                            userId: userId,
-                            newCredits: user.credits,
-                            updatedBy: 'admin'
-                        }));
-                    }
-                    
-                    log(`💳 Kredi başarıyla güncellendi: ${userId} -> ${newCredits} dk`);
-                    
-                    // Görsel bildirim göster
-                    showCreditUpdateNotification(userId, user.name, oldCredits, user.credits);
-                } else {
-                    alert('Kredi güncellenemedi: ' + (data.error || 'Bilinmeyen hata'));
-                    log(`❌ Kredi güncelleme hatası: ${userId} -> ${data.error}`);
-                }
-            })
-            .catch(error => {
-                console.error('Kredi güncelleme hatası:', error);
-                alert('Kredi güncelleme sırasında hata oluştu!');
-                log(`❌ Kredi güncelleme API hatası: ${error.message}`);
-            });
-        }
-
-        // Başarı bildirimi göster
-        function showSuccessNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.borderLeft = '4px solid #22c55e';
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="color: #22c55e; font-size: 18px;">✅</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #22c55e;">Başarılı</div>
-                        <div style="font-size: 13px; color: #374151;">${message}</div>
-                    </div>
-                </div>
-            `;
-            
-            const container = document.getElementById('creditNotifications');
-            container.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('slide-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }
-            }, 3000);
-        }
-
-        // Kredi güncelleme bildirimi göster
-        function showCreditUpdateNotification(userId, userName, oldCredits, newCredits) {
-            const change = newCredits - oldCredits;
-            const changeText = change > 0 ? `+${change}` : `${change}`;
-            const changeColor = change > 0 ? '#22c55e' : '#ef4444';
-            
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.style.borderLeft = `4px solid ${changeColor}`;
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="color: ${changeColor}; font-size: 18px;">💳</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #374151;">${userName} (${userId})</div>
-                        <div style="font-size: 13px; color: #64748b;">
-                            📊 Kredi: ${oldCredits} → ${newCredits} dk (${changeText})<br>
-                            ⏰ ${new Date().toLocaleTimeString()}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            const container = document.getElementById('creditNotifications');
-            container.appendChild(notification);
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.classList.add('slide-out');
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 300);
-                }
-            }, 5000);
-        }
-        
         function renderApprovedUsers() {
             const container = document.getElementById('approvedUsersList');
             const usersToShow = filteredUsers.length > 0 ? filteredUsers : approvedUsers;
@@ -1157,15 +1260,17 @@
                 }
                 return;
             }
+            
             // ONLINE KULLANICILARI ÖNE ALMAK İÇİN SIRALAMA
-const sortedUsers = [...usersToShow].sort((a, b) => {
-    const aOnline = connectedUsers.some(u => u.id === a.id && u.userType === 'customer');
-    const bOnline = connectedUsers.some(u => u.id === b.id && u.userType === 'customer');
-    
-    if (aOnline && !bOnline) return -1;
-    if (!aOnline && bOnline) return 1;
-    return a.name.localeCompare(b.name);
-});
+            const sortedUsers = [...usersToShow].sort((a, b) => {
+                const aOnline = connectedUsers.some(u => u.id === a.id && u.userType === 'customer');
+                const bOnline = connectedUsers.some(u => u.id === b.id && u.userType === 'customer');
+                
+                if (aOnline && !bOnline) return -1;
+                if (!aOnline && bOnline) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
             container.innerHTML = sortedUsers.map(user => {
                 const onlineUser = connectedUsers.find(u => u.id === user.id && u.userType === 'customer');
                 const isOnline = !!onlineUser;
@@ -1186,10 +1291,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                             <div class="user-status ${isOnline ? 'online' : ''}">${statusText}</div>
                         </div>
                         <div class="user-actions">
-                            <input type="number" value="${user.credits}" min="0" style="width: 70px; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px;" 
-                                   onchange="updateCredits('${user.id}', this.value)" title="Kredi güncelle">
                             ${callButtonHtml}
-                            <button class="btn btn-reject btn-small" onclick="removeApprovedUser('${user.id}')" title="Kullanıcıyı sil">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -1202,7 +1304,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
             document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
             
             // API'den güncel istatistik al
-            fetch('/api/stats')
+            fetch('/api/stats', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('todayCalls').textContent = data.todayCalls || 0;
@@ -1212,12 +1314,12 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                 });
         }
         
-        function isUserApproved(userId) {
-            const user = approvedUsers.find(u => u.id === userId);
-            return user;
-        }
-        
         function connectToServer() {
+            if (!isLoggedIn) {
+                console.log('❌ Giriş yapılmamış, WebSocket bağlantısı kurulamaz');
+                return;
+            }
+            
             try {
                 console.log('🔗 WebSocket bağlantısı kuruluyor:', serverUrl);
                 socket = new WebSocket(serverUrl);
@@ -1229,7 +1331,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                     socket.send(JSON.stringify({
                         type: 'register',
                         userId: adminId,
-                        name: 'Admin',
+                        name: currentAdmin.username || 'Admin',
                         userType: 'admin'
                     }));
                 };
@@ -1237,7 +1339,9 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                 socket.onclose = function() {
                     updateStatus('disconnected');
                     log('❌ Bağlantı koptu, yeniden bağlanılıyor...');
-                    setTimeout(connectToServer, 3000);
+                    if (isLoggedIn) {
+                        setTimeout(connectToServer, 3000);
+                    }
                 };
                 
                 socket.onerror = function() {
@@ -1261,9 +1365,9 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
             
             switch (message.type) {
                 case 'incoming-call':
-                    console.log('🔔 GELEN ARAMA MESAJI ALINDI!', message);
+                    console.log('📟 GELEN ARAMA MESAJI ALINDI!', message);
                     
-                    const user = isUserApproved(message.userId);
+                    const user = approvedUsers.find(u => u.id === message.userId);
                     
                     if (!user) {
                         socket.send(JSON.stringify({
@@ -1367,8 +1471,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                             user.credits = Math.max(0, user.credits - message.creditsUsed);
                             user.totalCalls = (user.totalCalls || 0) + 1;
                             user.lastCall = new Date().toLocaleString();
-                            saveApprovedUsers();
-                            searchUsers();
+                            renderApprovedUsers();
                             updateStats();
                         }
                     }
@@ -1384,8 +1487,6 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                         updatedUser.totalCalls = (updatedUser.totalCalls || 0) + 1;
                         updatedUser.lastCall = new Date().toLocaleString();
                         
-                        // localStorage'ı güncelle (önemli!)
-                        saveApprovedUsers();
                         renderApprovedUsers();
                         updateStats();
                         
@@ -1396,17 +1497,17 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                         log(`💳 ${updatedUser.name} kredi güncellendi: ${message.newCredits} dk`);
                     }
                     break;
-                    case 'auto-credit-update':
-    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
-    const userToUpdate = approvedUsers.find(u => u.id === message.userId);
-    if (userToUpdate) {
-        userToUpdate.credits = message.newCredits;
-        saveApprovedUsers();
-        renderApprovedUsers();
-        updateStats();
-        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
-    }
-    break;
+                    
+                case 'auto-credit-update':
+                    console.log('💳 AUTO CREDIT UPDATE ALINDI!', message);
+                    const userToUpdate = approvedUsers.find(u => u.id === message.userId);
+                    if (userToUpdate) {
+                        userToUpdate.credits = message.newCredits;
+                        renderApprovedUsers();
+                        updateStats();
+                        console.log('💳 Kredi güncellendi:', message.userId, '->', message.newCredits);
+                    }
+                    break;
                     
                 case 'user-list-update':
                     console.log(`👥 Kullanıcı listesi güncellendi: ${message.users?.length || 0} kullanıcı`);
@@ -1498,7 +1599,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #374151;">${user.name} (${userId})</div>
                         <div style="font-size: 13px; color: #64748b;">
-                            ⏱️ Görüşme: ${durationText} → ${creditsUsed} kredi düşüldü<br>
+                            ⱴ️ Görüşme: ${durationText} → ${creditsUsed} kredi düşüldü<br>
                             💰 Kalan: ${user.credits} dakika
                         </div>
                     </div>
@@ -1607,7 +1708,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                     const remoteAudio = document.getElementById('remoteAudio');
                     if (event.streams && event.streams[0]) {
                         remoteAudio.srcObject = event.streams[0];
-                        console.log('🔊 Admin remote audio stream atandı (gelen arama)');
+                        console.log('📊 Admin remote audio stream atandı (gelen arama)');
                         
                         remoteAudio.play().then(() => {
                             console.log('✅ Admin remote audio oynatılmaya başladı (gelen arama)');
@@ -1787,7 +1888,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                     const remoteAudio = document.getElementById('remoteAudio');
                     if (event.streams && event.streams[0]) {
                         remoteAudio.srcObject = event.streams[0];
-                        console.log('🔊 Admin remote audio stream atandı');
+                        console.log('📊 Admin remote audio stream atandı');
                         
                         remoteAudio.play().then(() => {
                             console.log('✅ Admin remote audio oynatılmaya başladı');
@@ -1974,7 +2075,7 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
             userListDiv.innerHTML = '';
             users.forEach(user => {
                 const userDiv = document.createElement('div');
-                const isApproved = isUserApproved(user.id);
+                const isApproved = approvedUsers.find(u => u.id === user.id);
                 userDiv.className = 'connected-user' + (isApproved ? ' online-user' : '');
                 userDiv.innerHTML = `
                     <div class="${user.online ? 'user-online-dot' : 'user-offline-dot'}"></div>
@@ -2010,11 +2111,6 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
             }
         }
         
-        function downloadCustomerApp() {
-            const appUrl = `${window.location.origin}/customer-app.html`;
-            prompt('Müşteri Uygulaması URL\'si (kopyalayın):', appUrl);
-        }
-        
         // Verileri API'den yenile
         async function refreshData() {
             log('🔄 Veriler API\'den yenileniyor...');
@@ -2026,7 +2122,6 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
             
             try {
                 await loadUsersFromAPI();
-                showSuccessNotification('Veriler başarıyla yenilendi!');
                 log('✅ Tüm veriler API\'den güncellendi');
             } catch (error) {
                 log('❌ Veri yenileme hatası: ' + error.message);
@@ -2036,36 +2131,6 @@ const sortedUsers = [...usersToShow].sort((a, b) => {
                 refreshButton.textContent = originalText;
             }
         }
-        
-        function testIncomingCall() {
-            console.log('🧪 TEST: Manual gelen arama tetikleniyor');
-            
-            const testUser = approvedUsers.find(u => u.id === '1234') || 
-                            approvedUsers.find(u => u.id === '0005') || 
-                            approvedUsers[0];
-            
-            if (!testUser) {
-                alert('Test için onaylı kullanıcı gerekli!');
-                return;
-            }
-            
-            console.log(`✅ TEST: Test kullanıcısı bulundu: ${testUser.name} (${testUser.id})`);
-            
-            // Manuel gelen arama simülasyonu
-            const testMessage = {
-                type: 'incoming-call',
-                userId: testUser.id,
-                userName: testUser.name,
-                credits: testUser.credits
-            };
-            
-            console.log('📨 TEST: Simüle incoming-call mesajı işleniyor');
-            handleMessage(testMessage);
-        }
     </script>
 </body>
 </html>
-
-
-
-
