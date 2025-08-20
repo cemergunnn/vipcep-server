@@ -438,6 +438,7 @@
             border-left: 4px solid #f59e0b;
         }
 
+        /* Rate Limit Uyarıları */
         .rate-limit-warning {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
@@ -625,6 +626,7 @@
             animation: pulse 1.5s infinite;
         }
 
+        /* Loading State */
         .loading {
             opacity: 0.7;
             pointer-events: none;
@@ -924,14 +926,14 @@
         let kvkkApproved = false;
         let rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
         
-        // 🔥 WebRTC Targeting Fix - Accepted Admin ID'sini sakla
-        let acceptedAdminId = null;
+        // 🔥 WebRTC Targeting Fix - Ana değişken
+        let currentAdminId = null; // Kabul eden admin'in unique ID'si
         
         let userInfo = {
             id: '',
             name: '',
             credits: 0,
-            adminId: "ADMIN001"  // Default, ama acceptedAdminId kullanılacak
+            adminId: "ADMIN001"
         };
         
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -976,7 +978,7 @@
                 if (e.key === 'Enter') loginUser();
             });
 
-            // KVKK state persistence
+            // Sayfa kapatılırken KVKK state'ini koru
             window.addEventListener('beforeunload', () => {
                 if (kvkkApproved) {
                     localStorage.setItem('vipcep_kvkk_approved', 'true');
@@ -1031,7 +1033,6 @@
 
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     const timeout = setTimeout(() => {
-                        console.log('KVKK check timeout, varsayılan false');
                         resolve(false);
                     }, 5000);
 
@@ -1065,7 +1066,6 @@
             return new Promise((resolve) => {
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     const timeout = setTimeout(() => {
-                        console.log('KVKK save timeout');
                         resolve(false);
                     }, 5000);
 
@@ -1279,6 +1279,7 @@
             updateConnectionStatus();
         }
         
+        // Rate Limiting Functions
         function showRateLimitWarning(remaining, resetTime, severe = false) {
             const warningDiv = document.getElementById('rateLimitWarning') || createRateLimitWarning();
             const isSevere = remaining <= 1 || severe;
@@ -1568,9 +1569,9 @@
                     break;
                     
                 case 'call-accepted':
-                    // 🔥 WebRTC Targeting Fix - Kabul eden admin'in ID'sini sakla
-                    acceptedAdminId = message.acceptedAdminId || userInfo.adminId;
-                    console.log('🔥 Call accepted by admin:', acceptedAdminId);
+                    // 🔥 WebRTC Targeting Fix - Ana düzeltme
+                    currentAdminId = message.acceptedAdminId || "ADMIN001";
+                    console.log(`🎯 WebRTC Targeting: Kabul eden admin -> ${currentAdminId}`);
                     
                     stopRingbackTone();
                     setupPeerConnection();
@@ -1639,16 +1640,16 @@
             
             stopIncomingCallSound();
             
+            // 🔥 WebRTC Targeting Fix - Admin ID'yi sakla
+            currentAdminId = incomingCallInfo.adminId;
+            console.log(`🎯 WebRTC Targeting: Gelen arama admin -> ${currentAdminId}`);
+            
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'admin-call-accepted',
                     userId: userInfo.id,
                     adminId: incomingCallInfo.adminId
                 }));
-                
-                // 🔥 WebRTC Targeting Fix - Incoming call'da adminId'yi sakla
-                acceptedAdminId = incomingCallInfo.adminId;
-                console.log('🔥 Incoming call accepted, admin ID:', acceptedAdminId);
             }
             
             setupIncomingPeerConnection();
@@ -1688,6 +1689,7 @@
 
         function hideIncomingCall() {
             incomingCallInfo = null;
+            currentAdminId = null; // Reset targeting
             setState('idle');
         }
 
@@ -1717,15 +1719,14 @@
                 };
                 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket && acceptedAdminId) {
-                        // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
+                    // 🎯 WebRTC TARGETING FIX: currentAdminId kullan
+                    if (event.candidate && socket && currentAdminId) {
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: acceptedAdminId,
+                            targetId: currentAdminId, // ← BURASI ÖNEMLİ!
                             userId: userInfo.id
                         }));
-                        console.log('🔥 ICE candidate sent to:', acceptedAdminId);
                     }
                 };
                 
@@ -1786,14 +1787,13 @@
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 
-                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
+                // 🎯 WebRTC TARGETING FIX: currentAdminId kullan
                 socket.send(JSON.stringify({
                     type: 'answer',
                     answer: answer,
-                    targetId: acceptedAdminId,
+                    targetId: currentAdminId, // ← BURASI ÖNEMLİ!
                     userId: userInfo.id
                 }));
-                console.log('🔥 Answer sent to:', acceptedAdminId);
                 
             } catch (error) {
                 const errorMsg = currentLanguage === 'tr' 
@@ -1848,7 +1848,10 @@
         
         function playRingbackTone() {
             try {
-                if (ringbackAudio) stopRingbackTone();
+                if (ringbackAudio) {
+                    ringbackAudio.pause();
+                    ringbackAudio = null;
+                }
                 
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
@@ -1861,53 +1864,88 @@
                     oscillator.connect(gainNode);
                     gainNode.connect(audioContext.destination);
                     
-                    oscillator.frequency.setValueAtTime(425, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
                     oscillator.type = 'sine';
                     
                     gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
-                    gainNode.gain.linearRampToValueAtTime(0.25, audioContext.currentTime + 0.1);
-                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 0.5);
                     
                     oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 1.0);
+                    oscillator.stop(audioContext.currentTime + 0.5);
                     
-                    setTimeout(playTone, 4000);
+                    setTimeout(playTone, 2000);
                 };
                 
                 playTone();
-                ringbackAudio = { audioContext };
-                
             } catch (error) {
                 console.log('Ringback tone could not play:', error);
             }
         }
-        
+
         function stopRingbackTone() {
             if (ringbackAudio) {
-                try {
-                    if (ringbackAudio.audioContext && ringbackAudio.audioContext.state === 'running') {
-                        ringbackAudio.audioContext.suspend();
-                    }
-                } catch (error) {
-                    console.log('Ringback tone stop error:', error);
-                }
+                ringbackAudio.pause();
                 ringbackAudio = null;
             }
         }
-        
+
+        function startCall() {
+            if (userInfo.credits <= 0) {
+                const errorMsg = currentLanguage === 'tr' 
+                    ? 'Krediniz bitmiş! Lütfen kredi yükleyin.'
+                    : 'No credits! Please add credit.';
+                showError(errorMsg);
+                return;
+            }
+            
+            hideError();
+            setState('calling');
+            playRingbackTone();
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'call-request',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    credits: userInfo.credits
+                }));
+            }
+        }
+
+        function cancelCall() {
+            stopRingbackTone();
+            setState('idle');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'call-cancelled',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    reason: currentLanguage === 'tr' ? 'Kullanıcı iptal etti' : 'User cancelled'
+                }));
+            }
+        }
+
+        // 🔥 WebRTC Targeting Fix - CORE DÜZELTME
         async function setupPeerConnection() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ 
+                const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
                         autoGainControl: true
                     } 
                 });
+                localStream = stream;
+                
+                const localAudio = document.getElementById('localAudio');
+                localAudio.srcObject = stream;
+                
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
+                stream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, stream);
                 });
                 
                 peerConnection.ontrack = (event) => {
@@ -1919,16 +1957,14 @@
                 };
                 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket) {
-                        // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
-                        const targetId = acceptedAdminId || userInfo.adminId;
+                    // 🎯 WebRTC TARGETING FIX: currentAdminId kullan
+                    if (event.candidate && socket && currentAdminId) {
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: targetId,
+                            targetId: currentAdminId, // ← BURASI ÖNEMLİ!
                             userId: userInfo.id
                         }));
-                        console.log('🔥 ICE candidate sent to:', targetId);
                     }
                 };
                 
@@ -1966,105 +2002,33 @@
                             break;
                     }
                 };
-
+                
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
                 
-                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
-                const targetId = acceptedAdminId || userInfo.adminId;
+                // 🎯 WebRTC TARGETING FIX: currentAdminId kullan
                 socket.send(JSON.stringify({
                     type: 'offer',
                     offer: offer,
-                    targetId: targetId,
-                    userId: userInfo.id,
-                    userName: userInfo.name
+                    targetId: currentAdminId, // ← BURASI ÖNEMLİ!
+                    userId: userInfo.id
                 }));
-                console.log('🔥 Offer sent to:', targetId);
                 
             } catch (error) {
                 const errorMsg = currentLanguage === 'tr' 
-                    ? 'Mikrofon erişimi gerekli.'
-                    : 'Microphone access required.';
+                    ? 'Mikrofon erişimi gerekli!'
+                    : 'Microphone access required!';
                 showError(errorMsg);
-                setState('idle');
+                endCall();
             }
         }
-        
-        function startCall() {
-            if (!isLoggedIn) {
-                const errorMsg = currentLanguage === 'tr' 
-                    ? 'Lütfen önce giriş yapın!'
-                    : 'Please login first!';
-                showError(errorMsg);
-                return;
-            }
-            
-            if (userInfo.credits <= 0) {
-                const errorMsg = currentLanguage === 'tr' 
-                    ? 'Yetersiz kredi! Kredi talep etmek için "Kredi Talep Et" butonunu kullanın.'
-                    : 'Insufficient credit! Use "Request Credit" button to request credit.';
-                showError(errorMsg);
-                return;
-            }
-            
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                const errorMsg = currentLanguage === 'tr' 
-                    ? 'Sunucu bağlantısı yok. Lütfen bekleyin...'
-                    : 'No server connection. Please wait...';
-                showError(errorMsg);
-                return;
-            }
-            
-            // 🔥 WebRTC Targeting Fix - acceptedAdminId'yi reset et
-            acceptedAdminId = null;
-            
-            setState('calling');
-            hideError();
-            playRingbackTone();
-            
-            socket.send(JSON.stringify({
-                type: 'call-request',
-                userId: userInfo.id,
-                userName: userInfo.name,
-                credits: userInfo.credits,
-                targetId: userInfo.adminId
-            }));
-            
-            setTimeout(() => {
-                if (callState === 'calling') {
-                    setState('idle');
-                    const errorMsg = currentLanguage === 'tr' 
-                        ? 'Arama zaman aşımına uğradı.'
-                        : 'Call timed out.';
-                    showError(errorMsg);
-                }
-            }, 30000);
-        }
-        
-        function cancelCall() {
-            if (socket && callState === 'calling') {
-                const reason = currentLanguage === 'tr' 
-                    ? 'Müşteri aramayı iptal etti'
-                    : 'Customer cancelled the call';
-                    
-                socket.send(JSON.stringify({
-                    type: 'call-cancelled',
-                    userId: userInfo.id,
-                    userName: userInfo.name,
-                    reason: reason
-                }));
-            }
-            
-            endCall();
-        }
-        
+
         function endCall() {
-            stopRingbackTone();
-            stopIncomingCallSound();
+            stopCallTimer();
             
-            if (callTimer) {
-                clearInterval(callTimer);
-                callTimer = null;
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
             }
             
             if (peerConnection) {
@@ -2072,121 +2036,97 @@
                 peerConnection = null;
             }
             
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
+            const duration = callDuration;
             
-            if (socket && callState === 'connected' && callStartTime) {
-                const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
-                const creditsUsed = Math.ceil(actualDuration / 60);
-                
-                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
-                const targetId = acceptedAdminId || userInfo.adminId;
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                // 🎯 WebRTC TARGETING FIX: currentAdminId kullan
                 socket.send(JSON.stringify({
                     type: 'end-call',
                     userId: userInfo.id,
-                    duration: actualDuration,
-                    creditsUsed: creditsUsed,
-                    targetId: targetId,
+                    targetId: currentAdminId, // ← BURASI ÖNEMLİ!
+                    duration: duration,
                     userType: 'customer'
                 }));
-                console.log('🔥 End call sent to:', targetId);
             }
             
-            if (incomingCallInfo) {
-                incomingCallInfo = null;
-            }
-            
-            // 🔥 WebRTC Targeting Fix - acceptedAdminId'yi reset et
-            acceptedAdminId = null;
-            
+            // Reset targeting
+            currentAdminId = null;
             setState('idle');
-            callDuration = 0;
-            callStartTime = null;
         }
-        
+
         function startCallTimer() {
+            if (callTimer) {
+                clearInterval(callTimer);
+            }
+            
             callDuration = 0;
+            updateCallTimer();
+            
             callTimer = setInterval(() => {
                 callDuration++;
-                const mins = Math.floor(callDuration / 60);
-                const secs = callDuration % 60;
-                document.getElementById('callTimer').textContent = 
-                    mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
+                updateCallTimer();
             }, 1000);
         }
-        
-        function showCreditModal(duration, creditsUsed, remainingCredits) {
-            const mins = Math.floor(duration / 60);
-            const secs = duration % 60;
-            const durationText = `${mins}:${secs.toString().padStart(2, '0')}`;
-            
-            document.getElementById('modalDuration').textContent = durationText;
-            
-            const creditsUsedText = currentLanguage === 'tr' ? `${creditsUsed} dakika` : `${creditsUsed} minutes`;
-            const remainingText = currentLanguage === 'tr' ? `${remainingCredits} dakika` : `${remainingCredits} minutes`;
-            
-            document.getElementById('modalCreditsUsed').textContent = creditsUsedText;
-            document.getElementById('modalRemainingCredits').textContent = remainingText;
-            
-            document.getElementById('creditModalOverlay').classList.remove('hidden');
+
+        function stopCallTimer() {
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
         }
-        
+
+        function updateCallTimer() {
+            const minutes = Math.floor(callDuration / 60);
+            const seconds = callDuration % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('callTimer').textContent = timeString;
+        }
+
+        // Credit modal functions
+        function showCreditModal(duration, creditsUsed, remainingCredits) {
+            const modal = document.getElementById('creditModalOverlay');
+            
+            document.getElementById('modalDuration').textContent = formatDuration(duration);
+            document.getElementById('modalCreditsUsed').textContent = 
+                currentLanguage === 'tr' ? `${creditsUsed} dakika` : `${creditsUsed} minutes`;
+            document.getElementById('modalRemainingCredits').textContent = 
+                currentLanguage === 'tr' ? `${remainingCredits} dakika` : `${remainingCredits} minutes`;
+            
+            modal.classList.remove('hidden');
+        }
+
         function closeCreditModal() {
             document.getElementById('creditModalOverlay').classList.add('hidden');
         }
-        
+
+        function formatDuration(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
         function logoutUser() {
-            const confirmMsg = currentLanguage === 'tr' 
-                ? 'Çıkış yapmak istediğinizden emin misiniz?'
-                : 'Are you sure you want to sign out?';
-                
-            if (confirm(confirmMsg)) {
-                localStorage.removeItem('vipcep_user_id');
-                localStorage.removeItem('vipcep_user_name');
-                localStorage.removeItem('vipcep_remember_me');
-                
-                if (callState !== 'idle') {
-                    endCall();
-                }
-                
-                if (socket) {
-                    socket.close();
-                }
-                
-                isLoggedIn = false;
-                userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
-                rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
-                acceptedAdminId = null; // 🔥 WebRTC Targeting Fix - Reset
-                
-                document.getElementById('mainApp').classList.add('hidden');
-                document.getElementById('loginScreen').classList.remove('hidden');
-                
-                document.getElementById('userIdInput').value = '';
-                document.getElementById('userNameInput').value = '';
-                document.getElementById('rememberMe').checked = false;
-                
-                hideRateLimitWarning();
-                
-                document.getElementById('loginButton').disabled = false;
-                const loginText = currentLanguage === 'tr' ? 'Giriş Yap' : 'Sign In';
-                document.getElementById('loginButton').innerHTML = `
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    ${loginText}
-                `;
-                
-                const successMsg = currentLanguage === 'tr' 
-                    ? 'Başarıyla çıkış yaptınız!'
-                    : 'Successfully signed out!';
-                showLoginMessage(successMsg, 'success');
-                
-                setTimeout(() => {
-                    connectToServer();
-                }, 1000);
+            if (socket) {
+                socket.close();
             }
+            
+            isLoggedIn = false;
+            userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
+            currentAdminId = null; // Reset targeting
+            
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            document.getElementById('userIdInput').value = '';
+            document.getElementById('userNameInput').value = '';
+            document.getElementById('rememberMe').checked = false;
+            
+            localStorage.removeItem('vipcep_user_id');
+            localStorage.removeItem('vipcep_user_name');
+            localStorage.removeItem('vipcep_remember_me');
+            
+            const statusMsg = currentLanguage === 'tr' ? 'Çıkış yapıldı' : 'Logged out';
+            showLoginMessage(statusMsg, 'success');
         }
     </script>
 </body>
