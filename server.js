@@ -163,7 +163,7 @@ async function recordFailedLogin(ip, userType = 'customer') {
 
 // TOTP Secret oluştur
 function generateTOTPSecret() {
-    return crypto.randomBytes(20).toString('base32').substring(0, 16);
+    return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
 // TOTP doğrulama fonksiyonu - GERÇEKTERECK GOOGLE AUTHENTICATOR
@@ -1700,4 +1700,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
