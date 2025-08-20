@@ -111,7 +111,7 @@
             padding: 20px;
         }
 
-        /* KVKK Onay Ekranı - Düzeltilmiş ve Güçlendirilmiş */
+        /* KVKK Onay Ekranı */
         .kvkk-screen {
             padding: 20px;
             max-height: 80vh;
@@ -191,31 +191,6 @@
         .kvkk-buttons {
             display: flex;
             gap: 10px;
-        }
-
-        /* KVKK Persistent Overlay - Uygulama kilitlenmesini önler */
-        .kvkk-persistent-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .kvkk-persistent-modal {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
         
         .form-group {
@@ -463,7 +438,6 @@
             border-left: 4px solid #f59e0b;
         }
 
-        /* Rate Limit Uyarıları - YENI */
         .rate-limit-warning {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
@@ -651,7 +625,6 @@
             animation: pulse 1.5s infinite;
         }
 
-        /* Loading State */
         .loading {
             opacity: 0.7;
             pointer-events: none;
@@ -951,11 +924,14 @@
         let kvkkApproved = false;
         let rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
         
+        // 🔥 WebRTC Targeting Fix - Accepted Admin ID'sini sakla
+        let acceptedAdminId = null;
+        
         let userInfo = {
             id: '',
             name: '',
             credits: 0,
-            adminId: "ADMIN001"
+            adminId: "ADMIN001"  // Default, ama acceptedAdminId kullanılacak
         };
         
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -978,13 +954,12 @@
         }
         
         function setupEventListeners() {
-            // KVKK checkbox - güçlendirilmiş
+            // KVKK checkbox
             const kvkkCheckbox = document.getElementById('kvkkCheckbox');
             const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
             
             kvkkCheckbox.addEventListener('change', (e) => {
                 kvkkAcceptBtn.disabled = !e.target.checked;
-                // Checkbox durumunu localStorage'a kaydet
                 localStorage.setItem('vipcep_kvkk_checkbox', e.target.checked);
             });
 
@@ -1001,7 +976,7 @@
                 if (e.key === 'Enter') loginUser();
             });
 
-            // Sayfa kapatılırken KVKK state'ini koru
+            // KVKK state persistence
             window.addEventListener('beforeunload', () => {
                 if (kvkkApproved) {
                     localStorage.setItem('vipcep_kvkk_approved', 'true');
@@ -1045,17 +1020,15 @@
             }
         }
 
-        // KVKK functions - Düzeltilmiş ve Güçlendirilmiş
+        // KVKK functions
         async function checkKVKKConsent() {
             return new Promise((resolve) => {
-                // Önce localStorage'dan kontrol et
                 const localApproval = localStorage.getItem('vipcep_kvkk_approved');
                 if (localApproval === 'true') {
                     resolve(true);
                     return;
                 }
 
-                // Server'dan kontrol et
                 if (socket && socket.readyState === WebSocket.OPEN) {
                     const timeout = setTimeout(() => {
                         console.log('KVKK check timeout, varsayılan false');
@@ -1125,7 +1098,6 @@
         async function acceptKVKK() {
             if (!document.getElementById('kvkkCheckbox').checked) return;
             
-            // Loading state
             const acceptBtn = document.getElementById('kvkkAcceptBtn');
             acceptBtn.disabled = true;
             acceptBtn.innerHTML = '<span data-text-tr="⏳ Kaydediliyor..." data-text-en="⏳ Saving...">⏳ Kaydediliyor...</span>';
@@ -1139,7 +1111,6 @@
                     document.getElementById('kvkkScreen').classList.add('hidden');
                     document.getElementById('loginScreen').classList.remove('hidden');
                     
-                    // Otomatik giriş kontrolü
                     const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
                     const savedUserId = localStorage.getItem('vipcep_user_id');
                     const savedUserName = localStorage.getItem('vipcep_user_name');
@@ -1169,7 +1140,6 @@
                     : 'System error! Please try again.';
                 alert(errorMsg);
             } finally {
-                // Reset button
                 acceptBtn.disabled = false;
                 acceptBtn.innerHTML = `
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
@@ -1187,7 +1157,6 @@
                 : 'You cannot use the system without GDPR consent.';
             alert(message);
             
-            // Sayfayı kapat veya yönlendir
             try {
                 window.close();
             } catch {
@@ -1206,7 +1175,6 @@
                 document.getElementById('rememberMe').checked = true;
             }
 
-            // KVKK checkbox state'ini geri yükle
             const savedCheckbox = localStorage.getItem('vipcep_kvkk_checkbox');
             if (savedCheckbox === 'true') {
                 document.getElementById('kvkkCheckbox').checked = true;
@@ -1251,14 +1219,12 @@
                 socket.onopen = async () => {
                     setConnectionStatus('connected');
                     
-                    // KVKK kontrol et
                     const hasConsent = await checkKVKKConsent();
                     if (hasConsent) {
                         kvkkApproved = true;
                         document.getElementById('kvkkScreen').classList.add('hidden');
                         document.getElementById('loginScreen').classList.remove('hidden');
                         
-                        // Otomatik giriş kontrolü
                         const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
                         const savedUserId = localStorage.getItem('vipcep_user_id');
                         const savedUserName = localStorage.getItem('vipcep_user_name');
@@ -1313,7 +1279,6 @@
             updateConnectionStatus();
         }
         
-        // Rate Limiting Functions - YENİ
         function showRateLimitWarning(remaining, resetTime, severe = false) {
             const warningDiv = document.getElementById('rateLimitWarning') || createRateLimitWarning();
             const isSevere = remaining <= 1 || severe;
@@ -1367,7 +1332,6 @@
             warningDiv.innerHTML = message;
             warningDiv.classList.remove('hidden');
             
-            // Auto hide after 8 seconds (except when blocked)
             if (remaining > 0) {
                 setTimeout(() => {
                     warningDiv.classList.add('hidden');
@@ -1380,7 +1344,6 @@
             warningDiv.id = 'rateLimitWarning';
             warningDiv.className = 'rate-limit-warning hidden';
             
-            // Insert after login message
             const loginMessage = document.getElementById('loginMessage');
             loginMessage.parentNode.insertBefore(warningDiv, loginMessage.nextSibling);
             
@@ -1414,7 +1377,6 @@
                 return;
             }
             
-            // Rate limit kontrolü
             if (!rateLimitStatus.allowed) {
                 showRateLimitWarning(0, rateLimitStatus.resetTime, true);
                 return;
@@ -1468,7 +1430,6 @@
             
             showLoginMessage(reason || defaultReason, 'error');
             
-            // Rate limit bilgilerini güncelle ve göster
             if (rateInfo) {
                 rateLimitStatus = rateInfo;
                 
@@ -1562,7 +1523,6 @@
                         userInfo.credits = message.credits || 0;
                         loginSuccess();
                     } else {
-                        // Rate limit bilgilerini işle
                         const rateInfo = message.rateLimited ? {
                             allowed: false,
                             attempts: 5,
@@ -1608,6 +1568,10 @@
                     break;
                     
                 case 'call-accepted':
+                    // 🔥 WebRTC Targeting Fix - Kabul eden admin'in ID'sini sakla
+                    acceptedAdminId = message.acceptedAdminId || userInfo.adminId;
+                    console.log('🔥 Call accepted by admin:', acceptedAdminId);
+                    
                     stopRingbackTone();
                     setupPeerConnection();
                     setState('connecting');
@@ -1681,6 +1645,10 @@
                     userId: userInfo.id,
                     adminId: incomingCallInfo.adminId
                 }));
+                
+                // 🔥 WebRTC Targeting Fix - Incoming call'da adminId'yi sakla
+                acceptedAdminId = incomingCallInfo.adminId;
+                console.log('🔥 Incoming call accepted, admin ID:', acceptedAdminId);
             }
             
             setupIncomingPeerConnection();
@@ -1749,12 +1717,15 @@
                 };
                 
                 peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket && incomingCallInfo) {
+                    if (event.candidate && socket && acceptedAdminId) {
+                        // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: incomingCallInfo.adminId
+                            targetId: acceptedAdminId,
+                            userId: userInfo.id
                         }));
+                        console.log('🔥 ICE candidate sent to:', acceptedAdminId);
                     }
                 };
                 
@@ -1815,12 +1786,14 @@
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 
+                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
                 socket.send(JSON.stringify({
                     type: 'answer',
                     answer: answer,
-                    targetId: incomingCallInfo.adminId,
+                    targetId: acceptedAdminId,
                     userId: userInfo.id
                 }));
+                console.log('🔥 Answer sent to:', acceptedAdminId);
                 
             } catch (error) {
                 const errorMsg = currentLanguage === 'tr' 
@@ -1947,11 +1920,15 @@
                 
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate && socket) {
+                        // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
+                        const targetId = acceptedAdminId || userInfo.adminId;
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: userInfo.adminId
+                            targetId: targetId,
+                            userId: userInfo.id
                         }));
+                        console.log('🔥 ICE candidate sent to:', targetId);
                     }
                 };
                 
@@ -1993,13 +1970,16 @@
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
                 
+                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
+                const targetId = acceptedAdminId || userInfo.adminId;
                 socket.send(JSON.stringify({
                     type: 'offer',
                     offer: offer,
-                    targetId: userInfo.adminId,
+                    targetId: targetId,
                     userId: userInfo.id,
                     userName: userInfo.name
                 }));
+                console.log('🔥 Offer sent to:', targetId);
                 
             } catch (error) {
                 const errorMsg = currentLanguage === 'tr' 
@@ -2034,6 +2014,9 @@
                 showError(errorMsg);
                 return;
             }
+            
+            // 🔥 WebRTC Targeting Fix - acceptedAdminId'yi reset et
+            acceptedAdminId = null;
             
             setState('calling');
             hideError();
@@ -2098,18 +2081,25 @@
                 const actualDuration = Math.floor((Date.now() - callStartTime) / 1000);
                 const creditsUsed = Math.ceil(actualDuration / 60);
                 
+                // 🔥 WebRTC Targeting Fix - acceptedAdminId kullan
+                const targetId = acceptedAdminId || userInfo.adminId;
                 socket.send(JSON.stringify({
                     type: 'end-call',
                     userId: userInfo.id,
                     duration: actualDuration,
                     creditsUsed: creditsUsed,
-                    targetId: userInfo.adminId
+                    targetId: targetId,
+                    userType: 'customer'
                 }));
+                console.log('🔥 End call sent to:', targetId);
             }
             
             if (incomingCallInfo) {
                 incomingCallInfo = null;
             }
+            
+            // 🔥 WebRTC Targeting Fix - acceptedAdminId'yi reset et
+            acceptedAdminId = null;
             
             setState('idle');
             callDuration = 0;
@@ -2168,6 +2158,7 @@
                 isLoggedIn = false;
                 userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
                 rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
+                acceptedAdminId = null; // 🔥 WebRTC Targeting Fix - Reset
                 
                 document.getElementById('mainApp').classList.add('hidden');
                 document.getElementById('loginScreen').classList.remove('hidden');
