@@ -789,7 +789,11 @@ app.get('/', checkIPWhitelist, (req, res) => {
                         if (result.success) {
                             showSuccess(result.message || 'Giriş başarılı!');
                             setTimeout(() => {
-                                window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                                if (result.redirectUrl) {
+                                    window.location.href = result.redirectUrl;
+                                } else {
+                                    window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                                }
                             }, 1000);
                         } else if (result.requiresTOTP) {
                             document.getElementById('totpGroup').style.display = 'block';
@@ -835,7 +839,11 @@ app.get('/', checkIPWhitelist, (req, res) => {
                         if (result.success) {
                             showSuccess(result.message || 'Giriş başarılı!');
                             setTimeout(() => {
-                                window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                                if (result.redirectUrl) {
+                                    window.location.href = result.redirectUrl;
+                                } else {
+                                    window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                                }
                             }, 1000);
                         } else {
                             showError(result.error || 'Giriş başarısız!', result.remaining);
@@ -981,10 +989,12 @@ app.post('/auth/super-login', async (req, res) => {
             };
             
             console.log(`🔴 Super Admin giriş başarılı: ${username} - IP: ${clientIP}`);
+            console.log(`🔗 Session oluşturuldu:`, req.session.superAdmin);
             
             res.json({ 
                 success: true,
-                message: `Hoş geldiniz ${admin.username}! Super Admin paneline yönlendiriliyorsunuz...`
+                message: `Hoş geldiniz ${admin.username}! Super Admin paneline yönlendiriliyorsunuz...`,
+                redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH
             });
             
         } else {
@@ -1037,10 +1047,12 @@ app.post('/auth/admin-login', async (req, res) => {
             };
             
             console.log(`🟡 Normal Admin giriş başarılı: ${username} - IP: ${clientIP}`);
+            console.log(`🔗 Session oluşturuldu:`, req.session.normalAdmin);
             
             res.json({ 
                 success: true,
-                message: `Hoş geldiniz ${admin.username}! Admin paneline yönlendiriliyorsunuz...`
+                message: `Hoş geldiniz ${admin.username}! Admin paneline yönlendiriliyorsunuz...`,
+                redirectUrl: SECURITY_CONFIG.NORMAL_ADMIN_PATH
             });
             
         } else {
@@ -1062,22 +1074,38 @@ app.post('/auth/admin-login', async (req, res) => {
     }
 });
 
-// Session check endpoint - YENİ EKLEME
+// Session check endpoint - YENİ EKLEME - DÜZELTİLMİŞ
 app.get('/auth/check-session', (req, res) => {
+    console.log('🔍 Session kontrolü:', req.session);
+    
     if (req.session && req.session.superAdmin) {
+        console.log('✅ Super admin session bulundu:', req.session.superAdmin.username);
         res.json({ 
             authenticated: true, 
             role: 'super', 
             username: req.session.superAdmin.username 
         });
     } else if (req.session && req.session.normalAdmin) {
+        console.log('✅ Normal admin session bulundu:', req.session.normalAdmin.username);
         res.json({ 
             authenticated: true, 
             role: 'normal', 
             username: req.session.normalAdmin.username 
         });
     } else {
+        console.log('❌ Session bulunamadı');
         res.json({ authenticated: false });
+    }
+});
+
+// Yönlendirme endpoint'i - YENİ EKLEME
+app.get('/redirect-after-login', (req, res) => {
+    if (req.session && req.session.superAdmin) {
+        res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
+    } else if (req.session && req.session.normalAdmin) {
+        res.redirect(SECURITY_CONFIG.NORMAL_ADMIN_PATH);
+    } else {
+        res.redirect('/');
     }
 });
 
