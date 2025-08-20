@@ -1174,9 +1174,15 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'register':
-                    clients.set(message.userId, {
+                    // Admin'ler için unique ID oluştur
+                    const uniqueClientId = message.userType === 'admin' 
+                        ? `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                        : message.userId;
+                    
+                    clients.set(uniqueClientId, {
                         ws: ws,
-                        id: message.userId,
+                        id: message.userId, // Orijinal ID'yi sakla
+                        uniqueId: uniqueClientId, // Unique ID'yi de sakla
                         name: message.name,
                         userType: message.userType || 'customer',
                         registeredAt: new Date().toLocaleTimeString(),
@@ -1184,7 +1190,7 @@ wss.on('connection', (ws, req) => {
                         role: message.role || null
                     });
 
-                    console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} (${message.userId})`);
+                    console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} (${uniqueClientId})`);
                     broadcastUserList();
                     break;
 
