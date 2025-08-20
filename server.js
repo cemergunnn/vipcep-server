@@ -5,7 +5,6 @@ const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
 const session = require('express-session');
-// const pgSession = require('connect-pg-simple')(session);
 
 // PostgreSQL bağlantısı - Railway için güncellenmiş
 const { Pool } = require('pg');
@@ -1075,7 +1074,7 @@ app.post('/auth/admin-login', async (req, res) => {
     }
 });
 
-// Session check endpoint - YENİ EKLEME - DÜZELTİLMİŞ
+// Session check endpoint
 app.get('/auth/check-session', (req, res) => {
     console.log('🔍 Session kontrolü:', req.session);
     
@@ -1099,7 +1098,7 @@ app.get('/auth/check-session', (req, res) => {
     }
 });
 
-// Yönlendirme endpoint'i - YENİ EKLEME
+// Yönlendirme endpoint'i
 app.get('/redirect-after-login', (req, res) => {
     if (req.session && req.session.superAdmin) {
         res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
@@ -1120,7 +1119,7 @@ app.post('/auth/logout', (req, res) => {
     });
 });
 
-// GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER - DÜZELTİLMİŞ
+// GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER
 app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
@@ -1338,10 +1337,10 @@ wss.on('connection', (ws, req) => {
                     }
                     
                     // Diğer adminlere aramayı iptal bilgisi gönder (artık aramaları durdurun)
-                    const otherAdmins = Array.from(clients.values())
+                    const remainingAdmins = Array.from(clients.values())  // 🔧 SYNTAX FIX: otherAdmins -> remainingAdmins
                         .filter(c => c.userType === 'admin' && c.uniqueId !== message.adminId);
                     
-                    otherAdmins.forEach(adminClient => {
+                    remainingAdmins.forEach(adminClient => {
                         if (adminClient.ws.readyState === WebSocket.OPEN) {
                             adminClient.ws.send(JSON.stringify({
                                 type: 'call-taken',
@@ -1455,8 +1454,8 @@ wss.on('connection', (ws, req) => {
                     }
                     
                     // Diğer admin'lere de bildir
-                    const otherAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.ws !== ws);
-                    otherAdmins.forEach(client => {
+                    const notifyAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.ws !== ws);  // 🔧 SYNTAX FIX: otherAdmins -> notifyAdmins 
+                    notifyAdmins.forEach(client => {
                         if (client.ws.readyState === WebSocket.OPEN) {
                             client.ws.send(JSON.stringify({
                                 type: 'credit-updated',
