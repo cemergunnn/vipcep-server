@@ -1030,7 +1030,7 @@ app.post('/auth/logout', (req, res) => {
 });
 
 // GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER
-app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, requireSuperAuth, (req, res) => {
+app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
 
@@ -1700,3 +1700,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
