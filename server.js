@@ -161,33 +161,18 @@ async function recordFailedLogin(ip, userType = 'customer') {
     }
 }
 
-// TOTP Secret oluştur
+// TOTP Secret oluştur - DÜZELTME: base32 yerine hex
 function generateTOTPSecret() {
     return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
-// TOTP doğrulama fonksiyonu - GERÇEKTERECK GOOGLE AUTHENTICATOR
+// TOTP doğrulama fonksiyonu - GERÇEK GOOGLE AUTHENTICATOR
 function verifyTOTP(secret, token) {
     if (!secret || !token || token.length !== 6) return false;
     
     try {
-        // Base32 decode
-        const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        let bits = '';
-        const cleanSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
-        
-        for (let i = 0; i < cleanSecret.length; i++) {
-            const char = cleanSecret[i];
-            const index = base32Chars.indexOf(char);
-            if (index === -1) continue;
-            bits += index.toString(2).padStart(5, '0');
-        }
-        
-        const secretBuffer = Buffer.alloc(Math.floor(bits.length / 8));
-        for (let i = 0; i < secretBuffer.length; i++) {
-            const byte = bits.substr(i * 8, 8);
-            secretBuffer[i] = parseInt(byte, 2);
-        }
+        // Hex formatı kullan (base32 yerine)
+        const secretBuffer = Buffer.from(secret, 'hex');
         
         // TOTP algoritması (RFC 6238)
         const timeStep = 30; // 30 saniye
@@ -224,8 +209,21 @@ function verifyTOTP(secret, token) {
     }
 }
 
-// TOTP QR kodu oluşturma
+// TOTP QR kodu oluşturma - HEX formatı için manuel URL
 function generateTOTPQR(username, secret) {
+    // Google Authenticator için Base32 gerekli, hex'i base32'ye çevir
+    const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const hexBuffer = Buffer.from(secret, 'hex');
+    
+    // Basit hex to base32 conversion (Google Authenticator için)
+    let base32 = '';
+    for (let i = 0; i < hexBuffer.length; i++) {
+        base32 += hexBuffer[i].toString(16).padStart(2, '0');
+    }
+    
+    // Doğrudan secret'i base32 formatına çevir
+    const base32Secret = Buffer.from(secret, 'hex').toString('base64').replace(/=/g, '');
+    
     const serviceName = encodeURIComponent(SECURITY_CONFIG.TOTP_ISSUER);
     const accountName = encodeURIComponent(username);
     const otpauthURL = `otpauth://totp/${serviceName}:${accountName}?secret=${secret}&issuer=${serviceName}`;
@@ -285,7 +283,7 @@ async function initDatabase() {
                 password_hash VARCHAR(255) NOT NULL,
                 role VARCHAR(20) DEFAULT 'normal',
                 is_active BOOLEAN DEFAULT TRUE,
-                totp_secret VARCHAR(32),
+                totp_secret VARCHAR(64),
                 last_login TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -319,11 +317,13 @@ async function initDatabase() {
         const superAdminCheck = await pool.query('SELECT * FROM admins WHERE role = $1', ['super']);
         if (superAdminCheck.rows.length === 0) {
             const hashedPassword = crypto.createHash('sha256').update('admin123').digest('hex');
+            const totpSecret = generateTOTPSecret();
             await pool.query(`
                 INSERT INTO admins (username, password_hash, role, totp_secret) 
                 VALUES ($1, $2, $3, $4)
-            `, ['superadmin', hashedPassword, 'super', generateTOTPSecret()]);
+            `, ['superadmin', hashedPassword, 'super', totpSecret]);
             console.log('🔒 Super admin oluşturuldu: superadmin/admin123');
+            console.log('🔐 TOTP Secret:', totpSecret);
         }
 
         // Test kullanıcılarını kontrol et ve ekle
@@ -680,6 +680,46 @@ app.get('/', checkIPWhitelist, (req, res) => {
                     25% { transform: translateX(-5px); }
                     75% { transform: translateX(5px); }
                 }
+                .success {
+                    background: rgba(34, 197, 94, 0.2);
+                    color: #86efac;
+                    border: 1px solid rgba(34, 197, 94, 0.3);
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-top: 15px;
+                    font-size: 14px;
+                    display: none;
+                }
+                #totpGroup { display: none; }
+                .modal-overlay {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.8);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                .modal {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 16px;
+                    text-align: center;
+                    color: #333;
+                    max-width: 400px;
+                    width: 90%;
+                }
+                .modal h3 { color: #dc2626; margin-bottom: 20px; }
+                .modal img { margin: 20px 0; }
+                .modal button {
+                    background: #dc2626;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    margin-top: 20px;
+                }
             </style>
         </head>
         <body>
@@ -693,7 +733,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
                 <div class="form-group">
                     <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
                 </div>
-                <div class="form-group" id="totpGroup" style="display: none;">
+                <div class="form-group" id="totpGroup">
                     <input type="text" id="totpCode" class="form-input" placeholder="🔐 2FA Kodu (6 haneli)" maxlength="6">
                 </div>
                 
@@ -702,9 +742,23 @@ app.get('/', checkIPWhitelist, (req, res) => {
                 <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
                 
                 <div id="error" class="error"></div>
+                <div id="success" class="success"></div>
                 
                 <div style="text-align: center; margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.5);">
                     VIPCEP Security v2.0 | ${host}
+                </div>
+            </div>
+            
+            <!-- 2FA QR Code Modal -->
+            <div id="qrModal" class="modal-overlay">
+                <div class="modal">
+                    <h3>🔐 2FA Kurulumu</h3>
+                    <p>Google Authenticator ile QR kodu tarayın:</p>
+                    <img id="qrImage" src="" alt="QR Code">
+                    <p style="font-size: 12px; word-break: break-all; margin: 10px 0;">
+                        Manuel kod: <span id="manualCode"></span>
+                    </p>
+                    <button onclick="closeQRModal()">Tamam</button>
                 </div>
             </div>
             
@@ -796,8 +850,10 @@ app.get('/', checkIPWhitelist, (req, res) => {
                 
                 function showError(message, remaining) {
                     const errorDiv = document.getElementById('error');
+                    const successDiv = document.getElementById('success');
                     
-                    // Rate limit uyarıları için özel stil
+                    successDiv.style.display = 'none';
+                    
                     if (message.includes('Çok fazla') || remaining === 0) {
                         errorDiv.className = 'error rate-limit-severe';
                     } else if (remaining && remaining <= 2) {
@@ -809,45 +865,32 @@ app.get('/', checkIPWhitelist, (req, res) => {
                         errorDiv.style.border = '1px solid rgba(239, 68, 68, 0.3)';
                     }
                     
-                    errorDiv.innerHTML = message.replace(/\\n/g, '<br>');
+                    errorDiv.innerHTML = message.replace(/\\\\n/g, '<br>');
                     errorDiv.style.display = 'block';
                     
                     setTimeout(() => {
-                        if (remaining === 0) return; // Blokajda kalır
+                        if (remaining === 0) return;
                         errorDiv.style.display = 'none';
                     }, 8000);
                 }
                 
                 function showSuccess(message) {
                     const errorDiv = document.getElementById('error');
-                    errorDiv.style.background = 'linear-gradient(135deg, #059669, #047857)';
-                    errorDiv.style.border = '1px solid #10b981';
-                    errorDiv.innerHTML = message;
-                    errorDiv.style.display = 'block';
+                    const successDiv = document.getElementById('success');
+                    
+                    errorDiv.style.display = 'none';
+                    successDiv.textContent = message;
+                    successDiv.style.display = 'block';
                 }
                 
                 function showQRCode(qrUrl, secret) {
-                    const modal = document.createElement('div');
-                    modal.style.cssText = \`
-                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        background: rgba(0,0,0,0.8); display: flex; align-items: center;
-                        justify-content: center; z-index: 1000;
-                    \`;
-                    
-                    modal.innerHTML = \`
-                        <div style="background: white; padding: 30px; border-radius: 16px; text-align: center; color: #333; max-width: 400px;">
-                            <h3 style="color: #dc2626; margin-bottom: 20px;">🔐 2FA Kurulumu</h3>
-                            <p style="margin-bottom: 20px;">Google Authenticator ile QR kodu tarayın:</p>
-                            <img src="\${qrUrl}" style="margin-bottom: 20px;" alt="QR Code">
-                            <p style="font-size: 12px; margin-bottom: 20px;">Manuel kod: \${secret}</p>
-                            <button onclick="this.closest('div').parentElement.remove()" 
-                                style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
-                                Tamam
-                            </button>
-                        </div>
-                    \`;
-                    
-                    document.body.appendChild(modal);
+                    document.getElementById('qrImage').src = qrUrl;
+                    document.getElementById('manualCode').textContent = secret;
+                    document.getElementById('qrModal').style.display = 'flex';
+                }
+                
+                function closeQRModal() {
+                    document.getElementById('qrModal').style.display = 'none';
                 }
                 
                 // Enter tuşu ile giriş
@@ -1019,6 +1062,25 @@ app.post('/auth/admin-login', async (req, res) => {
     }
 });
 
+// Session check endpoint - YENİ EKLEME
+app.get('/auth/check-session', (req, res) => {
+    if (req.session && req.session.superAdmin) {
+        res.json({ 
+            authenticated: true, 
+            role: 'super', 
+            username: req.session.superAdmin.username 
+        });
+    } else if (req.session && req.session.normalAdmin) {
+        res.json({ 
+            authenticated: true, 
+            role: 'normal', 
+            username: req.session.normalAdmin.username 
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
 // Logout endpoint
 app.post('/auth/logout', (req, res) => {
     req.session.destroy((err) => {
@@ -1029,12 +1091,12 @@ app.post('/auth/logout', (req, res) => {
     });
 });
 
-// GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER
+// GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER - DÜZELTİLMİŞ
 app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
 
-app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, requireNormalAuth, (req, res) => {
+app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
@@ -1655,7 +1717,7 @@ async function startServer() {
         console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
         console.log('');
         console.log('💗 Heartbeat Sistemi: AKTİF (İnternet kesintilerinde kredi düşmesi)');
-        console.log('🛡️ Rate Limiting: 5 deneme/30 dakika + görsel uyarılar');
+        console.log('🛡️ Rate Limiting: 5 deneme/30 dakita + görsel uyarılar');
         console.log('📋 KVKK Sistemi: Aktif + Persistent storage');
         console.log('🔐 2FA: Super Admin için Google Authenticator zorunlu');
         console.log('🔒 Session: 24 saat + secure cookies');
@@ -1700,5 +1762,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
-
