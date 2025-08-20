@@ -479,19 +479,21 @@ function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
     }
     
     // Admin'lere güncellenmiş kredi gönder
-    const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
-    adminClients.forEach(client => {
-        if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(JSON.stringify({
-                type: 'auto-credit-update',
-                userId: userId,
-                creditsUsed: creditsUsed,
-                newCredits: newCredits,
-                source: 'heartbeat'
+const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+if (adminClients.length > 0) {
+    // Tüm adminlere arama bildirimi gönder
+    adminClients.forEach(adminClient => {
+        if (adminClient.ws.readyState === WebSocket.OPEN) {
+            adminClient.ws.send(JSON.stringify({
+                type: 'incoming-call',
+                userId: message.userId,
+                userName: message.userName,
+                credits: message.credits
             }));
         }
     });
-}
+    console.log(`📞 ${adminClients.length} admin'e arama bildirimi gönderildi`);
+} else {
 
 // Arama sonlandırma bildirimini gönder
 function broadcastCallEnd(userId, adminId, reason) {
@@ -1344,16 +1346,19 @@ wss.on('connection', (ws, req) => {
                 case 'call-cancelled':
                     console.log('📞 Arama iptal edildi (Müşteri tarafından):', message.userId);
                     
-                    // Admin'e bildir
-                    const adminToNotify = Array.from(clients.values()).find(c => c.userType === 'admin');
-                    if (adminToNotify && adminToNotify.ws.readyState === WebSocket.OPEN) {
-                        adminToNotify.ws.send(JSON.stringify({
-                            type: 'call-cancelled',
-                            userId: message.userId,
-                            userName: message.userName,
-                            reason: message.reason
-                        }));
-                    }
+// Tüm adminlere bildir
+const adminsToNotify = Array.from(clients.values()).filter(c => c.userType === 'admin');
+adminsToNotify.forEach(adminClient => {
+    if (adminClient.ws.readyState === WebSocket.OPEN) {
+        adminClient.ws.send(JSON.stringify({
+            type: 'call-cancelled',
+            userId: message.userId,
+            userName: message.userName,
+            reason: message.reason
+        }));
+    }
+});
+console.log(`📞 ${adminsToNotify.length} admin'e iptal bildirimi gönderildi`);
                     break;
 
                 case 'offer':
@@ -1791,4 +1796,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
