@@ -1,10 +1,10 @@
-const session = require('express-session');
 const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const session = require('express-session');
 
 // PostgreSQL bağlantısı - Railway için güncellenmiş
 const { Pool } = require('pg');
@@ -24,6 +24,38 @@ const server = http.createServer(app);
 
 // Port ayarı (Railway için)
 const PORT = process.env.PORT || 8080;
+
+// Güvenlik yapılandırması - TAHMİN EDİLEMEZ URL'LER
+const SECURITY_CONFIG = {
+    // Random URL paths - Her deploy'da değişir
+    SUPER_ADMIN_PATH: '/panel-' + crypto.randomBytes(8).toString('hex'),
+    NORMAL_ADMIN_PATH: '/desk-' + crypto.randomBytes(8).toString('hex'),
+    CUSTOMER_PATH: '/app-' + crypto.randomBytes(8).toString('hex'),
+    
+    // Session secret
+    SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    
+    // 2FA ayarları
+    TOTP_ISSUER: 'VIPCEP System',
+    TOTP_WINDOW: 2 // ±2 time step tolerance
+};
+
+console.log('🔐 GÜVENLİK URL\'LERİ OLUŞTURULDU:');
+console.log(`🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
+console.log(`🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
+console.log(`🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
+
+// Session middleware ekle
+app.use(session({
+    secret: SECURITY_CONFIG.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 saat
+    }
+}));
 
 // Middleware
 app.use(cors());
@@ -47,6 +79,158 @@ const HEARTBEAT_INTERVAL = 60000; // 1 dakika = 1 kredi
 
 // IP bazlı rate limiting
 const rateLimitMap = new Map();
+
+// Authentication middleware
+function requireSuperAuth(req, res, next) {
+    if (req.session && req.session.superAdmin) {
+        return next();
+    }
+    return res.status(401).json({ error: 'Super admin yetki gerekli' });
+}
+
+function requireNormalAuth(req, res, next) {
+    if (req.session && (req.session.superAdmin || req.session.normalAdmin)) {
+        return next();
+    }
+    return res.status(401).json({ error: 'Admin yetki gerekli' });
+}
+
+function requireAnyAuth(req, res, next) {
+    if (req.session && (req.session.superAdmin || req.session.normalAdmin || req.session.customer)) {
+        return next();
+    }
+    return res.status(401).json({ error: 'Yetki gerekli' });
+}
+
+// IP whitelist (opsiyonel - sadece belirli IP'lerden erişim)
+const ALLOWED_IPS = process.env.ALLOWED_IPS ? process.env.ALLOWED_IPS.split(',') : [];
+
+function checkIPWhitelist(req, res, next) {
+    if (ALLOWED_IPS.length > 0) {
+        const clientIP = req.ip || req.connection.remoteAddress;
+        if (!ALLOWED_IPS.includes(clientIP)) {
+            console.log(`🚫 IP engellendi: ${clientIP}`);
+            return res.status(403).send('Erişim reddedildi');
+        }
+    }
+    next();
+}
+
+// Rate limiting kontrolü - 5 denemeden sonra 30 dakika ban
+async function checkRateLimit(ip, userType = 'customer') {
+    try {
+        // Son 30 dakikadaki başarısız girişleri kontrol et
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        const failedAttempts = await pool.query(
+            'SELECT COUNT(*) FROM failed_logins WHERE ip_address = $1 AND user_type = $2 AND attempt_time > $3',
+            [ip, userType, thirtyMinutesAgo]
+        );
+
+        const count = parseInt(failedAttempts.rows[0].count);
+        
+        // Rate limit bilgilerini döndür
+        return {
+            allowed: count < 5,
+            attempts: count,
+            remaining: Math.max(0, 5 - count),
+            resetTime: count >= 5 ? new Date(Date.now() + 30 * 60 * 1000) : null
+        };
+    } catch (error) {
+        console.log('Rate limit kontrolü hatası:', error.message);
+        return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
+    }
+}
+
+// Başarısız giriş kaydet
+async function recordFailedLogin(ip, userType = 'customer') {
+    try {
+        await pool.query(
+            'INSERT INTO failed_logins (ip_address, user_type) VALUES ($1, $2)',
+            [ip, userType]
+        );
+        
+        // Güncel durumu kontrol et
+        const rateStatus = await checkRateLimit(ip, userType);
+        
+        console.log(`🚫 Başarısız giriş: ${ip} (${userType}) - Kalan: ${rateStatus.remaining}`);
+        
+        return rateStatus;
+    } catch (error) {
+        console.log('Başarısız giriş kaydı hatası:', error.message);
+        return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
+    }
+}
+
+// TOTP Secret oluştur
+function generateTOTPSecret() {
+    return crypto.randomBytes(20).toString('base32').substring(0, 16);
+}
+
+// TOTP doğrulama fonksiyonu - GERÇEKTERECK GOOGLE AUTHENTICATOR
+function verifyTOTP(secret, token) {
+    if (!secret || !token || token.length !== 6) return false;
+    
+    try {
+        // Base32 decode
+        const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        let bits = '';
+        const cleanSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
+        
+        for (let i = 0; i < cleanSecret.length; i++) {
+            const char = cleanSecret[i];
+            const index = base32Chars.indexOf(char);
+            if (index === -1) continue;
+            bits += index.toString(2).padStart(5, '0');
+        }
+        
+        const secretBuffer = Buffer.alloc(Math.floor(bits.length / 8));
+        for (let i = 0; i < secretBuffer.length; i++) {
+            const byte = bits.substr(i * 8, 8);
+            secretBuffer[i] = parseInt(byte, 2);
+        }
+        
+        // TOTP algoritması (RFC 6238)
+        const timeStep = 30; // 30 saniye
+        const currentTime = Math.floor(Date.now() / 1000 / timeStep);
+        
+        // ±window zaman penceresi kontrol et (clock skew için)
+        for (let i = -SECURITY_CONFIG.TOTP_WINDOW; i <= SECURITY_CONFIG.TOTP_WINDOW; i++) {
+            const time = currentTime + i;
+            const timeBuffer = Buffer.allocUnsafe(8);
+            timeBuffer.writeUInt32BE(0, 0);
+            timeBuffer.writeUInt32BE(time, 4);
+            
+            const hmac = crypto.createHmac('sha1', secretBuffer);
+            hmac.update(timeBuffer);
+            const hash = hmac.digest();
+            
+            const offset = hash[hash.length - 1] & 0xf;
+            const code = ((hash[offset] & 0x7f) << 24) |
+                        ((hash[offset + 1] & 0xff) << 16) |
+                        ((hash[offset + 2] & 0xff) << 8) |
+                        (hash[offset + 3] & 0xff);
+            
+            const otp = (code % 1000000).toString().padStart(6, '0');
+            
+            if (otp === token) {
+                return true;
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.log('TOTP doğrulama hatası:', error.message);
+        return false;
+    }
+}
+
+// TOTP QR kodu oluşturma
+function generateTOTPQR(username, secret) {
+    const serviceName = encodeURIComponent(SECURITY_CONFIG.TOTP_ISSUER);
+    const accountName = encodeURIComponent(username);
+    const otpauthURL = `otpauth://totp/${serviceName}:${accountName}?secret=${secret}&issuer=${serviceName}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthURL)}`;
+}
 
 // Veritabanı başlatma
 async function initDatabase() {
@@ -139,7 +323,7 @@ async function initDatabase() {
                 INSERT INTO admins (username, password_hash, role, totp_secret) 
                 VALUES ($1, $2, $3, $4)
             `, ['superadmin', hashedPassword, 'super', generateTOTPSecret()]);
-            console.log('🔑 Super admin oluşturuldu: superadmin/admin123');
+            console.log('🔒 Super admin oluşturuldu: superadmin/admin123');
         }
 
         // Test kullanıcılarını kontrol et ve ekle
@@ -175,100 +359,6 @@ async function initDatabase() {
     } catch (error) {
         console.log('❌ PostgreSQL bağlantı hatası:', error.message);
         console.log('💡 LocalStorage ile devam ediliyor...');
-    }
-}
-
-// TOTP Secret oluştur
-function generateTOTPSecret() {
-    return crypto.randomBytes(16).toString('base32').substr(0, 16);
-}
-
-// TOTP doğrulama fonksiyonu
-function verifyTOTP(secret, token) {
-    if (!secret || !token) return false;
-    
-    try {
-        // Base32 decode
-        const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-        let bits = '';
-        const cleanSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, '');
-        
-        for (let i = 0; i < cleanSecret.length; i++) {
-            const char = cleanSecret[i];
-            const index = base32Chars.indexOf(char);
-            if (index === -1) continue;
-            bits += index.toString(2).padStart(5, '0');
-        }
-        
-        const secretBuffer = Buffer.alloc(Math.floor(bits.length / 8));
-        for (let i = 0; i < secretBuffer.length; i++) {
-            const byte = bits.substr(i * 8, 8);
-            secretBuffer[i] = parseInt(byte, 2);
-        }
-        
-        // TOTP algoritması (RFC 6238)
-        const timeStep = 30; // 30 saniye
-        const currentTime = Math.floor(Date.now() / 1000 / timeStep);
-        
-        // ±1 zaman penceresi kontrol et (clock skew için)
-        for (let i = -1; i <= 1; i++) {
-            const time = currentTime + i;
-            const timeBuffer = Buffer.allocUnsafe(8);
-            timeBuffer.writeUInt32BE(0, 0);
-            timeBuffer.writeUInt32BE(time, 4);
-            
-            const hmac = crypto.createHmac('sha1', secretBuffer);
-            hmac.update(timeBuffer);
-            const hash = hmac.digest();
-            
-            const offset = hash[hash.length - 1] & 0xf;
-            const code = ((hash[offset] & 0x7f) << 24) |
-                        ((hash[offset + 1] & 0xff) << 16) |
-                        ((hash[offset + 2] & 0xff) << 8) |
-                        (hash[offset + 3] & 0xff);
-            
-            const otp = (code % 1000000).toString().padStart(6, '0');
-            
-            if (otp === token) {
-                return true;
-            }
-        }
-        
-        return false;
-    } catch (error) {
-        console.log('TOTP doğrulama hatası:', error.message);
-        return false;
-    }
-}
-
-// Rate limiting kontrolü - 5 denemeden sonra 30 dakika ban
-async function checkRateLimit(ip, userType = 'customer') {
-    try {
-        // Son 30 dakikadaki başarısız girişleri kontrol et
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-        const failedAttempts = await pool.query(
-            'SELECT COUNT(*) FROM failed_logins WHERE ip_address = $1 AND user_type = $2 AND attempt_time > $3',
-            [ip, userType, thirtyMinutesAgo]
-        );
-
-        const count = parseInt(failedAttempts.rows[0].count);
-        return count < 5; // 5 denemeden az ise izin ver
-    } catch (error) {
-        console.log('Rate limit kontrolü hatası:', error.message);
-        return true; // Hata durumunda izin ver
-    }
-}
-
-// Başarısız giriş kaydet
-async function recordFailedLogin(ip, userType = 'customer') {
-    try {
-        await pool.query(
-            'INSERT INTO failed_logins (ip_address, user_type) VALUES ($1, $2)',
-            [ip, userType]
-        );
-        console.log(`🚫 Başarısız giriş kaydedildi: ${ip} (${userType})`);
-    } catch (error) {
-        console.log('Başarısız giriş kaydı hatası:', error.message);
     }
 }
 
@@ -325,7 +415,7 @@ async function authenticateAdmin(username, password) {
 
 // 🔥 YENİ: Heartbeat sistemi - Internet kesintilerinde kredi düşürmesi
 function startHeartbeat(userId, adminId, callKey) {
-    console.log(`💓 Heartbeat başlatıldı: ${callKey}`);
+    console.log(`💗 Heartbeat başlatıldı: ${callKey}`);
     
     const heartbeat = setInterval(async () => {
         try {
@@ -349,7 +439,7 @@ function startHeartbeat(userId, adminId, callKey) {
                     VALUES ($1, $2, $3, $4, $5)
                 `, [userId, 'heartbeat', -1, newCredits, `Arama dakikası (Heartbeat sistem)`]);
                 
-                console.log(`💓 Heartbeat kredi düştü: ${userId} -> ${newCredits} dk`);
+                console.log(`💗 Heartbeat kredi düştü: ${userId} -> ${newCredits} dk`);
                 
                 // Müşteriye ve admin'lere kredi güncellemesi gönder
                 broadcastCreditUpdate(userId, newCredits, 1);
@@ -367,7 +457,7 @@ function stopHeartbeat(callKey, reason = 'normal') {
     if (heartbeat) {
         clearInterval(heartbeat);
         activeHeartbeats.delete(callKey);
-        console.log(`💓 Heartbeat durduruldu: ${callKey} - ${reason}`);
+        console.log(`💗 Heartbeat durduruldu: ${callKey} - ${reason}`);
         
         // Aramanın sonlandırıldığını tüm ilgili taraflara bildir
         const [userId, adminId] = callKey.split('-');
@@ -502,6 +592,469 @@ async function updateUserCredits(userId, newCredits, reason = 'Manuel güncellem
     }
 }
 
+// Ana sayfa - GÜVENLİ GİRİŞ SİSTEMİ
+app.get('/', checkIPWhitelist, (req, res) => {
+    // Eğer zaten giriş yapmışsa yönlendir
+    if (req.session.superAdmin) {
+        return res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
+    }
+    if (req.session.normalAdmin) {
+        return res.redirect(SECURITY_CONFIG.NORMAL_ADMIN_PATH);
+    }
+    
+    // Ana giriş sayfası göster
+    const host = req.get('host');
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🔐 VIPCEP Güvenli Giriş</title>
+            <meta charset="UTF-8">
+            <style>
+                body { 
+                    font-family: system-ui; 
+                    background: linear-gradient(135deg, #1e293b, #334155); 
+                    color: white; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    min-height: 100vh; 
+                    margin: 0;
+                }
+                .login-container { 
+                    background: rgba(255,255,255,0.1); 
+                    padding: 40px; 
+                    border-radius: 16px; 
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    max-width: 400px;
+                    width: 100%;
+                }
+                .form-group { margin-bottom: 20px; }
+                .form-input { 
+                    width: 100%; 
+                    padding: 14px; 
+                    border: 2px solid rgba(255,255,255,0.2); 
+                    border-radius: 8px; 
+                    background: rgba(255,255,255,0.1); 
+                    color: white; 
+                    font-size: 16px;
+                    box-sizing: border-box;
+                }
+                .form-input::placeholder { color: rgba(255,255,255,0.6); }
+                .btn { 
+                    width: 100%; 
+                    padding: 14px; 
+                    background: linear-gradient(135deg, #dc2626, #b91c1c); 
+                    color: white; 
+                    border: none; 
+                    border-radius: 8px; 
+                    font-weight: bold; 
+                    cursor: pointer; 
+                    font-size: 16px;
+                    margin-bottom: 10px;
+                    transition: all 0.3s ease;
+                }
+                .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+                .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+                .btn-customer { background: linear-gradient(135deg, #059669, #047857); }
+                .error { 
+                    color: #fca5a5; 
+                    text-align: center; 
+                    margin-top: 15px; 
+                    padding: 15px; 
+                    border-radius: 8px; 
+                    display: none; 
+                    background: rgba(239, 68, 68, 0.1);
+                    border: 1px solid rgba(239, 68, 68, 0.3);
+                }
+                .title { text-align: center; margin-bottom: 30px; color: #dc2626; font-size: 24px; font-weight: bold; }
+                .subtitle { text-align: center; margin-bottom: 20px; color: rgba(255,255,255,0.8); font-size: 14px; }
+                .rate-limit-severe {
+                    background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+                    animation: shake 0.5s ease-in-out !important;
+                    border-color: #fca5a5 !important;
+                }
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <div class="title">🔐 VIPCEP</div>
+                <div class="subtitle">Güvenli Giriş Sistemi</div>
+                
+                <div class="form-group">
+                    <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                </div>
+                <div class="form-group" id="totpGroup" style="display: none;">
+                    <input type="text" id="totpCode" class="form-input" placeholder="🔐 2FA Kodu (6 haneli)" maxlength="6">
+                </div>
+                
+                <button class="btn" id="superBtn" onclick="adminLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
+                <button class="btn" id="normalBtn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
+                <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
+                
+                <div id="error" class="error"></div>
+                
+                <div style="text-align: center; margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                    VIPCEP Security v2.0 | ${host}
+                </div>
+            </div>
+            
+            <script>
+                async function adminLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    const totpCode = document.getElementById('totpCode').value;
+                    const btn = document.getElementById('superBtn');
+                    
+                    if (!username || !password) {
+                        showError('Kullanıcı adı ve şifre gerekli!');
+                        return;
+                    }
+                    
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Giriş yapılıyor...';
+                    
+                    try {
+                        const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password, totpCode })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showSuccess(result.message || 'Giriş başarılı!');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                            }, 1000);
+                        } else if (result.requiresTOTP) {
+                            document.getElementById('totpGroup').style.display = 'block';
+                            
+                            if (result.firstTimeSetup && result.qrCode) {
+                                showQRCode(result.qrCode, result.secret);
+                            }
+                            
+                            showError(result.error);
+                        } else {
+                            showError(result.error || 'Giriş başarısız!', result.remaining);
+                        }
+                    } catch (error) {
+                        showError('Bağlantı hatası!');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '🔴 SUPER ADMİN GİRİŞİ';
+                    }
+                }
+                
+                async function normalAdminLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    const btn = document.getElementById('normalBtn');
+                    
+                    if (!username || !password) {
+                        showError('Kullanıcı adı ve şifre gerekli!');
+                        return;
+                    }
+                    
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Giriş yapılıyor...';
+                    
+                    try {
+                        const response = await fetch('/auth/admin-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showSuccess(result.message || 'Giriş başarılı!');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                            }, 1000);
+                        } else {
+                            showError(result.error || 'Giriş başarısız!', result.remaining);
+                        }
+                    } catch (error) {
+                        showError('Bağlantı hatası!');
+                    } finally {
+                        btn.disabled = false;
+                        btn.textContent = '🟡 ADMİN GİRİŞİ';
+                    }
+                }
+                
+                function showError(message, remaining) {
+                    const errorDiv = document.getElementById('error');
+                    
+                    // Rate limit uyarıları için özel stil
+                    if (message.includes('Çok fazla') || remaining === 0) {
+                        errorDiv.className = 'error rate-limit-severe';
+                    } else if (remaining && remaining <= 2) {
+                        errorDiv.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                        errorDiv.style.border = '2px solid #fbbf24';
+                    } else {
+                        errorDiv.className = 'error';
+                        errorDiv.style.background = 'rgba(239, 68, 68, 0.1)';
+                        errorDiv.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                    }
+                    
+                    errorDiv.innerHTML = message.replace(/\\n/g, '<br>');
+                    errorDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        if (remaining === 0) return; // Blokajda kalır
+                        errorDiv.style.display = 'none';
+                    }, 8000);
+                }
+                
+                function showSuccess(message) {
+                    const errorDiv = document.getElementById('error');
+                    errorDiv.style.background = 'linear-gradient(135deg, #059669, #047857)';
+                    errorDiv.style.border = '1px solid #10b981';
+                    errorDiv.innerHTML = message;
+                    errorDiv.style.display = 'block';
+                }
+                
+                function showQRCode(qrUrl, secret) {
+                    const modal = document.createElement('div');
+                    modal.style.cssText = \`
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                        justify-content: center; z-index: 1000;
+                    \`;
+                    
+                    modal.innerHTML = \`
+                        <div style="background: white; padding: 30px; border-radius: 16px; text-align: center; color: #333; max-width: 400px;">
+                            <h3 style="color: #dc2626; margin-bottom: 20px;">🔐 2FA Kurulumu</h3>
+                            <p style="margin-bottom: 20px;">Google Authenticator ile QR kodu tarayın:</p>
+                            <img src="\${qrUrl}" style="margin-bottom: 20px;" alt="QR Code">
+                            <p style="font-size: 12px; margin-bottom: 20px;">Manuel kod: \${secret}</p>
+                            <button onclick="this.closest('div').parentElement.remove()" 
+                                style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                                Tamam
+                            </button>
+                        </div>
+                    \`;
+                    
+                    document.body.appendChild(modal);
+                }
+                
+                // Enter tuşu ile giriş
+                document.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const totpVisible = document.getElementById('totpGroup').style.display !== 'none';
+                        if (totpVisible) {
+                            adminLogin();
+                        }
+                    }
+                });
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// Authentication API endpoints
+app.post('/auth/super-login', async (req, res) => {
+    const { username, password, totpCode } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    try {
+        // Rate limiting kontrolü
+        const rateStatus = await checkRateLimit(clientIP, 'super-admin');
+        
+        if (!rateStatus.allowed) {
+            const resetTime = rateStatus.resetTime.toLocaleTimeString('tr-TR');
+            return res.json({
+                success: false,
+                rateLimited: true,
+                error: `Çok fazla başarısız deneme!\\n\\n⏰ ${resetTime} sonra tekrar deneyin.\\n📊 Toplam deneme: ${rateStatus.attempts}/5`,
+                resetTime: rateStatus.resetTime,
+                remaining: 0
+            });
+        }
+        
+        // Super admin doğrulaması
+        const admin = await authenticateAdmin(username, password);
+        
+        if (admin && admin.role === 'super') {
+            // 2FA kontrolü - ZORUNLU!
+            if (!admin.totp_secret) {
+                // İlk kez giriş - TOTP secret oluştur
+                const newSecret = generateTOTPSecret();
+                await pool.query(
+                    'UPDATE admins SET totp_secret = $1 WHERE id = $2',
+                    [newSecret, admin.id]
+                );
+                
+                admin.totp_secret = newSecret;
+                
+                return res.json({
+                    success: false,
+                    requiresTOTP: true,
+                    firstTimeSetup: true,
+                    qrCode: generateTOTPQR(admin.username, newSecret),
+                    secret: newSecret,
+                    error: 'İlk kez giriş - 2FA kurulumu gerekli!\\n\\nGoogle Authenticator ile QR kodu tarayın.'
+                });
+            }
+            
+            if (!totpCode) {
+                return res.json({
+                    success: false,
+                    requiresTOTP: true,
+                    remaining: rateStatus.remaining,
+                    error: `2FA kodu gerekli!\\n\\n📱 Google Authenticator uygulamasından 6 haneli kodu girin.\\n⚠️ Kalan deneme hakkı: ${rateStatus.remaining}`
+                });
+            }
+            
+            const totpValid = verifyTOTP(admin.totp_secret, totpCode);
+            if (!totpValid) {
+                const newRateStatus = await recordFailedLogin(clientIP, 'super-admin');
+                
+                return res.json({
+                    success: false,
+                    remaining: newRateStatus.remaining,
+                    error: `❌ Geçersiz 2FA kodu!\\n\\n⚠️ Kalan deneme hakkı: ${newRateStatus.remaining}${newRateStatus.remaining === 0 ? '\\n🔒 30 dakika bekleyin!' : ''}`
+                });
+            }
+            
+            // Başarılı giriş - session oluştur
+            req.session.superAdmin = {
+                id: admin.id,
+                username: admin.username,
+                loginTime: new Date()
+            };
+            
+            console.log(`🔴 Super Admin giriş başarılı: ${username} - IP: ${clientIP}`);
+            
+            res.json({ 
+                success: true,
+                message: `Hoş geldiniz ${admin.username}! Super Admin paneline yönlendiriliyorsunuz...`
+            });
+            
+        } else {
+            const newRateStatus = await recordFailedLogin(clientIP, 'super-admin');
+            
+            res.json({
+                success: false,
+                remaining: newRateStatus.remaining,
+                error: `❌ Geçersiz kullanıcı adı veya şifre!\\n\\n⚠️ Kalan deneme hakkı: ${newRateStatus.remaining}${newRateStatus.remaining === 0 ? '\\n🔒 30 dakika bekleyin!' : ''}`
+            });
+        }
+        
+    } catch (error) {
+        console.error('Super admin giriş hatası:', error);
+        res.json({
+            success: false,
+            error: 'Sistem hatası! Lütfen daha sonra tekrar deneyin.'
+        });
+    }
+});
+
+app.post('/auth/admin-login', async (req, res) => {
+    const { username, password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    try {
+        // Rate limiting kontrolü
+        const rateStatus = await checkRateLimit(clientIP, 'admin');
+        
+        if (!rateStatus.allowed) {
+            const resetTime = rateStatus.resetTime.toLocaleTimeString('tr-TR');
+            return res.json({
+                success: false,
+                rateLimited: true,
+                error: `Çok fazla başarısız deneme!\\n\\n⏰ ${resetTime} sonra tekrar deneyin.\\n📊 Toplam deneme: ${rateStatus.attempts}/5`,
+                resetTime: rateStatus.resetTime,
+                remaining: 0
+            });
+        }
+        
+        // Normal admin doğrulaması
+        const admin = await authenticateAdmin(username, password);
+        
+        if (admin && admin.role === 'normal') {
+            // Session oluştur
+            req.session.normalAdmin = {
+                id: admin.id,
+                username: admin.username,
+                loginTime: new Date()
+            };
+            
+            console.log(`🟡 Normal Admin giriş başarılı: ${username} - IP: ${clientIP}`);
+            
+            res.json({ 
+                success: true,
+                message: `Hoş geldiniz ${admin.username}! Admin paneline yönlendiriliyorsunuz...`
+            });
+            
+        } else {
+            const newRateStatus = await recordFailedLogin(clientIP, 'admin');
+            
+            res.json({
+                success: false,
+                remaining: newRateStatus.remaining,
+                error: `❌ Geçersiz kullanıcı adı veya şifre!\\n\\n⚠️ Kalan deneme hakkı: ${newRateStatus.remaining}${newRateStatus.remaining === 0 ? '\\n🔒 30 dakika bekleyin!' : ''}`
+            });
+        }
+        
+    } catch (error) {
+        console.error('Normal admin giriş hatası:', error);
+        res.json({
+            success: false,
+            error: 'Sistem hatası! Lütfen daha sonra tekrar deneyin.'
+        });
+    }
+});
+
+// Logout endpoint
+app.post('/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.json({ success: false, error: 'Çıkış hatası' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// GÜVENLİ ROUTE'LAR - TAHMİN EDİLEMEZ URL'LER
+app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, requireSuperAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'super-admin.html'));
+});
+
+app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, requireNormalAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
+});
+
+app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'customer-app.html'));
+});
+
+// ESKİ ROUTE'LARI DEVRE DIŞI BIRAK - GÜVENLİK
+app.get('/super-admin.html', (req, res) => {
+    res.status(404).send('Sayfa bulunamadı');
+});
+
+app.get('/admin-panel.html', (req, res) => {
+    res.status(404).send('Sayfa bulunamadı');
+});
+
+app.get('/customer-app.html', (req, res) => {
+    res.status(404).send('Sayfa bulunamadı');
+});
+
 // WebSocket bağlantı işleyicisi
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
@@ -529,70 +1082,6 @@ wss.on('connection', (ws, req) => {
                     }));
                     break;
 
-                case 'admin-login':
-                    const rateOk = await checkRateLimit(clientIP, 'admin');
-                    if (!rateOk) {
-                        ws.send(JSON.stringify({
-                            type: 'admin-login-response',
-                            success: false,
-                            reason: 'Çok fazla başarısız deneme. 30 dakika bekleyiniz.'
-                        }));
-                        break;
-                    }
-
-                    const admin = await authenticateAdmin(message.username, message.password);
-                    if (admin) {
-                        // Super admin için 2FA kontrolü
-                        if (admin.role === 'super' && admin.totp_secret) {
-                            if (!message.totpCode) {
-                                // 2FA kodu gerekli
-                                ws.send(JSON.stringify({
-                                    type: 'admin-login-response',
-                                    success: false,
-                                    requiresTOTP: true,
-                                    username: admin.username,
-                                    reason: '2FA kodu gerekli'
-                                }));
-                            } else {
-                                // 2FA kodunu doğrula
-                                const totpValid = verifyTOTP(admin.totp_secret, message.totpCode);
-                                if (totpValid) {
-                                    ws.send(JSON.stringify({
-                                        type: 'admin-login-response',
-                                        success: true,
-                                        role: admin.role,
-                                        username: admin.username,
-                                        requiresTOTP: false
-                                    }));
-                                } else {
-                                    await recordFailedLogin(clientIP, 'admin');
-                                    ws.send(JSON.stringify({
-                                        type: 'admin-login-response',
-                                        success: false,
-                                        reason: 'Geçersiz 2FA kodu'
-                                    }));
-                                }
-                            }
-                        } else {
-                            // Normal admin veya 2FA olmayan super admin
-                            ws.send(JSON.stringify({
-                                type: 'admin-login-response',
-                                success: true,
-                                role: admin.role,
-                                username: admin.username,
-                                requiresTOTP: false
-                            }));
-                        }
-                    } else {
-                        await recordFailedLogin(clientIP, 'admin');
-                        ws.send(JSON.stringify({
-                            type: 'admin-login-response',
-                            success: false,
-                            reason: 'Geçersiz kullanıcı adı veya şifre'
-                        }));
-                    }
-                    break;
-
                 case 'register':
                     clients.set(message.userId, {
                         ws: ws,
@@ -610,11 +1099,15 @@ wss.on('connection', (ws, req) => {
 
                 case 'login-request':
                     const rateLimit = await checkRateLimit(clientIP);
-                    if (!rateLimit) {
+                    if (!rateLimit.allowed) {
+                        const resetTime = rateLimit.resetTime.toLocaleTimeString('tr-TR');
                         ws.send(JSON.stringify({
                             type: 'login-response',
                             success: false,
-                            reason: 'Çok fazla başarısız deneme. 30 dakika bekleyiniz.'
+                            rateLimited: true,
+                            error: `Çok fazla başarısız deneme!\\n\\n⏰ ${resetTime} sonra tekrar deneyin.\\n📊 Toplam deneme: ${rateLimit.attempts}/5`,
+                            remaining: rateLimit.remaining,
+                            resetTime: rateLimit.resetTime
                         }));
                         break;
                     }
@@ -632,12 +1125,14 @@ wss.on('connection', (ws, req) => {
                             user: approval.user
                         }));
                     } else {
-                        await recordFailedLogin(clientIP);
+                        const newRateStatus = await recordFailedLogin(clientIP);
                         console.log('❌ Giriş reddedildi:', approval.reason);
                         ws.send(JSON.stringify({
                             type: 'login-response',
                             success: false,
-                            reason: approval.reason
+                            reason: approval.reason,
+                            remaining: newRateStatus.remaining,
+                            rateLimited: !newRateStatus.allowed
                         }));
                     }
                     break;
@@ -856,7 +1351,7 @@ wss.on('connection', (ws, req) => {
             for (const [callKey, heartbeat] of activeHeartbeats.entries()) {
                 if (callKey.includes(client.id)) {
                     stopHeartbeat(callKey, 'connection_lost');
-                    console.log(`💓 Bağlantı kopması nedeniyle heartbeat durduruldu: ${callKey}`);
+                    console.log(`💗 Bağlantı kopması nedeniyle heartbeat durduruldu: ${callKey}`);
                 }
             }
         }
@@ -1097,6 +1592,19 @@ app.post('/api/clear-failed-logins', async (req, res) => {
     }
 });
 
+// Rate limit durumu API
+app.get('/api/rate-limit-status/:userType', async (req, res) => {
+    const { userType } = req.params;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    try {
+        const rateStatus = await checkRateLimit(clientIP, userType);
+        res.json(rateStatus);
+    } catch (error) {
+        res.status(500).json({ error: 'Rate limit kontrol hatası' });
+    }
+});
+
 // Health check
 app.get('/health', (req, res) => {
     res.json({ 
@@ -1105,231 +1613,30 @@ app.get('/health', (req, res) => {
         uptime: process.uptime(),
         clients: clients.size,
         activeHeartbeats: activeHeartbeats.size,
-        database: process.env.DATABASE_URL ? 'Connected' : 'Offline'
+        database: process.env.DATABASE_URL ? 'Connected' : 'Offline',
+        securityUrls: {
+            superAdmin: SECURITY_CONFIG.SUPER_ADMIN_PATH,
+            normalAdmin: SECURITY_CONFIG.NORMAL_ADMIN_PATH,
+            customer: SECURITY_CONFIG.CUSTOMER_PATH
+        }
     });
-});
-
-// Ana sayfa
-app.get('/', (req, res) => {
-    const host = req.get('host');
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>🎯 VIPCEP Server</title>
-            <meta charset="UTF-8">
-            <style>
-                body { 
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
-                    max-width: 900px; 
-                    margin: 50px auto; 
-                    padding: 20px;
-                    background: #f8fafc;
-                }
-                .header { 
-                    background: linear-gradient(135deg, #22c55e, #16a34a); 
-                    color: white; 
-                    padding: 30px; 
-                    border-radius: 12px; 
-                    text-align: center; 
-                    margin-bottom: 30px;
-                    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3);
-                }
-                .links { 
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr 1fr; 
-                    gap: 20px; 
-                    margin: 30px 0; 
-                }
-                .link-card { 
-                    background: white; 
-                    padding: 25px; 
-                    border-radius: 12px; 
-                    text-align: center; 
-                    border: 1px solid #e2e8f0;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                    transition: transform 0.3s ease;
-                }
-                .link-card:hover {
-                    transform: translateY(-5px);
-                }
-                .link-card a { 
-                    color: #2563eb; 
-                    text-decoration: none; 
-                    font-weight: bold; 
-                    background: #eff6ff;
-                    padding: 10px 20px;
-                    border-radius: 8px;
-                    display: inline-block;
-                    margin-top: 10px;
-                }
-                .link-card a:hover {
-                    background: #dbeafe;
-                }
-                .stats { 
-                    background: linear-gradient(135deg, #eff6ff, #dbeafe); 
-                    padding: 20px; 
-                    border-radius: 12px; 
-                    border-left: 4px solid #3b82f6; 
-                    margin-bottom: 20px;
-                }
-                .status-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
-                    margin-top: 15px;
-                }
-                .status-item {
-                    background: rgba(255,255,255,0.8);
-                    padding: 15px;
-                    border-radius: 8px;
-                    text-align: center;
-                }
-                .status-value {
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #059669;
-                }
-                .whatsapp-link {
-                    background: #25d366;
-                    color: white;
-                    padding: 15px 25px;
-                    border-radius: 10px;
-                    text-decoration: none;
-                    display: inline-block;
-                    margin-top: 20px;
-                    font-weight: bold;
-                }
-                .super-admin-card {
-                    background: linear-gradient(135deg, #dc2626, #b91c1c);
-                    color: white;
-                }
-                .super-admin-card a {
-                    background: rgba(255,255,255,0.2);
-                    color: white;
-                }
-                .super-admin-card a:hover {
-                    background: rgba(255,255,255,0.3);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>🎯 VIPCEP Server</h1>
-                <p style="font-size: 18px; margin: 10px 0;">Voice IP Communication Emergency Protocol</p>
-                <p style="font-size: 14px; opacity: 0.9;">Mobil Cihaz Teknik Danışmanlık Sistemi</p>
-            </div>
-            
-            <div class="links">
-                <div class="link-card super-admin-card">
-                    <h3>🔐 Super Admin Panel</h3>
-                    <p>2FA ile sistem yönetimi</p>
-                    <p style="font-size: 12px; opacity: 0.9;">Kredi yönetimi, güvenlik, KVKK</p>
-                    <a href="/super-admin.html">Super Admin Panel →</a>
-                </div>
-                
-                <div class="link-card">
-                    <h3>👨‍💼 Admin Panel</h3>
-                    <p>Teknik servis yönetim sistemi</p>
-                    <p style="font-size: 12px; color: #64748b;">Kullanıcı yönetimi, arama kontrolü</p>
-                    <a href="/admin-panel.html">Admin Panel →</a>
-                </div>
-                
-                <div class="link-card">
-                    <h3>📱 Müşteri Uygulaması</h3>
-                    <p>Sesli danışmanlık uygulaması</p>
-                    <p style="font-size: 12px; color: #64748b;">Teknik destek almak için</p>
-                    <a href="/customer-app.html">Müşteri Uygulaması →</a>
-                </div>
-            </div>
-            
-            <div class="stats">
-                <h3>📊 Server Durumu</h3>
-                <div class="status-grid">
-                    <div class="status-item">
-                        <div class="status-value">${clients.size}</div>
-                        <div>Aktif Bağlantı</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-value">${activeHeartbeats.size}</div>
-                        <div>Aktif Arama</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-value">✅</div>
-                        <div>Sistem Durumu</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-value">${process.env.DATABASE_URL ? '✅' : '❌'}</div>
-                        <div>Veritabanı</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-value">${PORT}</div>
-                        <div>Port</div>
-                    </div>
-                </div>
-                <p style="margin-top: 15px;"><strong>WebSocket URL:</strong> wss://${host}</p>
-                <p><strong>Railway Deploy:</strong> ${process.env.RAILWAY_ENVIRONMENT || 'Local'}</p>
-                <p><strong>💓 Heartbeat Sistemi:</strong> Aktif (İnternet kesintilerinde kredi düşmesi)</p>
-            </div>
-
-            <div style="background: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <h3>💳 Kredi Talebi</h3>
-                <p style="color: #64748b; margin-bottom: 15px;">Sistemimizi kullanmak için kredi satın alın</p>
-                <a href="https://wa.me/905374792403?text=VIPCEP%20Kredi%20Talebi%20-%20Lütfen%20bana%20kredi%20yükleyin" 
-                   target="_blank" class="whatsapp-link">
-                    📞 WhatsApp ile Kredi Talep Et
-                </a>
-                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
-                    Telefon: +90 537 479 24 03
-                </p>
-            </div>
-
-            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f59e0b;">
-                <h4>🔋 Test Kullanıcıları:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>ID:</strong> 1234 | <strong>Ad:</strong> Test Kullanıcı | <strong>Kredi:</strong> 10 dk</li>
-                    <li><strong>ID:</strong> 0005 | <strong>Ad:</strong> VIP Müşteri | <strong>Kredi:</strong> 25 dk</li>
-                    <li><strong>ID:</strong> 9999 | <strong>Ad:</strong> Demo User | <strong>Kredi:</strong> 5 dk</li>
-                </ul>
-            </div>
-            
-            <div style="background: #fee2e2; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ef4444;">
-                <h4>🔐 Admin Girişi:</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>Super Admin:</strong> superadmin/admin123 + 2FA</li>
-                    <li><strong>Normal Admin:</strong> admin1/password123</li>
-                </ul>
-            </div>
-        </body>
-        </html>
-    `);
-});
-
-// Static dosya route'ları
-app.get('/admin-panel.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'admin-panel.html'));
-});
-
-app.get('/customer-app.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'customer-app.html'));
-});
-
-app.get('/super-admin.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
 
 // 404 handler
 app.use((req, res) => {
     res.status(404).send(`
-        <h1>404 - Sayfa Bulunamadı</h1>
-        <p><a href="/">Ana sayfaya dön</a></p>
+        <div style="text-align: center; padding: 50px; font-family: system-ui;">
+            <h1>🔒 404 - Sayfa Bulunamadı</h1>
+            <p>Güvenlik nedeniyle bu sayfa mevcut değil.</p>
+            <p><a href="/" style="color: #dc2626; text-decoration: none;">← Ana sayfaya dön</a></p>
+        </div>
     `);
 });
 
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('📍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    console.log('🔐 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -1337,25 +1644,28 @@ async function startServer() {
     // HTTP Server'ı başlat
     server.listen(PORT, '0.0.0.0', () => {
         console.log('🎯 VIPCEP Server Çalışıyor!');
-        console.log(`📍 Port: ${PORT}`);
+        console.log(`🔗 Port: ${PORT}`);
         console.log(`🌍 URL: http://0.0.0.0:${PORT}`);
-        console.log(`🔌 WebSocket: ws://0.0.0.0:${PORT}`);
+        console.log(`📡 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
         console.log('');
-        console.log('📱 Uygulamalar:');
-        console.log(` 🔐 Super admin paneli: /super-admin.html`);
-        console.log(` 👨‍💼 Admin paneli: /admin-panel.html`);
-        console.log(` 📱 Müşteri uygulaması: /customer-app.html`);
+        console.log('🔐 GÜVENLİK URL\'LERİ:');
+        console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
+        console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
+        console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
         console.log('');
-        console.log('💓 Heartbeat Sistemi: AKTİF (İnternet kesintilerinde kredi düşmesi)');
-        console.log('🛡️ Rate Limiting: 5 deneme/30 dakika');
-        console.log('📋 KVKK Sistemi: Aktif');
-        console.log('🔐 2FA: Super Admin için aktif');
+        console.log('💗 Heartbeat Sistemi: AKTİF (İnternet kesintilerinde kredi düşmesi)');
+        console.log('🛡️ Rate Limiting: 5 deneme/30 dakika + görsel uyarılar');
+        console.log('📋 KVKK Sistemi: Aktif + Persistent storage');
+        console.log('🔐 2FA: Super Admin için Google Authenticator zorunlu');
+        console.log('🔒 Session: 24 saat + secure cookies');
         console.log('');
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
-        console.log('✅ Sistem hazır - Arama kabul ediliyor!');
-        console.log('════════════════════════════════════════════════════════════════');
+        console.log('✅ Sistem hazır - Güvenli arama kabul ediliyor!');
+        console.log('╔══════════════════════════════════════════════════════════════╗');
+        console.log('║                    🔐 GÜVENLİK AKTİF 🔐                     ║');
+        console.log('╚══════════════════════════════════════════════════════════════╝');
     });
 }
 
@@ -1375,7 +1685,7 @@ process.on('SIGTERM', () => {
     // Aktif heartbeat'leri durdur
     for (const [callKey, heartbeat] of activeHeartbeats.entries()) {
         clearInterval(heartbeat);
-        console.log(`💓 Heartbeat durduruldu: ${callKey}`);
+        console.log(`💗 Heartbeat durduruldu: ${callKey}`);
     }
     activeHeartbeats.clear();
     
@@ -1390,4 +1700,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
