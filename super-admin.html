@@ -388,6 +388,17 @@
             border-radius: 8px;
             margin: 15px 0;
             font-weight: 600;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
         }
         
         .success-message {
@@ -638,6 +649,8 @@
         let currentAdmin = null;
         let users = [];
         let filteredUsers = [];
+        let socket = null;
+        let adminUniqueId = null;
         
         // Sayfa yüklendiğinde
         window.onload = function() {
@@ -957,7 +970,8 @@
                     recentCalls: calls,
                     systemInfo: {
                         totalHeartbeats: stats.activeHeartbeats,
-                        onlineUsers: stats.onlineUsers
+                        onlineUsers: stats.onlineUsers,
+                        multiAdminSystem: 'Active'
                     }
                 };
                 
@@ -991,7 +1005,7 @@
                         
                         historyHtml += `
                             <div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #22c55e;">
-                                <div style="display: flex; justify-content: between; align-items: center;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
                                         <strong style="color: #fbbf24;">${call.user_name || call.user_id}</strong> 
                                         <span style="color: #94a3b8;">(#${call.user_id})</span>
@@ -1141,6 +1155,10 @@
         }
         
         function showMessage(message, type) {
+            // Önceki mesajları temizle
+            const existingMessages = document.querySelectorAll('.success-message, .error-message');
+            existingMessages.forEach(msg => msg.remove());
+            
             const messageDiv = document.createElement('div');
             messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
             messageDiv.textContent = message;
@@ -1174,6 +1192,11 @@
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 try {
                     await fetch('/auth/logout', { method: 'POST' });
+                    
+                    if (socket) {
+                        socket.close();
+                    }
+                    
                     window.location.href = '/';
                 } catch (error) {
                     window.location.href = '/';
