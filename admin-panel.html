@@ -330,6 +330,16 @@
             box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
         }
         
+        .call-taken {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(107, 114, 128, 0.4);
+        }
+        
         .active-call {
             background: linear-gradient(135deg, #22c55e, #16a34a);
             color: white;
@@ -763,6 +773,19 @@
                            ✔️ Tamam
                         </button>
                     </div>
+
+                    <!-- 🔧 YENİ: Arama Başka Admin Tarafından Alındı -->
+                    <div id="callTaken" class="call-taken hidden">
+                        <h3>👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI</h3>
+                        <div style="margin: 15px 0;">
+                            <p style="font-weight: 600;"><span id="takenCallerName">-</span></p>
+                            <p style="opacity: 0.9;">ID: <span id="takenCallerId">-</span></p>
+                            <p style="opacity: 0.9;">Alınan Admin: <span id="takenByAdmin">-</span></p>
+                        </div>
+                        <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissTakenCall()">
+                           ✔️ Tamam
+                        </button>
+                    </div>
                     
                     <!-- Aktif Görüşme -->
                     <div id="activeCall" class="active-call hidden">
@@ -852,7 +875,10 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         
-        const adminId = "ADMIN001";
+        // 🔧 MULTI-ADMIN KOORDINASYON: Admin'in unique ID'si
+        let adminUniqueId = null;
+        let originalAdminId = "ADMIN001";
+        
         const serverUrl = window.location.hostname === 'localhost' 
             ? 'ws://localhost:8080'
             : `wss://vipcep-server-production.up.railway.app`;
@@ -888,7 +914,6 @@
         // Auth durumu kontrol et
         async function checkAuthStatus() {
             try {
-                // Session kontrolü - bu endpoint server.js'de eklenmeli
                 const response = await fetch('/auth/check-session', {
                     method: 'GET',
                     credentials: 'include'
@@ -905,7 +930,6 @@
                 console.log('Auth check error:', error);
             }
             
-            // Giriş ekranını göster
             showLoginScreen();
         }
         
@@ -929,7 +953,6 @@
                 return;
             }
             
-            // Loading state
             loginBtn.disabled = true;
             loginBtn.textContent = '⏳ Giriş yapılıyor...';
             
@@ -951,7 +974,6 @@
                 } else {
                     showLoginMessage(result.error || 'Giriş başarısız!', 'error');
                     
-                    // Rate limit uyarısı
                     if (result.remaining !== undefined && result.remaining <= 2) {
                         showLoginMessage(`⚠️ Kalan deneme hakkı: ${result.remaining}`, 'error');
                     }
@@ -980,7 +1002,6 @@
             const errorDiv = document.getElementById('loginError');
             const successDiv = document.getElementById('loginSuccess');
             
-            // Tüm mesajları gizle
             errorDiv.style.display = 'none';
             successDiv.style.display = 'none';
             
@@ -992,7 +1013,6 @@
                 successDiv.style.display = 'block';
             }
             
-            // 5 saniye sonra gizle
             setTimeout(() => {
                 errorDiv.style.display = 'none';
                 successDiv.style.display = 'none';
@@ -1010,39 +1030,33 @@
                     console.log('Logout error:', error);
                 }
                 
-                // WebSocket bağlantısını kapat
                 if (socket) {
                     socket.close();
                 }
                 
-                // Aktif arama varsa sonlandır
                 if (currentCall) {
                     endCall();
                 }
                 
-                // Değişkenleri sıfırla
                 isLoggedIn = false;
                 currentAdmin = null;
                 approvedUsers = [];
                 connectedUsers = [];
+                adminUniqueId = null;
                 
-                // Giriş ekranına dön
                 showLoginScreen();
                 
-                // Form temizle
                 document.getElementById('loginUsername').value = '';
                 document.getElementById('loginPassword').value = '';
             }
         }
         
-        // Onaylı kullanıcıları yükle
         function loadApprovedUsers() {
             loadUsersFromAPI();
             renderApprovedUsers();
             updateStats();
         }
 
-        // API'den kullanıcıları yükle
         async function loadUsersFromAPI() {
             try {
                 log('📡 API\'den kullanıcılar yükleniyor...');
@@ -1052,7 +1066,6 @@
                 if (response.ok) {
                     const apiUsers = await response.json();
                     
-                    // API'den gelen kullanıcıları local format'a çevir
                     approvedUsers = apiUsers.map(user => ({
                         id: user.id,
                         name: user.name,
@@ -1141,7 +1154,7 @@
                 socket.send(JSON.stringify({
                     type: 'admin-call-request',
                     targetId: userId,
-                    adminId: adminId,
+                    adminId: adminUniqueId || originalAdminId, // 🔧 Unique ID kullan
                     adminName: 'USTAM'
                 }));
                 
@@ -1160,6 +1173,7 @@
             
             document.getElementById('incomingCall').classList.add('hidden');
             document.getElementById('callCancelled').classList.add('hidden');
+            document.getElementById('callTaken').classList.add('hidden'); // 🔧 call-taken gizle
             
             log(`📟 Giden arama: ${callInfo.userName} (${callInfo.userId})`);
         }
@@ -1226,7 +1240,7 @@
                 socket.send(JSON.stringify({
                     type: 'admin-call-cancelled',
                     targetId: outgoingCallInfo.userId,
-                    adminId: adminId,
+                    adminId: adminUniqueId || originalAdminId, // 🔧 Unique ID kullan
                     reason: 'Admin aramayı iptal etti'
                 }));
                 
@@ -1261,7 +1275,6 @@
                 return;
             }
             
-            // ONLINE KULLANICILARI ÖNE ALMAK İÇİN SIRALAMA
             const sortedUsers = [...usersToShow].sort((a, b) => {
                 const aOnline = connectedUsers.some(u => u.id === a.id && u.userType === 'customer');
                 const bOnline = connectedUsers.some(u => u.id === b.id && u.userType === 'customer');
@@ -1303,7 +1316,6 @@
             document.getElementById('onlineUsers').textContent = connectedUsers.filter(u => u.userType === 'customer').length;
             document.getElementById('totalCredits').textContent = approvedUsers.reduce((sum, u) => sum + u.credits, 0);
             
-            // API'den güncel istatistik al
             fetch('/api/stats', { credentials: 'include' })
                 .then(response => response.json())
                 .then(data => {
@@ -1328,9 +1340,10 @@
                     updateStatus('connected');
                     log('✅ Server\'a bağlandı');
                     
+                    // 🔧 MULTI-ADMIN: register mesajında unique ID talep et
                     socket.send(JSON.stringify({
                         type: 'register',
-                        userId: adminId,
+                        userId: originalAdminId,
                         name: currentAdmin.username || 'Admin',
                         userType: 'admin'
                     }));
@@ -1364,6 +1377,12 @@
             log('📨 Mesaj alındı: ' + message.type);
             
             switch (message.type) {
+                // 🔧 MULTI-ADMIN: Server'dan unique ID al
+                case 'admin-registered':
+                    adminUniqueId = message.uniqueId;
+                    log(`🔧 Admin unique ID alındı: ${adminUniqueId} (orijinal: ${message.originalId})`);
+                    break;
+
                 case 'incoming-call':
                     console.log('📟 GELEN ARAMA MESAJI ALINDI!', message);
                     
@@ -1383,7 +1402,7 @@
                         cancelOutgoingCall();
                     }
                     
-                    hideCallCancelled();
+                    hideAllCallScreens(); // 🔧 Tüm arama ekranlarını gizle
                     
                     const callerData = {
                         userId: message.userId,
@@ -1392,6 +1411,40 @@
                     };
                     
                     showIncomingCall(callerData);
+                    break;
+
+                // 🔧 CRITICAL: call-taken mesajını handle et
+                case 'call-taken':
+                    console.log('👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI!', message);
+                    
+                    // Gelen arama ekranını gizle
+                    document.getElementById('incomingCall').classList.add('hidden');
+                    
+                    // Call-taken bildirimi göster
+                    const takenUser = approvedUsers.find(u => u.id === message.userId);
+                    if (takenUser) {
+                        document.getElementById('takenCallerName').textContent = takenUser.name;
+                        document.getElementById('takenCallerId').textContent = message.userId;
+                        document.getElementById('takenByAdmin').textContent = message.takenBy || 'Diğer Admin';
+                        document.getElementById('callTaken').classList.remove('hidden');
+                        
+                        log(`👥 Arama başka admin tarafından alındı: ${takenUser.name} -> ${message.takenBy}`);
+                        
+                        // 5 saniye sonra otomatik gizle
+                        setTimeout(() => {
+                            dismissTakenCall();
+                        }, 5000);
+                    }
+                    
+                    // Eğer bu admin'in giden aramasıysa iptal et
+                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
+                        cancelOutgoingCall();
+                    }
+                    
+                    // Eğer bu admin'in mevcut aramasıysa sonlandır
+                    if (currentCall && currentCall.userId === message.userId) {
+                        endCall();
+                    }
                     break;
 
                 case 'admin-call-accepted':
@@ -1482,7 +1535,6 @@
                     console.log(`💳 Kredi güncellemesi alındı: ${message.userId}`);
                     const updatedUser = approvedUsers.find(u => u.id === message.userId);
                     if (updatedUser) {
-                        // Kredi bilgisini güncelle
                         updatedUser.credits = message.newCredits;
                         updatedUser.totalCalls = (updatedUser.totalCalls || 0) + 1;
                         updatedUser.lastCall = new Date().toLocaleString();
@@ -1517,6 +1569,27 @@
                 case 'user-online':
                     log('👋 Yeni kullanıcı: ' + message.userName);
                     break;
+            }
+        }
+
+        // 🔧 Helper: Tüm arama ekranlarını gizle
+        function hideAllCallScreens() {
+            document.getElementById('incomingCall').classList.add('hidden');
+            document.getElementById('outgoingCall').classList.add('hidden');
+            document.getElementById('callCancelled').classList.add('hidden');
+            document.getElementById('callTaken').classList.add('hidden');
+            document.getElementById('activeCall').classList.add('hidden');
+        }
+
+        // 🔧 Call-taken bildirimi dismiss
+        function dismissTakenCall() {
+            const takenDiv = document.getElementById('callTaken');
+            if (!takenDiv.classList.contains('hidden')) {
+                takenDiv.classList.add('slide-out');
+                setTimeout(() => {
+                    takenDiv.classList.add('hidden');
+                    takenDiv.classList.remove('slide-out');
+                }, 300);
             }
         }
 
@@ -1683,7 +1756,6 @@
                 document.getElementById('acceptBtn').disabled = true;
                 document.getElementById('acceptBtn').textContent = '🔄 Bağlanıyor...';
                 
-                // Mikrofon erişimi al
                 localStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
@@ -1696,13 +1768,11 @@
                 
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 
-                // Local stream'i ekle
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                     console.log('🎤 Admin local track eklendi (gelen arama):', track.kind);
                 });
                 
-                // Remote stream handler
                 peerConnection.ontrack = function(event) {
                     console.log('📡 Admin remote track alındı (gelen arama):', event.track.kind);
                     const remoteAudio = document.getElementById('remoteAudio');
@@ -1718,7 +1788,6 @@
                     }
                 };
                 
-                // ICE candidate handler
                 peerConnection.onicecandidate = function(event) {
                     if (event.candidate && socket) {
                         socket.send(JSON.stringify({
@@ -1732,7 +1801,6 @@
                     }
                 };
 
-                // Bağlantı durumu takibi
                 peerConnection.onconnectionstatechange = function() {
                     console.log('🔗 Admin Connection State (gelen arama):', peerConnection.connectionState);
                     switch (peerConnection.connectionState) {
@@ -1757,7 +1825,6 @@
                     }
                 };
 
-                // ICE bağlantı durumu takibi
                 peerConnection.oniceconnectionstatechange = function() {
                     console.log('🧊 Admin ICE Connection State (gelen arama):', peerConnection.iceConnectionState);
                     switch (peerConnection.iceConnectionState) {
@@ -1783,10 +1850,11 @@
                     }
                 };
                 
-                // Sunucuya arama kabul mesajı gönder
+                // 🔧 MULTI-ADMIN: accept-call mesajında adminId gönder
                 socket.send(JSON.stringify({
                     type: 'accept-call',
-                    userId: currentCall.userId
+                    userId: currentCall.userId,
+                    adminId: adminUniqueId || originalAdminId // Unique ID kullan
                 }));
                 
                 log('✅ Görüşme kabul edildi, WebRTC kuruluyor...');
@@ -1835,7 +1903,7 @@
             if (currentCall && socket) {
                 socket.send(JSON.stringify({
                     type: 'end-call',
-                    userId: adminId,
+                    userId: adminUniqueId || originalAdminId, // 🔧 Unique ID kullan
                     targetId: currentCall.userId,
                     duration: callDuration,
                     userType: 'admin',
@@ -1845,9 +1913,7 @@
                 log(`📞 Admin görüşmeyi sonlandırdı: ${currentCall.userName}`);
             }
             
-            document.getElementById('activeCall').classList.add('hidden');
-            document.getElementById('incomingCall').classList.add('hidden');
-            document.getElementById('outgoingCall').classList.add('hidden');
+            hideAllCallScreens(); // 🔧 Tüm arama ekranlarını gizle
             
             if (currentCall) {
                 log(`📞 Görüşme sona erdi: ${currentCall.userName} (${Math.floor(callDuration/60)}:${(callDuration%60).toString().padStart(2,'0')})`);
@@ -1865,7 +1931,6 @@
             try {
                 console.log('🔗 Giden arama için WebRTC kuruluyor...');
                 
-                // Mikrofon erişimi al
                 localStream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
@@ -1876,13 +1941,11 @@
                 
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 
-                // Local stream'i ekle
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                     console.log('🎤 Admin local track eklendi:', track.kind);
                 });
                 
-                // Remote stream handler
                 peerConnection.ontrack = function(event) {
                     console.log('📡 Admin remote track alındı:', event.track.kind);
                     const remoteAudio = document.getElementById('remoteAudio');
@@ -1898,7 +1961,6 @@
                     }
                 };
                 
-                // ICE candidate handler
                 peerConnection.onicecandidate = function(event) {
                     if (event.candidate && socket && outgoingCallInfo) {
                         socket.send(JSON.stringify({
@@ -1912,7 +1974,6 @@
                     }
                 };
 
-                // Bağlantı durumu takibi
                 peerConnection.onconnectionstatechange = function() {
                     console.log('🔗 Admin Connection State:', peerConnection.connectionState);
                     switch (peerConnection.connectionState) {
@@ -1939,7 +2000,6 @@
                     }
                 };
 
-                // ICE bağlantı durumu takibi
                 peerConnection.oniceconnectionstatechange = function() {
                     console.log('🧊 Admin ICE Connection State:', peerConnection.iceConnectionState);
                     switch (peerConnection.iceConnectionState) {
@@ -1967,7 +2027,6 @@
                     }
                 };
 
-                // Offer oluştur ve gönder
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
                 console.log('📤 Admin offer oluşturuldu ve local description ayarlandı');
@@ -1976,7 +2035,7 @@
                     type: 'offer',
                     offer: offer,
                     targetId: outgoingCallInfo.userId,
-                    userId: adminId,
+                    userId: adminUniqueId || originalAdminId, // 🔧 Unique ID kullan
                     userName: 'Teknik Destek'
                 }));
                 console.log('📨 Admin offer müşteriye gönderildi');
@@ -2105,13 +2164,11 @@
             logContainer.appendChild(logEntry);
             logContainer.scrollTop = logContainer.scrollHeight;
             
-            // Son 50 log'u tut
             if (logContainer.children.length > 50) {
                 logContainer.removeChild(logContainer.firstChild);
             }
         }
         
-        // Verileri API'den yenile
         async function refreshData() {
             log('🔄 Veriler API\'den yenileniyor...');
             const refreshButton = document.querySelector('button[onclick="refreshData()"]');
