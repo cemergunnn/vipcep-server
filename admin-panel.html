@@ -1413,37 +1413,43 @@
                     showIncomingCall(callerData);
                     break;
 
-                // 🔧 CRITICAL: call-taken mesajını handle et
+                // 🔧 CRITICAL FIX: call-taken mesajını handle et
                 case 'call-taken':
                     console.log('👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI!', message);
                     
-                    // Gelen arama ekranını gizle
-                    document.getElementById('incomingCall').classList.add('hidden');
+                    // 🔥 KRİTİK FİX: Sadece başka admin aldıysa işlem yap
+                    const myUniqueId = adminUniqueId || originalAdminId;
                     
-                    // Call-taken bildirimi göster
-                    const takenUser = approvedUsers.find(u => u.id === message.userId);
-                    if (takenUser) {
-                        document.getElementById('takenCallerName').textContent = takenUser.name;
-                        document.getElementById('takenCallerId').textContent = message.userId;
-                        document.getElementById('takenByAdmin').textContent = message.takenBy || 'Diğer Admin';
-                        document.getElementById('callTaken').classList.remove('hidden');
+                    if (message.takenBy !== myUniqueId) {
+                        // Bu başka bir admin tarafından alındı
+                        console.log('🚫 Başka admin arama aldı, ekranımı gizliyorum:', message.takenBy);
                         
-                        log(`👥 Arama başka admin tarafından alındı: ${takenUser.name} -> ${message.takenBy}`);
+                        // Gelen arama ekranını gizle
+                        document.getElementById('incomingCall').classList.add('hidden');
                         
-                        // 5 saniye sonra otomatik gizle
-                        setTimeout(() => {
-                            dismissTakenCall();
-                        }, 5000);
-                    }
-                    
-                    // Eğer bu admin'in giden aramasıysa iptal et
-                    if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
-                        cancelOutgoingCall();
-                    }
-                    
-                    // Eğer bu admin'in mevcut aramasıysa sonlandır
-                    if (currentCall && currentCall.userId === message.userId) {
-                        endCall();
+                        // Call-taken bildirimi göster
+                        const takenUser = approvedUsers.find(u => u.id === message.userId);
+                        if (takenUser) {
+                            document.getElementById('takenCallerName').textContent = takenUser.name;
+                            document.getElementById('takenCallerId').textContent = message.userId;
+                            document.getElementById('takenByAdmin').textContent = message.takenBy || 'Diğer Admin';
+                            document.getElementById('callTaken').classList.remove('hidden');
+                            
+                            log(`👥 Arama başka admin tarafından alındı: ${takenUser.name} -> ${message.takenBy}`);
+                            
+                            // 5 saniye sonra otomatik gizle
+                            setTimeout(() => {
+                                dismissTakenCall();
+                            }, 5000);
+                        }
+                        
+                        // Eğer bu admin'in giden aramasıysa iptal et
+                        if (outgoingCallInfo && outgoingCallInfo.userId === message.userId) {
+                            cancelOutgoingCall();
+                        }
+                    } else {
+                        // Bu admin arama aldı - ekranı gizleme!
+                        console.log('✅ Ben arama aldım, ekranımı gizlemiyorum:', myUniqueId);
                     }
                     break;
 
