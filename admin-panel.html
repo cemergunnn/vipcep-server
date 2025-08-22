@@ -1898,11 +1898,11 @@
                 };
                 
                 peerConnection.onicecandidate = function(event) {
-                    if (event.candidate && socket && outgoingCallInfo) {
+                    if (event.candidate && socket && currentCall) {
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: outgoingCallInfo.userId
+                            targetId: currentCall.userId
                         }));
                         console.log('📡 Admin ICE candidate gönderildi:', event.candidate.type);
                     } else if (!event.candidate) {
@@ -2127,3 +2127,4 @@
     </script>
 </body>
 </html>
+
