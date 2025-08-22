@@ -1880,7 +1880,7 @@ async function startServer() {
         console.log('🔐 2FA: Super Admin için Google Authenticator zorunlu');
         console.log('🔑 Session: 24 saat + secure cookies');
         console.log('🎯 MULTI-ADMIN: Koordinasyon sistemi aktif');
-        console.log('🔥 FIX: Görüşmedeki admin'e yeni çağrı gitmeme sistemi aktif');
+        console.log('🔥 FIX: Görüşmedeki admine yeni çağrı gitmeme sistemi aktif');
         console.log('');
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
