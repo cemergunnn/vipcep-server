@@ -1742,7 +1742,7 @@
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: currentAdminId || userInfo.adminId // 🔥 Doğru admin'e gönder
+                            targetId: currentAdminId // 🔥 Doğru admin'e gönder
                         }));
                     }
                 };
@@ -2293,4 +2293,5 @@
     </script>
 </body>
 </html>
+
 
