@@ -40,7 +40,7 @@ const SECURITY_CONFIG = {
     TOTP_WINDOW: 2 // ±2 time step tolerance
 };
 
-console.log('🔐 GÜVENLİK URL\'LERİ OLUŞTURULDU:');
+console.log('🔒 GÜVENLİK URL\'LERİ OLUŞTURULDU:');
 console.log(`🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
 console.log(`🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
 console.log(`🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
@@ -68,6 +68,7 @@ const wss = new WebSocket.Server({ server });
 // Global değişkenler
 const clients = new Map();
 const activeHeartbeats = new Map(); // 🔥 Aktif arama sayaçları - İNTERNET KESİNTİSİ PROBLEMİNİ ÇÖZER
+const activeCallAdmins = new Map(); // 🔥 YENİ: Görüşmedeki adminleri takip et
 const failedLogins = new Map(); // Rate limiting için
 let callHistory = [];
 
@@ -161,7 +162,7 @@ async function recordFailedLogin(ip, userType = 'customer') {
     }
 }
 
-// TOTP Secret oluştur - DÜZELTME: base32 yerine hex
+// TOTP Secret oluştur - DÜZELTMEsï: base32 yerine hex
 function generateTOTPSecret() {
     return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
@@ -323,7 +324,7 @@ async function initDatabase() {
                 VALUES ($1, $2, $3, $4)
             `, ['superadmin', hashedPassword, 'super', totpSecret]);
             console.log('🔒 Super admin oluşturuldu: superadmin/admin123');
-            console.log('🔐 TOTP Secret:', totpSecret);
+            console.log('🔑 TOTP Secret:', totpSecret);
         }
 
         // Test kullanıcılarını kontrol et ve ekle
@@ -341,7 +342,7 @@ async function initDatabase() {
                     INSERT INTO approved_users (id, name, credits) 
                     VALUES ($1, $2, $3)
                 `, [id, name, credits]);
-                console.log(`📝 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
+                console.log(`🆔 Test kullanıcısı eklendi: ${id} - ${name} (${credits} dk)`);
             }
         }
 
@@ -608,7 +609,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>🔐 VIPCEP Güvenli Giriş</title>
+            <title>🔒 VIPCEP Güvenli Giriş</title>
             <meta charset="UTF-8">
             <style>
                 body { 
@@ -724,14 +725,14 @@ app.get('/', checkIPWhitelist, (req, res) => {
         </head>
         <body>
             <div class="login-container">
-                <div class="title">🔐 VIPCEP</div>
+                <div class="title">🔒 VIPCEP</div>
                 <div class="subtitle">Güvenli Giriş Sistemi</div>
                 
                 <div class="form-group">
                     <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
                 </div>
                 <div class="form-group">
-                    <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                    <input type="password" id="password" class="form-input" placeholder="🔒 Şifre">
                 </div>
                 <div class="form-group" id="totpGroup">
                     <input type="text" id="totpCode" class="form-input" placeholder="🔐 2FA Kodu (6 haneli)" maxlength="6">
@@ -1260,10 +1261,17 @@ wss.on('connection', (ws, req) => {
                 case 'call-request':
                     console.log('📞 Müşteri → Admin arama talebi:', message.userId);
                     
-                    const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
-                    if (adminClients.length > 0) {
-                        // Tüm adminlere arama bildirimi gönder
-                        adminClients.forEach(adminClient => {
+                    // 🔥 FIX: Sadece MÜSAİT adminlere bildir
+                    const allAdminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+                    const availableAdmins = allAdminClients.filter(adminClient => {
+                        // Görüşmede OLMAYAN adminleri filtrele
+                        return !activeCallAdmins.has(adminClient.uniqueId || adminClient.id);
+                    });
+                    
+                    if (availableAdmins.length > 0) {
+                        console.log(`📞 ${availableAdmins.length} müsait admin'e bildirim gönderiliyor (${allAdminClients.length - availableAdmins.length} admin görüşmede)`);
+                        
+                        availableAdmins.forEach(adminClient => {
                             if (adminClient.ws.readyState === WebSocket.OPEN) {
                                 adminClient.ws.send(JSON.stringify({
                                     type: 'incoming-call',
@@ -1273,13 +1281,12 @@ wss.on('connection', (ws, req) => {
                                 }));
                             }
                         });
-                        console.log(`📞 ${adminClients.length} admin'e arama bildirimi gönderildi`);
                     } else {
+                        console.log('❌ Tüm adminler görüşmede, arama reddediliyor');
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
-                            reason: 'Teknik destek şu anda müsait değil. Lütfen daha sonra tekrar deneyin.'
+                            reason: 'Tüm teknik destek uzmanları görüşmede. Lütfen daha sonra tekrar deneyin.'
                         }));
-                        console.log('❌ Admin bulunamadı, arama reddedildi');
                     }
                     break;
 
@@ -1320,6 +1327,14 @@ wss.on('connection', (ws, req) => {
                     
                     // 🔥 YENİ: Heartbeat sistemi başlat - İNTERNET KESİNTİSİ PROBLEMİNİ ÇÖZER
                     const callKey = `${message.userId}-${message.adminId}`;
+                    
+                    // 🔥 FIX: Admin'i görüşme durumuna al
+                    activeCallAdmins.set(message.adminId, {
+                        customerId: message.userId,
+                        callStartTime: Date.now()
+                    });
+                    console.log(`📞 Admin görüşme durumuna alındı: ${message.adminId} <-> ${message.userId}`);
+                    
                     startHeartbeat(message.userId, message.adminId, callKey);
                     break;
 
@@ -1368,6 +1383,13 @@ wss.on('connection', (ws, req) => {
                         console.log('❌ Admin ID bulunamadı, arama kabul edilemedi');
                         break;
                     }
+                    
+                    // 🔥 FIX: Admin'i görüşme durumuna al
+                    activeCallAdmins.set(acceptingAdminId, {
+                        customerId: message.userId,
+                        callStartTime: Date.now()
+                    });
+                    console.log(`📞 Admin görüşme durumuna alındı: ${acceptingAdminId} <-> ${message.userId}`);
                     
                     const callerClient = clients.get(message.userId);
                     if (callerClient && callerClient.ws.readyState === WebSocket.OPEN) {
@@ -1459,6 +1481,15 @@ wss.on('connection', (ws, req) => {
                 case 'end-call':
                     console.log('📞 Görüşme sonlandırılıyor:', senderId, '-> target:', message.targetId);
                     
+                    // 🔥 FIX: Admin'i müsait duruma al
+                    if (senderType === 'admin') {
+                        activeCallAdmins.delete(senderId);
+                        console.log(`📞 Admin müsait duruma alındı: ${senderId}`);
+                    } else if (message.targetId) {
+                        activeCallAdmins.delete(message.targetId);
+                        console.log(`📞 Admin müsait duruma alındı: ${message.targetId}`);
+                    }
+                    
                     // 🔥 WebRTC Targeting Fix: Heartbeat'i durdur - target ID'yi doğru kullan
                     const endCallKey = message.targetId ? `${senderId}-${message.targetId}` : `${senderId}-ADMIN001`;
                     stopHeartbeat(endCallKey, 'user_ended');
@@ -1523,6 +1554,15 @@ wss.on('connection', (ws, req) => {
     ws.on('close', () => {
         const client = findClientById(ws);
         console.log('👋 Kullanıcı ayrıldı:', client?.name || 'unknown');
+        
+        // 🔥 FIX: Admin ayrılırsa görüşme durumundan çıkar
+        if (client && client.userType === 'admin') {
+            const adminKey = client.uniqueId || client.id;
+            if (activeCallAdmins.has(adminKey)) {
+                console.log(`📞 Ayrılan admin görüşme durumundan çıkarıldı: ${adminKey}`);
+                activeCallAdmins.delete(adminKey);
+            }
+        }
         
         // İlgili heartbeat'leri durdur
         if (client) {
@@ -1676,7 +1716,8 @@ app.get('/api/stats', async (req, res) => {
             totalCredits: parseInt(totalCredits.rows[0].sum || 0),
             todayCalls: parseInt(todayCalls.rows[0].count),
             onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
-            activeHeartbeats: activeHeartbeats.size
+            activeHeartbeats: activeHeartbeats.size,
+            busyAdmins: activeCallAdmins.size
         });
     } catch (error) {
         console.log('💾 PostgreSQL istatistik hatası:', error.message);
@@ -1791,6 +1832,7 @@ app.get('/health', (req, res) => {
         uptime: process.uptime(),
         clients: clients.size,
         activeHeartbeats: activeHeartbeats.size,
+        busyAdmins: activeCallAdmins.size,
         database: process.env.DATABASE_URL ? 'Connected' : 'Offline',
         securityUrls: {
             superAdmin: SECURITY_CONFIG.SUPER_ADMIN_PATH,
@@ -1814,7 +1856,7 @@ app.use((req, res) => {
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('🔐 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    console.log('🔍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -1827,7 +1869,7 @@ async function startServer() {
         console.log(`📡 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
         console.log('');
-        console.log('🔐 GÜVENLİK URL\'LERİ:');
+        console.log('🔒 GÜVENLİK URL\'LERİ:');
         console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
         console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
         console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
@@ -1836,15 +1878,17 @@ async function startServer() {
         console.log('🛡️ Rate Limiting: 5 deneme/30 dakita + görsel uyarılar');
         console.log('📋 KVKK Sistemi: Aktif + Persistent storage');
         console.log('🔐 2FA: Super Admin için Google Authenticator zorunlu');
-        console.log('🔒 Session: 24 saat + secure cookies');
+        console.log('🔑 Session: 24 saat + secure cookies');
         console.log('🎯 MULTI-ADMIN: Koordinasyon sistemi aktif');
+        console.log('🔥 FIX: Görüşmedeki admin'e yeni çağrı gitmeme sistemi aktif');
         console.log('');
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
         console.log('✅ Sistem hazır - Güvenli multi-admin arama kabul ediliyor!');
-        console.log('╔══════════════════════════════════════════════════════════════╗');
-        console.log('║             🔐 MULTI-ADMIN SİSTEM AKTİF 🔐                  ║');
-        console.log('╚══════════════════════════════════════════════════════════════╝');
+        console.log('╔═══════════════════════════════════════════════════════════════╗');
+        console.log('║             🔥 MULTI-ADMIN SİSTEM AKTİF 🔥                  ║');
+        console.log('║         📞 GÖRÜŞME KONTROLÜ TAMAMEN DÜZELTİLDİ 📞           ║');
+        console.log('╚═══════════════════════════════════════════════════════════════╝');
     });
 }
 
@@ -1867,6 +1911,7 @@ process.on('SIGTERM', () => {
         console.log(`💗 Heartbeat durduruldu: ${callKey}`);
     }
     activeHeartbeats.clear();
+    activeCallAdmins.clear();
     
     server.close(() => {
         console.log('✅ Server başarıyla kapatıldı');
