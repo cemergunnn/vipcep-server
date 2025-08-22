@@ -40,7 +40,7 @@ const SECURITY_CONFIG = {
     TOTP_WINDOW: 2 // ±2 time step tolerance
 };
 
-console.log('🔒 GÜVENLİK URL\'LERİ OLUŞTURULDU:');
+console.log('🔐 GÜVENLİK URL\'LERİ OLUŞTURULDU:');
 console.log(`🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
 console.log(`🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
 console.log(`🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
@@ -65,12 +65,19 @@ app.use(express.static('.'));
 // WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Global değişkenler
+// 🔥 ÇOKLU ARAMA SİSTEMİ - Global değişkenler
 const clients = new Map();
-const activeHeartbeats = new Map(); // 🔥 Aktif arama sayaçları - İNTERNET KESİNTİSİ PROBLEMİNİ ÇÖZER
-const activeCallAdmins = new Map(); // 🔥 YENİ: Görüşmedeki adminleri takip et
-const activeCalls = new Map(); // 🔥 WebRTC ROUTING FIX: Aktif görüşmeleri takip et
-const failedLogins = new Map(); // Rate limiting için
+const activeHeartbeats = new Map();
+const activeCallAdmins = new Map();
+const activeCalls = new Map();
+const failedLogins = new Map();
+
+// 🔥 YENİ: ÇOKLU ARAMA KUYRUK SİSTEMİ
+const incomingCallQueue = new Map(); // callId -> callData
+const callTimeouts = new Map(); // callId -> timeoutId
+const MAX_QUEUE_SIZE = 5;
+const CALL_TIMEOUT_DURATION = 30000; // 30 saniye
+
 let callHistory = [];
 
 // 2FA Secret key (production'da environment variable olmalı)
@@ -81,6 +88,161 @@ const HEARTBEAT_INTERVAL = 60000; // 1 dakika = 1 kredi
 
 // IP bazlı rate limiting
 const rateLimitMap = new Map();
+
+// 🔥 ÇOKLU ARAMA SİSTEMİ - Helper Functions
+
+// Arama ID oluştur
+function generateCallId() {
+    return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Arama kuyruğuna ekle
+function addToCallQueue(callData) {
+    // Kuyruk dolu mu kontrol et
+    if (incomingCallQueue.size >= MAX_QUEUE_SIZE) {
+        console.log(`⚠️ Arama kuyruğu dolu (${MAX_QUEUE_SIZE}), en eskisini kaldır`);
+        
+        // En eski aramayı bul ve kaldır
+        let oldestCall = null;
+        let oldestTime = Date.now();
+        
+        for (const [callId, call] of incomingCallQueue.entries()) {
+            if (call.timestamp < oldestTime) {
+                oldestTime = call.timestamp;
+                oldestCall = callId;
+            }
+        }
+        
+        if (oldestCall) {
+            removeFromCallQueue(oldestCall, 'queue_full');
+        }
+    }
+    
+    const callId = generateCallId();
+    const callEntry = {
+        callId: callId,
+        userId: callData.userId,
+        userName: callData.userName,
+        credits: callData.credits,
+        timestamp: Date.now(),
+        status: 'waiting'
+    };
+    
+    incomingCallQueue.set(callId, callEntry);
+    
+    // 30 saniye timeout ayarla
+    const timeoutId = setTimeout(() => {
+        console.log(`⏰ Arama timeout: ${callEntry.userName} (${callId})`);
+        removeFromCallQueue(callId, 'timeout');
+    }, CALL_TIMEOUT_DURATION);
+    
+    callTimeouts.set(callId, timeoutId);
+    
+    console.log(`📞 Arama kuyruğuna eklendi: ${callEntry.userName} (${callId}) - Kuyruk boyutu: ${incomingCallQueue.size}`);
+    
+    return callEntry;
+}
+
+// Aramayı kuyruktan çıkar
+function removeFromCallQueue(callId, reason = 'manual') {
+    const callData = incomingCallQueue.get(callId);
+    if (!callData) {
+        console.log(`⚠️ Silinecek arama bulunamadı: ${callId}`);
+        return null;
+    }
+    
+    // Timeout'u temizle
+    const timeoutId = callTimeouts.get(callId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        callTimeouts.delete(callId);
+    }
+    
+    // Kuyruktan çıkar
+    incomingCallQueue.delete(callId);
+    
+    console.log(`🗑️ Arama kuyruktan çıkarıldı: ${callData.userName} (${callId}) - Sebep: ${reason} - Kalan: ${incomingCallQueue.size}`);
+    
+    // Tüm adminlere güncel kuyruğu gönder
+    broadcastCallQueueToAdmins();
+    
+    return callData;
+}
+
+// Arama kuyruğunu adminlere gönder
+function broadcastCallQueueToAdmins() {
+    const queueArray = Array.from(incomingCallQueue.values()).sort((a, b) => a.timestamp - b.timestamp);
+    
+    const message = JSON.stringify({
+        type: 'call-queue-update',
+        queue: queueArray,
+        queueSize: queueArray.length
+    });
+    
+    // Sadece müsait adminlere gönder
+    const allAdminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+    const availableAdmins = allAdminClients.filter(adminClient => {
+        return !activeCallAdmins.has(adminClient.uniqueId || adminClient.id);
+    });
+    
+    availableAdmins.forEach(adminClient => {
+        if (adminClient.ws.readyState === WebSocket.OPEN) {
+            adminClient.ws.send(message);
+        }
+    });
+    
+    console.log(`📤 Arama kuyruğu ${availableAdmins.length} müsait admin'e gönderildi (${queueArray.length} arama)`);
+}
+
+// Belirli kullanıcının aramasını kuyruktan bul ve çıkar
+function removeUserCallFromQueue(userId, reason = 'user_cancelled') {
+    let removedCallId = null;
+    
+    for (const [callId, callData] of incomingCallQueue.entries()) {
+        if (callData.userId === userId) {
+            removedCallId = callId;
+            break;
+        }
+    }
+    
+    if (removedCallId) {
+        return removeFromCallQueue(removedCallId, reason);
+    }
+    
+    return null;
+}
+
+// Admin aramayı kabul ettiğinde kuyruktan çıkar
+function acceptCallFromQueue(callId, adminId) {
+    const callData = incomingCallQueue.get(callId);
+    if (!callData) {
+        console.log(`⚠️ Kabul edilecek arama bulunamadı: ${callId}`);
+        return null;
+    }
+    
+    console.log(`✅ Arama kabul edildi: ${callData.userName} (${callId}) by ${adminId}`);
+    
+    // Bu aramayı kuyruktan çıkar
+    removeFromCallQueue(callId, 'accepted');
+    
+    return callData;
+}
+
+// Tüm kuyruğu temizle (acil durum)
+function clearAllCallQueue(reason = 'emergency') {
+    console.log(`🚨 Tüm arama kuyruğu temizleniyor - Sebep: ${reason}`);
+    
+    // Tüm timeout'ları temizle
+    for (const timeoutId of callTimeouts.values()) {
+        clearTimeout(timeoutId);
+    }
+    
+    callTimeouts.clear();
+    incomingCallQueue.clear();
+    
+    // Adminlere boş kuyruk gönder
+    broadcastCallQueueToAdmins();
+}
 
 // Authentication middleware
 function requireSuperAuth(req, res, next) {
@@ -324,8 +486,8 @@ async function initDatabase() {
                 INSERT INTO admins (username, password_hash, role, totp_secret) 
                 VALUES ($1, $2, $3, $4)
             `, ['superadmin', hashedPassword, 'super', totpSecret]);
-            console.log('🔒 Super admin oluşturuldu: superadmin/admin123');
-            console.log('🔑 TOTP Secret:', totpSecret);
+            console.log('🔐 Super admin oluşturuldu: superadmin/admin123');
+            console.log('🔐 TOTP Secret:', totpSecret);
         }
 
         // Test kullanıcılarını kontrol et ve ekle
@@ -610,7 +772,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>🔒 VIPCEP Güvenli Giriş</title>
+            <title>🔐 VIPCEP Güvenli Giriş</title>
             <meta charset="UTF-8">
             <style>
                 body { 
@@ -726,17 +888,17 @@ app.get('/', checkIPWhitelist, (req, res) => {
         </head>
         <body>
             <div class="login-container">
-                <div class="title">🔒 VIPCEP</div>
+                <div class="title">🔐 VIPCEP</div>
                 <div class="subtitle">Güvenli Giriş Sistemi</div>
                 
                 <div class="form-group">
                     <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
                 </div>
                 <div class="form-group">
-                    <input type="password" id="password" class="form-input" placeholder="🔒 Şifre">
+                    <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
                 </div>
                 <div class="form-group" id="totpGroup">
-                    <input type="text" id="totpCode" class="form-input" placeholder="🔑 2FA Kodu (6 haneli)" maxlength="6">
+                    <input type="text" id="totpCode" class="form-input" placeholder="🔒 2FA Kodu (6 haneli)" maxlength="6">
                 </div>
                 
                 <button class="btn" id="superBtn" onclick="adminLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
@@ -754,7 +916,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
             <!-- 2FA QR Code Modal -->
             <div id="qrModal" class="modal-overlay">
                 <div class="modal">
-                    <h3>🔑 2FA Kurulumu</h3>
+                    <h3>🔒 2FA Kurulumu</h3>
                     <p>Google Authenticator ile QR kodu tarayın:</p>
                     <img id="qrImage" src="" alt="QR Code">
                     <p style="font-size: 12px; word-break: break-all; margin: 10px 0;">
@@ -1213,7 +1375,7 @@ function findWebRTCTarget(targetId, sourceType) {
     return null;
 }
 
-// WebSocket bağlantı işleyicisi - 🔥 MULTI-ADMIN FIX + WebRTC ROUTING FIX
+// WebSocket bağlantı işleyicisi - 🔥 ÇOKLU ARAMA SİSTEMİ + MULTI-ADMIN FIX + WebRTC ROUTING FIX
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
     console.log('🔗 Yeni bağlantı:', clientIP);
@@ -1242,784 +1404,4 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({
                         type: 'kvkk-status',
                         hasConsent: hasConsent
-                    }));
-                    break;
-
-                case 'kvkk-consent':
-                    const consentSaved = await saveKVKKConsent(clientIP, req.headers['user-agent'] || '');
-                    ws.send(JSON.stringify({
-                        type: 'kvkk-consent-response',
-                        success: consentSaved
-                    }));
-                    break;
-
-                case 'register':
-                    // Admin'ler için unique ID oluştur
-                    const uniqueClientId = message.userType === 'admin' 
-                        ? `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-                        : message.userId;
-                    
-                    clients.set(uniqueClientId, {
-                        ws: ws,
-                        id: message.userId, // Orijinal ID'yi sakla
-                        uniqueId: uniqueClientId, // Unique ID'yi de sakla
-                        name: message.name,
-                        userType: message.userType || 'customer',
-                        registeredAt: new Date().toLocaleTimeString(),
-                        online: true,
-                        role: message.role || null
-                    });
-
-                    console.log(`✅ ${message.userType?.toUpperCase()} kaydedildi: ${message.name} (${uniqueClientId})`);
-                    
-                    // 🔧 Admin'e kendi unique ID'sini gönder
-                    if (message.userType === 'admin') {
-                        ws.send(JSON.stringify({
-                            type: 'admin-registered',
-                            uniqueId: uniqueClientId,
-                            originalId: message.userId
-                        }));
-                        console.log(`🔧 Admin'e unique ID gönderildi: ${uniqueClientId}`);
                     }
-                    
-                    broadcastUserList();
-                    break;
-
-                case 'login-request':
-                    const rateLimit = await checkRateLimit(clientIP);
-                    if (!rateLimit.allowed) {
-                        const resetTime = rateLimit.resetTime.toLocaleTimeString('tr-TR');
-                        ws.send(JSON.stringify({
-                            type: 'login-response',
-                            success: false,
-                            rateLimited: true,
-                            error: `Çok fazla başarısız deneme!\\n\\n⏰ ${resetTime} sonra tekrar deneyin.\\n📊 Toplam deneme: ${rateLimit.attempts}/5`,
-                            remaining: rateLimit.remaining,
-                            resetTime: rateLimit.resetTime
-                        }));
-                        break;
-                    }
-
-                    console.log('🔍 Giriş denemesi - ID:', message.userId, 'Ad:', message.userName);
-                    
-                    const approval = await isUserApproved(message.userId, message.userName);
-                    
-                    if (approval.approved) {
-                        console.log('✅ Giriş başarılı:', message.userName, `(${message.userId})`);
-                        ws.send(JSON.stringify({
-                            type: 'login-response',
-                            success: true,
-                            credits: approval.credits,
-                            user: approval.user
-                        }));
-                    } else {
-                        const newRateStatus = await recordFailedLogin(clientIP);
-                        console.log('❌ Giriş reddedildi:', approval.reason);
-                        ws.send(JSON.stringify({
-                            type: 'login-response',
-                            success: false,
-                            reason: approval.reason,
-                            remaining: newRateStatus.remaining,
-                            rateLimited: !newRateStatus.allowed
-                        }));
-                    }
-                    break;
-
-                case 'call-request':
-                    console.log('📞 Müşteri → Admin arama talebi:', message.userId);
-                    
-                    // 🔥 FIX: Sadece MÜSAİT adminlere bildir
-                    const allAdminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
-                    const availableAdmins = allAdminClients.filter(adminClient => {
-                        // Görüşmede OLMAYAN adminleri filtrele
-                        return !activeCallAdmins.has(adminClient.uniqueId || adminClient.id);
-                    });
-                    
-                    if (availableAdmins.length > 0) {
-                        console.log(`📞 ${availableAdmins.length} müsait admin'e bildirim gönderiliyor (${allAdminClients.length - availableAdmins.length} admin görüşmede)`);
-                        
-                        availableAdmins.forEach(adminClient => {
-                            if (adminClient.ws.readyState === WebSocket.OPEN) {
-                                adminClient.ws.send(JSON.stringify({
-                                    type: 'incoming-call',
-                                    userId: message.userId,
-                                    userName: message.userName,
-                                    credits: message.credits
-                                }));
-                            }
-                        });
-                    } else {
-                        console.log('❌ Tüm adminler görüşmede, arama reddediliyor');
-                        ws.send(JSON.stringify({
-                            type: 'call-rejected',
-                            reason: 'Tüm teknik destek uzmanları görüşmede. Lütfen daha sonra tekrar deneyin.'
-                        }));
-                    }
-                    break;
-
-                case 'admin-call-request':
-                    console.log('📞 Admin → Müşteri arama talebi:', message.adminId, '->', message.targetId);
-                    
-                    const customerClient = clients.get(message.targetId);
-                    if (customerClient && customerClient.userType === 'customer' && customerClient.ws.readyState === WebSocket.OPEN) {
-                        customerClient.ws.send(JSON.stringify({
-                            type: 'admin-call-request',
-                            adminId: message.adminId,
-                            adminName: message.adminName || 'USTAM'
-                        }));
-                        console.log('📞 Müşteriye arama bildirimi gönderildi');
-                    } else {
-                        const adminSender = clients.get(message.adminId);
-                        if (adminSender) {
-                            adminSender.ws.send(JSON.stringify({
-                                type: 'admin-call-rejected',
-                                userId: message.targetId,
-                                reason: 'Müşteri çevrimiçi değil'
-                            }));
-                        }
-                        console.log('❌ Müşteri bulunamadı/çevrimdışı, admin arama reddedildi');
-                    }
-                    break;
-
-                case 'admin-call-accepted':
-                    console.log('✅ Müşteri admin aramasını kabul etti:', message.userId);
-                    
-                    const acceptingAdmin = clients.get(message.adminId);
-                    if (acceptingAdmin && acceptingAdmin.ws.readyState === WebSocket.OPEN) {
-                        acceptingAdmin.ws.send(JSON.stringify({
-                            type: 'admin-call-accepted',
-                            userId: message.userId,
-                            adminId: message.adminId
-                        }));
-                    }
-                    
-                    // 🔥 CRITICAL FIX: WebRTC call session oluştur
-                    createCallSession(message.userId, message.adminId, message.userId, message.adminId);
-                    
-                    // 🔥 FIX: Admin'i görüşme durumuna al
-                    activeCallAdmins.set(message.adminId, {
-                        customerId: message.userId,
-                        callStartTime: Date.now()
-                    });
-                    console.log(`📞 Admin görüşme durumuna alındı: ${message.adminId} <-> ${message.userId}`);
-                    
-                    // 🔥 Heartbeat sistemi başlat
-                    const callKey = `${message.userId}-${message.adminId}`;
-                    startHeartbeat(message.userId, message.adminId, callKey);
-                    break;
-
-                case 'admin-call-rejected':
-                    console.log('❌ Müşteri admin aramasını reddetti:', message.userId, '-', message.reason);
-                    
-                    const rejectingAdmin = clients.get(message.adminId);
-                    if (rejectingAdmin && rejectingAdmin.ws.readyState === WebSocket.OPEN) {
-                        rejectingAdmin.ws.send(JSON.stringify({
-                            type: 'admin-call-rejected',
-                            userId: message.userId,
-                            reason: message.reason
-                        }));
-                    }
-                    break;
-
-                case 'admin-call-cancelled':
-                    console.log('📞 Admin aramayı iptal etti:', message.adminId, '->', message.targetId);
-                    
-                    const cancelTargetClient = clients.get(message.targetId);
-                    if (cancelTargetClient && cancelTargetClient.ws.readyState === WebSocket.OPEN) {
-                        cancelTargetClient.ws.send(JSON.stringify({
-                            type: 'admin-call-cancelled',
-                            reason: message.reason
-                        }));
-                    }
-                    break;
-
-                case 'accept-call':
-                    // 🔧 FIX: Hangi admin'in mesajı gönderdiğini tespit et
-                    let acceptingAdminId = message.adminId;
-                    
-                    // Eğer adminId gönderilmemişse, WebSocket connection'ından bul
-                    if (!acceptingAdminId) {
-                        for (const [clientId, clientData] of clients.entries()) {
-                            if (clientData.ws === ws && clientData.userType === 'admin') {
-                                acceptingAdminId = clientData.uniqueId; // Unique ID kullan
-                                break;
-                            }
-                        }
-                    }
-                    
-                    console.log('✅ Arama kabul edildi (Admin tarafından):', message.userId, 'by admin:', acceptingAdminId);
-                    
-                    if (!acceptingAdminId) {
-                        console.log('❌ Admin ID bulunamadı, arama kabul edilemedi');
-                        break;
-                    }
-                    
-                    // 🔥 CRITICAL FIX: WebRTC call session oluştur
-                    createCallSession(message.userId, acceptingAdminId, message.userId, acceptingAdminId);
-                    
-                    // 🔥 FIX: Admin'i görüşme durumuna al
-                    activeCallAdmins.set(acceptingAdminId, {
-                        customerId: message.userId,
-                        callStartTime: Date.now()
-                    });
-                    console.log(`📞 Admin görüşme durumuna alındı: ${acceptingAdminId} <-> ${message.userId}`);
-                    
-                    const callerClient = clients.get(message.userId);
-                    if (callerClient && callerClient.ws.readyState === WebSocket.OPEN) {
-                        // 🔥 WebRTC Targeting Fix: Müşteriye kabul eden admin'in unique ID'sini gönder
-                        callerClient.ws.send(JSON.stringify({
-                            type: 'call-accepted',
-                            acceptedAdminId: acceptingAdminId
-                        }));
-                        console.log(`🎯 Müşteriye acceptedAdminId gönderildi: ${acceptingAdminId}`);
-                    }
-                    
-                    // 🔥 CRITICAL FIX: Diğer TÜM adminlere aramayı iptal bilgisi gönder
-                    const allAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin');
-                    let notifiedAdmins = 0;
-                    
-                    allAdmins.forEach(adminClient => {
-                        if (adminClient.uniqueId !== acceptingAdminId && adminClient.ws.readyState === WebSocket.OPEN) {
-                            adminClient.ws.send(JSON.stringify({
-                                type: 'call-taken',
-                                userId: message.userId,
-                                takenBy: acceptingAdminId,
-                                message: 'Arama başka bir admin tarafından alındı',
-                                action: 'hide_call' // Admin panel'de ekranı gizlemek için
-                            }));
-                            notifiedAdmins++;
-                        }
-                    });
-                    
-                    console.log(`📞 ${notifiedAdmins} diğer admin'e "arama alındı" bildirimi gönderildi`);
-                    
-                    // 🔥 Heartbeat sistemi başlat
-                    const normalCallKey = `${message.userId}-${acceptingAdminId}`;
-                    startHeartbeat(message.userId, acceptingAdminId, normalCallKey);
-                    break;
-
-                case 'reject-call':
-                    console.log('❌ Arama reddedildi (Admin tarafından):', message.userId, '-', message.reason);
-                    
-                    const rejectedClient = clients.get(message.userId);
-                    if (rejectedClient && rejectedClient.ws.readyState === WebSocket.OPEN) {
-                        rejectedClient.ws.send(JSON.stringify({
-                            type: 'call-rejected',
-                            reason: message.reason || 'Arama reddedildi'
-                        }));
-                    }
-                    break;
-
-                case 'call-cancelled':
-                    console.log('📞 Arama iptal edildi (Müşteri tarafından):', message.userId);
-                    
-                    // Tüm adminlere bildir
-                    const adminsToNotify = Array.from(clients.values()).filter(c => c.userType === 'admin');
-                    adminsToNotify.forEach(adminClient => {
-                        if (adminClient.ws.readyState === WebSocket.OPEN) {
-                            adminClient.ws.send(JSON.stringify({
-                                type: 'call-cancelled',
-                                userId: message.userId,
-                                userName: message.userName,
-                                reason: message.reason
-                            }));
-                        }
-                    });
-                    console.log(`📞 ${adminsToNotify.length} admin'e iptal bildirimi gönderildi`);
-                    break;
-
-                case 'offer':
-                case 'answer':
-                case 'ice-candidate':
-                    // 🔥 CRITICAL WebRTC ROUTING FIX: Doğru hedefi bul ve mesajı ilet
-                    const targetClient = findWebRTCTarget(message.targetId, senderType);
-                    
-                    if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
-                        // 🔥 FIX: Mesajı doğru formatta ilet
-                        const forwardMessage = {
-                            type: message.type,
-                            [message.type]: message[message.type], // offer, answer veya candidate
-                            userId: senderId, // Gönderenin ID'si
-                            targetId: message.targetId // Hedefin ID'si
-                        };
-                        
-                        // ICE candidate için özel handling
-                        if (message.type === 'ice-candidate') {
-                            forwardMessage.candidate = message.candidate;
-                        }
-                        
-                        targetClient.ws.send(JSON.stringify(forwardMessage));
-                        console.log(`🔄 ${message.type} başarıyla iletildi: ${senderId} -> ${message.targetId} (${targetClient.userType})`);
-                    } else {
-                        console.log(`❌ ${message.type} hedefi bulunamadı: ${message.targetId}`);
-                        console.log(`🔍 Aranan: ${message.targetId}, Gönderen: ${senderId} (${senderType})`);
-                        console.log(`🔍 Mevcut clients:`, Array.from(clients.keys()));
-                        
-                        // Gönderene hata bildir
-                        if (senderInfo && senderInfo.ws.readyState === WebSocket.OPEN) {
-                            senderInfo.ws.send(JSON.stringify({
-                                type: 'webrtc-error',
-                                error: 'Target not found',
-                                targetId: message.targetId,
-                                messageType: message.type
-                            }));
-                        }
-                    }
-                    break;
-
-                case 'end-call':
-                    console.log('📞 Görüşme sonlandırılıyor:', senderId, '-> target:', message.targetId);
-                    
-                    // 🔥 FIX: Admin'i müsait duruma al
-                    if (senderType === 'admin') {
-                        activeCallAdmins.delete(senderId);
-                        console.log(`📞 Admin müsait duruma alındı: ${senderId}`);
-                    } else if (message.targetId) {
-                        activeCallAdmins.delete(message.targetId);
-                        console.log(`📞 Admin müsait duruma alındı: ${message.targetId}`);
-                    }
-                    
-                    // 🔥 WebRTC call session'ı kaldır
-                    if (senderType === 'customer' && message.targetId) {
-                        removeCallSession(senderId, message.targetId);
-                    } else if (senderType === 'admin' && message.targetId) {
-                        removeCallSession(message.targetId, senderId);
-                    }
-                    
-                    // 🔥 Heartbeat'i durdur - target ID'yi doğru kullan
-                    const endCallKey = message.targetId ? `${senderId}-${message.targetId}` : `${senderId}-ADMIN001`;
-                    stopHeartbeat(endCallKey, 'user_ended');
-                    
-                    const duration = message.duration || 0;
-                    const creditsUsed = Math.ceil(duration / 60); // Yukarı yuvarlamalı
-                    
-                    // Hedef kullanıcıya bildir (unique ID kullan)
-                    if (message.targetId) {
-                        const endTarget = findWebRTCTarget(message.targetId, senderType);
-                        if (endTarget && endTarget.ws.readyState === WebSocket.OPEN) {
-                            endTarget.ws.send(JSON.stringify({
-                                type: 'call-ended',
-                                userId: senderId,
-                                duration: duration,
-                                creditsUsed: creditsUsed,
-                                endedBy: senderType || 'unknown'
-                            }));
-                        }
-                    }
-                    
-                    // NOT: Heartbeat sistemi zaten kredi düşürme işlemini yapıyor
-                    // Manuel kredi düşürme işlemi yapılmıyor
-                    console.log(`✅ Arama sonlandırıldı, Heartbeat sistemi kredi yönetimini halletti: ${senderId}`);
-                    break;
-
-                case 'credit-update-broadcast':
-                    console.log('💳 Kredi güncelleme broadcast:', message.userId, '->', message.newCredits);
-                    
-                    // Güncellenen kullanıcıya bildir
-                    const updatedUserClient = clients.get(message.userId);
-                    if (updatedUserClient && updatedUserClient.userType === 'customer' && updatedUserClient.ws.readyState === WebSocket.OPEN) {
-                        updatedUserClient.ws.send(JSON.stringify({
-                            type: 'credit-update',
-                            credits: message.newCredits,
-                            updatedBy: message.updatedBy || 'admin',
-                            message: 'Krediniz güncellendi!'
-                        }));
-                        console.log(`📱 Müşteriye kredi güncelleme bildirildi: ${message.userId} -> ${message.newCredits} dk`);
-                    }
-                    
-                    // Diğer admin'lere de bildir
-                    const notifyAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.ws !== ws);
-                    notifyAdmins.forEach(client => {
-                        if (client.ws.readyState === WebSocket.OPEN) {
-                            client.ws.send(JSON.stringify({
-                                type: 'credit-updated',
-                                userId: message.userId,
-                                newCredits: message.newCredits,
-                                updatedBy: message.updatedBy
-                            }));
-                        }
-                    });
-                    break;
-            }
-
-        } catch (error) {
-            console.log('❌ Mesaj işleme hatası:', error.message);
-        }
-    });
-
-    ws.on('close', () => {
-        const client = findClientById(ws);
-        console.log('👋 Kullanıcı ayrıldı:', client?.name || 'unknown');
-        
-        // 🔥 FIX: Admin ayrılırsa görüşme durumundan çıkar
-        if (client && client.userType === 'admin') {
-            const adminKey = client.uniqueId || client.id;
-            if (activeCallAdmins.has(adminKey)) {
-                console.log(`📞 Ayrılan admin görüşme durumundan çıkarıldı: ${adminKey}`);
-                activeCallAdmins.delete(adminKey);
-            }
-        }
-        
-        // İlgili heartbeat'leri durdur
-        if (client) {
-            for (const [callKey, heartbeat] of activeHeartbeats.entries()) {
-                if (callKey.includes(client.id)) {
-                    stopHeartbeat(callKey, 'connection_lost');
-                    console.log(`💗 Bağlantı kopması nedeniyle heartbeat durduruldu: ${callKey}`);
-                }
-            }
-        }
-        
-        // Client'ı kaldır
-        for (const [key, clientData] of clients.entries()) {
-            if (clientData.ws === ws) {
-                clients.delete(key);
-                break;
-            }
-        }
-        
-        broadcastUserList();
-    });
-
-    ws.on('error', (error) => {
-        console.log('⚠️ WebSocket hatası:', error.message);
-    });
-});
-
-function findClientById(ws) {
-    for (const client of clients.values()) {
-        if (client.ws === ws) {
-            return client;
-        }
-    }
-    return null;
-}
-
-function broadcastUserList() {
-    const userList = Array.from(clients.values()).map(client => ({
-        id: client.id,
-        name: client.name,
-        userType: client.userType,
-        registeredAt: client.registeredAt,
-        online: client.online
-    }));
-
-    const message = JSON.stringify({
-        type: 'user-list-update',
-        users: userList
-    });
-
-    clients.forEach(client => {
-        if (client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
-        }
-    });
-}
-
-// API Routes
-
-// Onaylı kullanıcıları getir
-app.get('/api/approved-users', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
-        res.json(result.rows);
-    } catch (error) {
-        console.log('💾 PostgreSQL kullanıcı listesi hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Yeni onaylı kullanıcı ekle
-app.post('/api/approved-users', async (req, res) => {
-    try {
-        const { id, name, credits = 0 } = req.body;
-        
-        if (!id || !name) {
-            return res.status(400).json({ error: 'ID ve isim gerekli' });
-        }
-        
-        if (!/^\d{4}$/.test(id)) {
-            return res.status(400).json({ error: 'ID 4 haneli sayı olmalı' });
-        }
-        
-        const user = await saveApprovedUser(id, name, credits);
-        res.json({ success: true, user });
-    } catch (error) {
-        if (error.message.includes('duplicate key')) {
-            res.status(400).json({ error: 'Bu ID zaten kullanımda' });
-        } else {
-            console.log('💾 PostgreSQL kullanıcı ekleme hatası:', error.message);
-            res.status(500).json({ error: error.message });
-        }
-    }
-});
-
-// Onaylı kullanıcıyı sil
-app.delete('/api/approved-users/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await pool.query('DELETE FROM approved_users WHERE id = $1', [id]);
-        console.log(`🗑️ Kullanıcı silindi: ${id}`);
-        res.json({ success: true });
-    } catch (error) {
-        console.log('💾 PostgreSQL kullanıcı silme hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Kullanıcı kredisini güncelle
-app.post('/api/approved-users/:id/credits', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { credits, reason } = req.body;
-        
-        const newCredits = await updateUserCredits(id, credits, reason);
-        res.json({ success: true, credits: newCredits });
-    } catch (error) {
-        console.log('💾 PostgreSQL kredi güncelleme hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Arama geçmişini getir
-app.get('/api/calls', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT ch.*, au.name as user_name 
-            FROM call_history ch
-            LEFT JOIN approved_users au ON ch.user_id = au.id
-            ORDER BY ch.call_time DESC 
-            LIMIT 100
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        console.log('💾 PostgreSQL arama geçmişi hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// İstatistikleri getir
-app.get('/api/stats', async (req, res) => {
-    try {
-        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
-        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
-        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
-        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
-        
-        res.json({
-            totalUsers: parseInt(totalUsers.rows[0].count),
-            totalCalls: parseInt(totalCalls.rows[0].count),
-            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
-            todayCalls: parseInt(todayCalls.rows[0].count),
-            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
-            activeHeartbeats: activeHeartbeats.size,
-            busyAdmins: activeCallAdmins.size,
-            activeCalls: activeCalls.size
-        });
-    } catch (error) {
-        console.log('💾 PostgreSQL istatistik hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// KVKK onaylarını getir
-app.get('/api/kvkk-consents', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT * FROM kvkk_consents 
-            ORDER BY consent_date DESC 
-            LIMIT 100
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        console.log('💾 PostgreSQL KVKK onayları hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Admin listesini getir
-app.get('/api/admins', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT id, username, role, is_active, last_login, created_at 
-            FROM admins 
-            ORDER BY created_at DESC
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        console.log('💾 PostgreSQL admin listesi hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Yeni admin ekle
-app.post('/api/admins', async (req, res) => {
-    try {
-        const { username, password, role = 'normal' } = req.body;
-        
-        if (!username || !password) {
-            return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli' });
-        }
-        
-        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-        const totpSecret = role === 'super' ? generateTOTPSecret() : null;
-        
-        await pool.query(`
-            INSERT INTO admins (username, password_hash, role, totp_secret) 
-            VALUES ($1, $2, $3, $4)
-        `, [username, hashedPassword, role, totpSecret]);
-        
-        console.log(`👤 Yeni admin eklendi: ${username} (${role})`);
-        res.json({ success: true, message: 'Admin başarıyla eklendi' });
-    } catch (error) {
-        if (error.message.includes('duplicate key')) {
-            res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanımda' });
-        } else {
-            console.log('💾 PostgreSQL admin ekleme hatası:', error.message);
-            res.status(500).json({ error: error.message });
-        }
-    }
-});
-
-// Başarısız girişleri getir
-app.get('/api/failed-logins', async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT * FROM failed_logins 
-            ORDER BY attempt_time DESC 
-            LIMIT 100
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        console.log('💾 PostgreSQL başarısız giriş hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Rate limit temizle
-app.post('/api/clear-failed-logins', async (req, res) => {
-    try {
-        await pool.query('DELETE FROM failed_logins');
-        console.log('🧹 Tüm başarısız giriş kayıtları temizlendi');
-        res.json({ success: true, message: 'Rate limit kayıtları temizlendi' });
-    } catch (error) {
-        console.log('💾 PostgreSQL rate limit temizleme hatası:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Rate limit durumu API
-app.get('/api/rate-limit-status/:userType', async (req, res) => {
-    const { userType } = req.params;
-    const clientIP = req.ip || req.connection.remoteAddress;
-    
-    try {
-        const rateStatus = await checkRateLimit(clientIP, userType);
-        res.json(rateStatus);
-    } catch (error) {
-        res.status(500).json({ error: 'Rate limit kontrol hatası' });
-    }
-});
-
-// Health check
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        clients: clients.size,
-        activeHeartbeats: activeHeartbeats.size,
-        busyAdmins: activeCallAdmins.size,
-        activeCalls: activeCalls.size,
-        database: process.env.DATABASE_URL ? 'Connected' : 'Offline',
-        securityUrls: {
-            superAdmin: SECURITY_CONFIG.SUPER_ADMIN_PATH,
-            normalAdmin: SECURITY_CONFIG.NORMAL_ADMIN_PATH,
-            customer: SECURITY_CONFIG.CUSTOMER_PATH
-        }
-    });
-});
-
-// 404 handler
-app.use((req, res) => {
-    res.status(404).send(`
-        <div style="text-align: center; padding: 50px; font-family: system-ui;">
-            <h1>🔒 404 - Sayfa Bulunamadı</h1>
-            <p>Güvenlik nedeniyle bu sayfa mevcut değil.</p>
-            <p><a href="/" style="color: #dc2626; text-decoration: none;">← Ana sayfaya dön</a></p>
-        </div>
-    `);
-});
-
-// Server'ı başlat
-async function startServer() {
-    console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('🌍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
-    
-    // Veritabanını başlat
-    await initDatabase();
-    
-    // HTTP Server'ı başlat
-    server.listen(PORT, '0.0.0.0', () => {
-        console.log('🎯 VIPCEP Server Çalışıyor!');
-        console.log(`🔗 Port: ${PORT}`);
-        console.log(`🌍 URL: http://0.0.0.0:${PORT}`);
-        console.log(`📡 WebSocket: ws://0.0.0.0:${PORT}`);
-        console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
-        console.log('');
-        console.log('🔒 GÜVENLİK URL\'LERİ:');
-        console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
-        console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
-        console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
-        console.log('');
-        console.log('💗 Heartbeat Sistemi: AKTİF (İnternet kesintilerinde kredi düşmesi)');
-        console.log('🛡️ Rate Limiting: 5 deneme/30 dakita + görsel uyarılar');
-        console.log('📋 KVKK Sistemi: Aktif + Persistent storage');
-        console.log('🔑 2FA: Super Admin için Google Authenticator zorunlu');
-        console.log('🔐 Session: 24 saat + secure cookies');
-        console.log('🎯 MULTI-ADMIN: Koordinasyon sistemi aktif');
-        console.log('🔥 WebRTC ROUTING FIX: Bağlantı sorunları çözüldü');
-        console.log('');
-        console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
-        console.log('📞 WhatsApp: +90 537 479 24 03');
-        console.log('✅ Sistem hazır - WebRTC bağlantı sorunları tamamen çözüldü!');
-        console.log('╔═══════════════════════════════════════════════════════════════╗');
-        console.log('║              🔥 WebRTC ROUTING TAMAMEN DÜZELDİ 🔥             ║');
-        console.log('║          📞 BAĞLANTI SORUNU SON HALİNDE ÇÖZÜLDÜ 📞           ║');
-        console.log('╚═══════════════════════════════════════════════════════════════╝');
-    });
-}
-
-// Hata yakalama
-process.on('uncaughtException', (error) => {
-    console.log('❌ Yakalanmamış hata:', error.message);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-    console.log('❌ İşlenmemiş promise reddi:', reason);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('🔴 Server kapatılıyor...');
-    
-    // Aktif heartbeat'leri durdur
-    for (const [callKey, heartbeat] of activeHeartbeats.entries()) {
-        clearInterval(heartbeat);
-        console.log(`💗 Heartbeat durduruldu: ${callKey}`);
-    }
-    activeHeartbeats.clear();
-    activeCallAdmins.clear();
-    activeCalls.clear();
-    
-    server.close(() => {
-        console.log('✅ Server başarıyla kapatıldı');
-        process.exit(0);
-    });
-});
-
-// Server'ı başlat
-startServer().catch(error => {
-    console.log('❌ Server başlatma hatası:', error.message);
-    process.exit(1);
-});
