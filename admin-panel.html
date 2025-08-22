@@ -18,139 +18,6 @@
             min-height: 100vh;
         }
         
-        /* Giriş Ekranı Stilleri */
-        .login-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #1e293b, #334155);
-            z-index: 2000;
-        }
-        
-        .login-box {
-            background: rgba(255,255,255,0.1);
-            padding: 40px;
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .login-title {
-            color: #fbbf24;
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .login-subtitle {
-            color: rgba(255,255,255,0.8);
-            font-size: 16px;
-            margin-bottom: 30px;
-        }
-        
-        .login-form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        
-        .login-label {
-            display: block;
-            color: rgba(255,255,255,0.9);
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .login-input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-        
-        .login-input::placeholder {
-            color: rgba(255,255,255,0.6);
-        }
-        
-        .login-input:focus {
-            outline: none;
-            border-color: #fbbf24;
-            background: rgba(255,255,255,0.15);
-            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1e293b;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
-        
-        .login-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
-        }
-        
-        .login-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .login-error {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .login-success {
-            background: rgba(34, 197, 94, 0.2);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .login-footer {
-            margin-top: 30px;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-        }
-        
-        /* Ana Panel Stilleri */
-        .main-app {
-            display: none;
-        }
-        
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -644,211 +511,176 @@
     </style>
 </head>
 <body>
-    <!-- Giriş Ekranı -->
-    <div id="loginScreen" class="login-container">
-        <div class="login-box">
-            <div class="login-title">🟡 ADMİN GİRİŞİ</div>
-            <div class="login-subtitle">VIPCEP Admin Panel</div>
-            
-            <form id="loginForm" onsubmit="return false;">
-                <div class="login-form-group">
-                    <label class="login-label">👤 Kullanıcı Adı</label>
-                    <input type="text" id="loginUsername" class="login-input" placeholder="Admin kullanıcı adı" autocomplete="username">
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>🎯 VIPCEP Admin Panel</h1>
+                <p>Voice IP Communication Emergency Protocol</p>
+            </div>
+            <div class="header-right">
+                <div class="status">
+                    <div class="status-dot disconnected" id="statusDot"></div>
+                    <span id="statusText">Bağlanıyor...</span>
                 </div>
-                
-                <div class="login-form-group">
-                    <label class="login-label">🔑 Şifre</label>
-                    <input type="password" id="loginPassword" class="login-input" placeholder="Admin şifresi" autocomplete="current-password">
+                <div class="admin-info">
+                    <div class="admin-name" id="adminName">-</div>
+                    <div class="admin-role">🟡 Normal Admin</div>
                 </div>
-                
-                <button type="button" class="login-btn" id="loginBtn" onclick="performLogin()">
-                    🔓 Admin Girişi
+                <button class="logout-btn" onclick="performLogout()">
+                    🚪 Çıkış
                 </button>
-                
-                <div id="loginError" class="login-error"></div>
-                <div id="loginSuccess" class="login-success"></div>
-            </form>
-            
-            <div class="login-footer">
-                VIPCEP Admin Panel v2.0<br>
-                🛡️ Güvenli Giriş Sistemi
             </div>
         </div>
-    </div>
-
-    <!-- Ana Uygulama -->
-    <div id="mainApp" class="main-app">
-        <div class="container">
-            <!-- Header -->
-            <div class="header">
-                <div class="header-left">
-                    <h1>🎯 VIPCEP Admin Panel</h1>
-                    <p>Voice IP Communication Emergency Protocol</p>
+        
+        <!-- İstatistikler -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalApproved">0</div>
+                <div class="stat-label">Onaylı Kullanıcı</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="onlineUsers">0</div>
+                <div class="stat-label">Çevrimiçi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCredits">0</div>
+                <div class="stat-label">Toplam Kredi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="todayCalls">0</div>
+                <div class="stat-label">Bugün Arama</div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Sol Panel - Arama Yönetimi -->
+            <div class="panel">
+                <h3>📞 Arama Yönetimi</h3>
+                
+                <!-- Gelen Arama -->
+                <div id="incomingCall" class="incoming-call hidden">
+                    <h3>📞 GELEN ARAMA</h3>
+                    <div style="margin: 15px 0;">
+                        <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
+                        <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
+                    </div>
+                    <div class="call-buttons">
+                        <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
+                            ✅ Kabul Et
+                        </button>
+                        <button class="btn btn-reject" onclick="rejectCall()">
+                            ❌ Reddet
+                        </button>
+                    </div>
                 </div>
-                <div class="header-right">
-                    <div class="status">
-                        <div class="status-dot disconnected" id="statusDot"></div>
-                        <span id="statusText">Bağlanıyor...</span>
+
+                <!-- Giden Arama -->
+                <div id="outgoingCall" class="outgoing-call hidden">
+                    <h3>📞 GİDEN ARAMA</h3>
+                    <div style="margin: 15px 0;">
+                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
+                        <p style="opacity: 0.9;">Kredi: <span id="outgoingCredits">-</span> dakika</p>
                     </div>
-                    <div class="admin-info">
-                        <div class="admin-name" id="adminName">-</div>
-                        <div class="admin-role">🟡 Normal Admin</div>
+                    <div style="margin: 15px 0; opacity: 0.9; font-size: 14px;">
+                        📱 Müşteriye arama bildirimi gönderildi...
                     </div>
-                    <button class="logout-btn" onclick="performLogout()">
-                        🚪 Çıkış
+                    <div class="call-buttons">
+                        <button class="btn btn-reject" onclick="cancelOutgoingCall()">
+                            ❌ İptal Et
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Arama İptal Bildirimi -->
+                <div id="callCancelled" class="call-cancelled hidden">
+                    <h3>❌ ARAMA İPTAL EDİLDİ</h3>
+                    <div style="margin: 15px 0;">
+                        <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="cancelledId">-</span></p>
+                        <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
+                    </div>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">
+                       ✔️ Tamam
                     </button>
                 </div>
+
+                <!-- 🔧 YENİ: Arama Başka Admin Tarafından Alındı -->
+                <div id="callTaken" class="call-taken hidden">
+                    <h3>👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI</h3>
+                    <div style="margin: 15px 0;">
+                        <p style="font-weight: 600;"><span id="takenCallerName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="takenCallerId">-</span></p>
+                        <p style="opacity: 0.9;">Alınan Admin: <span id="takenByAdmin">-</span></p>
+                    </div>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissTakenCall()">
+                       ✔️ Tamam
+                    </button>
+                </div>
+                
+                <!-- Aktif Görüşme -->
+                <div id="activeCall" class="active-call hidden">
+                    <h3>📊 GÖRÜŞME AKTİF</h3>
+                    <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
+                    <div style="font-size: 32px; font-weight: 800; margin: 15px 0; font-family: 'Courier New', monospace;" id="callTimer">00:00</div>
+                    <button class="btn btn-reject" onclick="endCall()">
+                        📞 Görüşmeyi Bitir
+                    </button>
+                </div>
+                
+                <!-- Sistem Logları -->
+                <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
+                <div class="log-container" id="logContainer">
+                    <div>[Sistem] Admin panel başlatılıyor...</div>
+                </div>
             </div>
             
-            <!-- İstatistikler -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalApproved">0</div>
-                    <div class="stat-label">Onaylı Kullanıcı</div>
+            <!-- Orta Panel - Kullanıcı Görüntüleme -->
+            <div class="panel">
+                <h3>👥 Onaylı Kullanıcılar</h3>
+                
+                <!-- Arama Kutusu -->
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
+                    <div class="search-icon">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="onlineUsers">0</div>
-                    <div class="stat-label">Çevrimiçi</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="totalCredits">0</div>
-                    <div class="stat-label">Toplam Kredi</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="todayCalls">0</div>
-                    <div class="stat-label">Bugün Arama</div>
+
+                <!-- Arama Sonucu Bilgisi -->
+                <div id="searchResults" style="font-size: 13px; color: #6b7280; margin-bottom: 15px; padding: 8px 15px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #22c55e;" class="hidden"></div>
+                
+                <!-- Onaylı Kullanıcılar -->
+                <div class="user-list" id="approvedUsersList">
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                        <div>Kullanıcılar yükleniyor...</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="main-content">
-                <!-- Sol Panel - Arama Yönetimi -->
-                <div class="panel">
-                    <h3>📞 Arama Yönetimi</h3>
-                    
-                    <!-- Gelen Arama -->
-                    <div id="incomingCall" class="incoming-call hidden">
-                        <h3>📞 GELEN ARAMA</h3>
-                        <div style="margin: 15px 0;">
-                            <p style="font-size: 18px; font-weight: 600;"><span id="callerName">-</span></p>
-                            <p style="opacity: 0.9;">ID: <span id="callerId">-</span></p>
-                            <p style="opacity: 0.9;">Kredi: <span id="callerCredits">-</span> dakika</p>
-                        </div>
-                        <div class="call-buttons">
-                            <button class="btn btn-accept" id="acceptBtn" onclick="acceptCall()">
-                                ✅ Kabul Et
-                            </button>
-                            <button class="btn btn-reject" onclick="rejectCall()">
-                                ❌ Reddet
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Giden Arama -->
-                    <div id="outgoingCall" class="outgoing-call hidden">
-                        <h3>📞 GİDEN ARAMA</h3>
-                        <div style="margin: 15px 0;">
-                            <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
-                            <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
-                            <p style="opacity: 0.9;">Kredi: <span id="outgoingCredits">-</span> dakika</p>
-                        </div>
-                        <div style="margin: 15px 0; opacity: 0.9; font-size: 14px;">
-                            📱 Müşteriye arama bildirimi gönderildi...
-                        </div>
-                        <div class="call-buttons">
-                            <button class="btn btn-reject" onclick="cancelOutgoingCall()">
-                                ❌ İptal Et
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Arama İptal Bildirimi -->
-                    <div id="callCancelled" class="call-cancelled hidden">
-                        <h3>❌ ARAMA İPTAL EDİLDİ</h3>
-                        <div style="margin: 15px 0;">
-                            <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
-                            <p style="opacity: 0.9;">ID: <span id="cancelledId">-</span></p>
-                            <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
-                        </div>
-                        <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">
-                           ✔️ Tamam
-                        </button>
-                    </div>
-
-                    <!-- 🔧 YENİ: Arama Başka Admin Tarafından Alındı -->
-                    <div id="callTaken" class="call-taken hidden">
-                        <h3>👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI</h3>
-                        <div style="margin: 15px 0;">
-                            <p style="font-weight: 600;"><span id="takenCallerName">-</span></p>
-                            <p style="opacity: 0.9;">ID: <span id="takenCallerId">-</span></p>
-                            <p style="opacity: 0.9;">Alınan Admin: <span id="takenByAdmin">-</span></p>
-                        </div>
-                        <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissTakenCall()">
-                           ✔️ Tamam
-                        </button>
-                    </div>
-                    
-                    <!-- Aktif Görüşme -->
-                    <div id="activeCall" class="active-call hidden">
-                        <h3>📊 GÖRÜŞME AKTİF</h3>
-                        <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
-                        <div style="font-size: 32px; font-weight: 800; margin: 15px 0; font-family: 'Courier New', monospace;" id="callTimer">00:00</div>
-                        <button class="btn btn-reject" onclick="endCall()">
-                            📞 Görüşmeyi Bitir
-                        </button>
-                    </div>
-                    
-                    <!-- Sistem Logları -->
-                    <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
-                    <div class="log-container" id="logContainer">
-                        <div>[Sistem] Admin panel başlatılıyor...</div>
+            <!-- Sağ Panel - Aktif Bağlantılar -->
+            <div class="panel">
+                <h3>👥 Aktif Bağlantılar</h3>
+                <div id="userList" style="margin-top: 15px;">
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌍</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
                     </div>
                 </div>
                 
-                <!-- Orta Panel - Kullanıcı Görüntüleme -->
-                <div class="panel">
-                    <h3>👥 Onaylı Kullanıcılar</h3>
-                    
-                    <!-- Arama Kutusu -->
-                    <div class="search-container">
-                        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
-                        <div class="search-icon">
-                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Arama Sonucu Bilgisi -->
-                    <div id="searchResults" style="font-size: 13px; color: #6b7280; margin-bottom: 15px; padding: 8px 15px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid #22c55e;" class="hidden"></div>
-                    
-                    <!-- Onaylı Kullanıcılar -->
-                    <div class="user-list" id="approvedUsersList">
-                        <div style="text-align: center; color: #6b7280; padding: 30px;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
-                            <div>Kullanıcılar yükleniyor...</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Sağ Panel - Aktif Bağlantılar -->
-                <div class="panel">
-                    <h3>👥 Aktif Bağlantılar</h3>
-                    <div id="userList" style="margin-top: 15px;">
-                        <div style="text-align: center; color: #6b7280; padding: 30px;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
-                            <div>Henüz kullanıcı bağlanmadı</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Hızlı İşlemler -->
-                    <div class="quick-actions">
-                        <button class="btn btn-secondary" onclick="refreshData()">
-                            🔄 Verileri Yenile
-                        </button>
-                        <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
-                            💬 WhatsApp Destek
-                        </button>
-                    </div>
+                <!-- Hızlı İşlemler -->
+                <div class="quick-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">
+                        🔄 Verileri Yenile
+                    </button>
+                    <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">
+                        💬 WhatsApp Destek
+                    </button>
                 </div>
             </div>
         </div>
@@ -861,6 +693,12 @@
     <audio id="remoteAudio" autoplay></audio>
     
     <script>
+        // 🔥 SES SİSTEMİ DEĞİŞKENLERİ - YENİ
+        let audioContext = null;
+        let audioInitialized = false;
+        let notificationAudio = [];
+        let ringbackAudio = null;
+        
         // Global değişkenler
         let socket = null;
         let peerConnection = null;
@@ -881,7 +719,7 @@
         
         const serverUrl = window.location.hostname === 'localhost' 
             ? 'ws://localhost:8080'
-            : `wss://vipcep-server-production.up.railway.app`;
+            : 'wss://vipcep-server-production.up.railway.app';
         
         console.log('🔗 Admin WebSocket URL:', serverUrl);
         
@@ -893,20 +731,189 @@
             ]
         };
 
+        // 🔥 SES SİSTEMİ İNİTİALİZE FONKSİYONU - YENİ
+        function initializeAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // İlk kullanıcı etkileşiminde ses context'i unlock et
+                const unlockAudio = () => {
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().then(() => {
+                            console.log('🔊 Audio context unlocked');
+                            audioInitialized = true;
+                            playTestSound();
+                        });
+                    } else {
+                        audioInitialized = true;
+                        playTestSound();
+                    }
+                    
+                    // Event listener'ları kaldır
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchend', unlockAudio);
+                    document.removeEventListener('keydown', unlockAudio);
+                };
+                
+                // İlk etkileşimi bekle
+                document.addEventListener('click', unlockAudio);
+                document.addEventListener('touchend', unlockAudio);
+                document.addEventListener('keydown', unlockAudio);
+                
+            } catch (error) {
+                console.log('Audio initialization error:', error);
+                audioInitialized = false;
+            }
+        }
+
+        // 🔥 TEST SESİ (SESSIZ) - YENİ
+        function playTestSound() {
+            if (!audioContext || !audioInitialized) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime); // Çok sessiz
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                
+                console.log('🔊 Audio system ready');
+            } catch (error) {
+                console.log('Test sound error:', error);
+            }
+        }
+
+        // 🔥 GELİŞTİRİLMİŞ NOTİFİKASYON SESİ - YENİ
+        function playNotificationSound() {
+            if (!audioInitialized) {
+                console.log('⚠️ Audio not initialized, trying to initialize...');
+                initializeAudio();
+                
+                // 500ms sonra tekrar dene
+                setTimeout(() => {
+                    if (audioInitialized) {
+                        playNotificationSoundInternal();
+                    } else {
+                        console.log('❌ Audio system not ready');
+                        // Fallback HTML5 audio
+                        playFallbackNotificationSound();
+                    }
+                }, 500);
+                return;
+            }
+            
+            playNotificationSoundInternal();
+        }
+
+        function playNotificationSoundInternal() {
+            try {
+                // Önceki ses varsa durdur
+                if (notificationAudio.length > 0) {
+                    notificationAudio.forEach(node => {
+                        try { node.stop(); } catch(e) {}
+                    });
+                }
+                notificationAudio = [];
+                
+                const frequencies = [800, 1000, 800, 1000];
+                let currentTone = 0;
+                
+                function playTone() {
+                    if (currentTone >= frequencies.length) {
+                        setTimeout(() => {
+                            // Gelen arama hala aktif mi kontrol et
+                            if (document.getElementById('incomingCall').classList.contains('hidden')) {
+                                return; // Artık ses çalma
+                            }
+                            currentTone = 0;
+                            playTone();
+                        }, 2000);
+                        return;
+                    }
+                    
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequencies[currentTone], audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    // Yumuşak başlangıç ve bitiş
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    
+                    // Cleanup için kaydet
+                    notificationAudio.push(oscillator);
+                    
+                    currentTone++;
+                    setTimeout(playTone, 600);
+                }
+                
+                playTone();
+                
+            } catch (error) {
+                console.log('Notification sound error:', error);
+                playFallbackNotificationSound();
+            }
+        }
+
+        // 🔥 FALLBACK HTML5 AUDİO - YENİ
+        function playFallbackNotificationSound() {
+            try {
+                // Data URL ile basit sinüs dalgası
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU+ltryxnkpBSl+zPLaizsIGGS57uGQQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Fallback audio error:', e));
+            } catch (fallbackError) {
+                console.log('Fallback audio also failed:', fallbackError);
+            }
+        }
+
+        // 🔥 NOTİFİKASYON SESİNİ DURDUR - YENİ
+        function stopNotificationSound() {
+            if (notificationAudio.length > 0) {
+                notificationAudio.forEach(node => {
+                    try { 
+                        if (node.stop) node.stop(); 
+                    } catch(e) {}
+                });
+                notificationAudio = [];
+            }
+        }
+
         // Sayfa yüklendiğinde başlat
         window.onload = function() {
             log('🚀 Admin panel başlatılıyor...');
+            initializeAudio(); // 🔥 Ses sistemini initialize et
             checkAuthStatus();
             setupEventListeners();
         };
         
+        // Sayfa yüklendiğinde audio'yu initialize et
+        window.addEventListener('load', initializeAudio);
+        document.addEventListener('DOMContentLoaded', initializeAudio);
+        
         function setupEventListeners() {
             // Enter tuşu ile giriş
-            document.getElementById('loginUsername').addEventListener('keypress', (e) => {
+            document.getElementById('loginUsername')?.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') performLogin();
             });
             
-            document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+            document.getElementById('loginPassword')?.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') performLogin();
             });
         }
@@ -934,57 +941,11 @@
         }
         
         function showLoginScreen() {
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('mainApp').style.display = 'none';
+            window.location.href = '/';
         }
         
         function showMainApp() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-        }
-        
-        async function performLogin() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
-            const loginBtn = document.getElementById('loginBtn');
-            
-            if (!username || !password) {
-                showLoginMessage('Kullanıcı adı ve şifre gerekli!', 'error');
-                return;
-            }
-            
-            loginBtn.disabled = true;
-            loginBtn.textContent = '⏳ Giriş yapılıyor...';
-            
-            try {
-                const response = await fetch('/auth/admin-login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showLoginMessage('Giriş başarılı! Panel yükleniyor...', 'success');
-                    setTimeout(() => {
-                        loginSuccess({ username, role: 'normal' });
-                    }, 1000);
-                } else {
-                    showLoginMessage(result.error || 'Giriş başarısız!', 'error');
-                    
-                    if (result.remaining !== undefined && result.remaining <= 2) {
-                        showLoginMessage(`⚠️ Kalan deneme hakkı: ${result.remaining}`, 'error');
-                    }
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showLoginMessage('Bağlantı hatası! Lütfen tekrar deneyin.', 'error');
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.textContent = '🔓 Admin Girişi';
-            }
+            // Ana uygulama zaten gösteriliyor
         }
         
         function loginSuccess(adminData) {
@@ -993,30 +954,8 @@
             
             document.getElementById('adminName').textContent = adminData.username || 'Admin';
             
-            showMainApp();
             connectToServer();
             loadApprovedUsers();
-        }
-        
-        function showLoginMessage(message, type) {
-            const errorDiv = document.getElementById('loginError');
-            const successDiv = document.getElementById('loginSuccess');
-            
-            errorDiv.style.display = 'none';
-            successDiv.style.display = 'none';
-            
-            if (type === 'error') {
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-            } else {
-                successDiv.textContent = message;
-                successDiv.style.display = 'block';
-            }
-            
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-                successDiv.style.display = 'none';
-            }, 5000);
         }
         
         async function performLogout() {
@@ -1038,16 +977,19 @@
                     endCall();
                 }
                 
+                // Ses sistemini temizle
+                stopNotificationSound();
+                if (ringbackAudio) {
+                    stopAdminRingbackTone();
+                }
+                
                 isLoggedIn = false;
                 currentAdmin = null;
                 approvedUsers = [];
                 connectedUsers = [];
                 adminUniqueId = null;
                 
-                showLoginScreen();
-                
-                document.getElementById('loginUsername').value = '';
-                document.getElementById('loginPassword').value = '';
+                window.location.href = '/';
             }
         }
         
@@ -1178,15 +1120,18 @@
             log(`📟 Giden arama: ${callInfo.userName} (${callInfo.userId})`);
         }
 
-        let adminRingbackAudio = null;
-
         function playAdminRingbackTone() {
             try {
-                if (adminRingbackAudio) {
+                if (ringbackAudio) {
                     stopAdminRingbackTone();
                 }
                 
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (!audioContext || !audioInitialized) {
+                    console.log('⚠️ Audio not ready for ringback tone');
+                    return;
+                }
+                
+                let oscillators = [];
                 
                 function playTone() {
                     if (!outgoingCallInfo) return;
@@ -1207,28 +1152,34 @@
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 1.0);
                     
+                    oscillators.push(oscillator);
+                    
                     setTimeout(playTone, 4000);
                 }
                 
                 playTone();
-                adminRingbackAudio = { audioContext, stop: () => {} };
+                ringbackAudio = { oscillators, stop: () => {
+                    oscillators.forEach(osc => {
+                        try { osc.stop(); } catch(e) {}
+                    });
+                }};
                 
-                console.log('📊 Admin çeviri sesi başlatıldı');
+                console.log('🔊 Admin çeviri sesi başlatıldı');
             } catch (error) {
                 console.log('Admin çeviri sesi çalınamadı:', error);
             }
         }
         
         function stopAdminRingbackTone() {
-            if (adminRingbackAudio) {
+            if (ringbackAudio) {
                 try {
-                    if (adminRingbackAudio.audioContext && adminRingbackAudio.audioContext.state === 'running') {
-                        adminRingbackAudio.audioContext.suspend();
+                    if (ringbackAudio.stop) {
+                        ringbackAudio.stop();
                     }
                 } catch (error) {
                     console.log('Admin çeviri sesi durdurma hatası:', error);
                 }
-                adminRingbackAudio = null;
+                ringbackAudio = null;
                 console.log('🔇 Admin çeviri sesi durduruldu');
             }
         }
@@ -1398,6 +1349,7 @@
                         return;
                     }
                     
+                    // 🔥 FIX: Eğer zaten bir giden arama varsa iptal et
                     if (outgoingCallInfo) {
                         cancelOutgoingCall();
                     }
@@ -1417,7 +1369,7 @@
                 case 'call-taken':
                     console.log('👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI!', message);
                     
-                    // 🔥 KRİTİK FİX: Sadece başka admin aldıysa işlem yap
+                    // 🔥 KRİTİK FIX: Sadece başka admin aldıysa işlem yap
                     const myUniqueId = adminUniqueId || originalAdminId;
                     
                     if (message.takenBy !== myUniqueId) {
@@ -1497,6 +1449,9 @@
                     log(`📞 Arama iptal edildi: ${message.userName}`);
                     document.getElementById('incomingCall').classList.add('hidden');
                     
+                    // Ses durdur
+                    stopNotificationSound();
+                    
                     showCallCancelled({
                         userId: message.userId,
                         userName: message.userName,
@@ -1510,7 +1465,7 @@
                     break;
 
                 case 'answer':
-                    console.log('📥 WebRTC Answer alındı');
+                    console.log('🔥 WebRTC Answer alındı');
                     handleAnswer(message);
                     break;
                     
@@ -1585,6 +1540,10 @@
             document.getElementById('callCancelled').classList.add('hidden');
             document.getElementById('callTaken').classList.add('hidden');
             document.getElementById('activeCall').classList.add('hidden');
+            
+            // Sesleri durdur
+            stopNotificationSound();
+            stopAdminRingbackTone();
         }
 
         // 🔧 Call-taken bildirimi dismiss
@@ -1599,7 +1558,7 @@
             }
         }
 
-        // Gelen arama göster
+        // 🔥 GELİŞTİRİLMİŞ - Gelen arama göster
         function showIncomingCall(caller) {
             try {
                 currentCall = caller;
@@ -1626,7 +1585,11 @@
                 }
                 
                 log(`📞 Gelen arama: ${caller.userName} (${caller.credits} dk)`);
-                playNotificationSound();
+                
+                // 🔥 Ses çalmayı gecikme ile yap - daha güvenilir
+                setTimeout(() => {
+                    playNotificationSound();
+                }, 100);
                 
             } catch (error) {
                 console.error('❌ showIncomingCall hatası:', error);
@@ -1678,7 +1641,7 @@
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #374151;">${user.name} (${userId})</div>
                         <div style="font-size: 13px; color: #64748b;">
-                            ⱴ️ Görüşme: ${durationText} → ${creditsUsed} kredi düşüldü<br>
+                            ⏱️ Görüşme: ${durationText} → ${creditsUsed} kredi düşüldü<br>
                             💰 Kalan: ${user.credits} dakika
                         </div>
                     </div>
@@ -1702,51 +1665,6 @@
             log(`💳 Kredi düşürüldü: ${user.name} -${creditsUsed} dk (${durationText})`);
         }
         
-        function playNotificationSound() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                const frequencies = [800, 1000, 800, 1000];
-                let currentTone = 0;
-                
-                function playTone() {
-                    if (currentTone >= frequencies.length) {
-                        setTimeout(() => {
-                            if (document.getElementById('incomingCall').classList.contains('hidden')) {
-                                return;
-                            }
-                            currentTone = 0;
-                            playTone();
-                        }, 2000);
-                        return;
-                    }
-                    
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    
-                    oscillator.frequency.setValueAtTime(frequencies[currentTone], audioContext.currentTime);
-                    oscillator.type = 'sine';
-                    
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-                    
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.5);
-                    
-                    currentTone++;
-                    setTimeout(playTone, 600);
-                }
-                
-                playTone();
-                
-            } catch (error) {
-                console.log('Ses çalınamadı:', error);
-            }
-        }
-        
         // Arama kabul et
         async function acceptCall() {
             console.log('✅ Arama kabul ediliyor...');
@@ -1755,6 +1673,9 @@
                 alert('Bu arama iptal edilmiş!');
                 return;
             }
+            
+            // Ses durdur
+            stopNotificationSound();
             
             try {
                 log('📞 Arama kabul ediliyor...');
@@ -1877,6 +1798,10 @@
         
         function rejectCall() {
             console.log('❌ Arama reddediliyor');
+            
+            // Ses durdur
+            stopNotificationSound();
+            
             if (currentCall && socket) {
                 socket.send(JSON.stringify({
                     type: 'reject-call',
@@ -1891,6 +1816,11 @@
         
         function endCall() {
             console.log('📞 Görüşme sonlandırılıyor');
+            
+            // Sesleri durdur
+            stopNotificationSound();
+            stopAdminRingbackTone();
+            
             if (callTimer) {
                 clearInterval(callTimer);
                 callTimer = null;
@@ -2059,7 +1989,7 @@
         async function handleOffer(message) {
             if (peerConnection) {
                 try {
-                    console.log('📥 Admin offer alındı');
+                    console.log('🔥 Admin offer alındı');
                     
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     console.log('✅ Admin remote description (offer) ayarlandı');
@@ -2085,7 +2015,7 @@
         async function handleAnswer(message) {
             if (peerConnection) {
                 try {
-                    console.log('📥 Admin answer alındı');
+                    console.log('🔥 Admin answer alındı');
                     
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
                     console.log('✅ Admin remote description (answer) ayarlandı');
@@ -2130,7 +2060,7 @@
             if (users.length === 0) {
                 userListDiv.innerHTML = `
                     <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🌐</div>
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌍</div>
                         <div>Henüz kullanıcı bağlanmadı</div>
                     </div>
                 `;
