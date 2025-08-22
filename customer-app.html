@@ -1099,10 +1099,31 @@
             const kvkkCheckbox = document.getElementById('kvkkCheckbox');
             const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
             
-            kvkkCheckbox.addEventListener('change', (e) => {
-                kvkkAcceptBtn.disabled = !e.target.checked;
-                localStorage.setItem('vipcep_kvkk_checkbox', e.target.checked);
-            });
+            if (kvkkCheckbox && kvkkAcceptBtn) {
+                kvkkCheckbox.addEventListener('change', (e) => {
+                    console.log('📋 KVKK Checkbox değişti:', e.target.checked);
+                    kvkkAcceptBtn.disabled = !e.target.checked;
+                    localStorage.setItem('vipcep_kvkk_checkbox', e.target.checked);
+                    
+                    // 🔥 Button durumunu zorla güncelle
+                    if (e.target.checked) {
+                        kvkkAcceptBtn.removeAttribute('disabled');
+                        kvkkAcceptBtn.style.opacity = '1';
+                        kvkkAcceptBtn.style.pointerEvents = 'auto';
+                    } else {
+                        kvkkAcceptBtn.setAttribute('disabled', 'true');
+                        kvkkAcceptBtn.style.opacity = '0.5';
+                        kvkkAcceptBtn.style.pointerEvents = 'none';
+                    }
+                });
+                
+                // 🔥 Sayfa yüklendiğinde checkbox durumunu kontrol et
+                setTimeout(() => {
+                    const isChecked = kvkkCheckbox.checked;
+                    kvkkAcceptBtn.disabled = !isChecked;
+                    console.log('📋 KVKK Initial state:', { isChecked, buttonDisabled: kvkkAcceptBtn.disabled });
+                }, 100);
+            }
 
             document.getElementById('userIdInput').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
@@ -1286,14 +1307,38 @@
                     }));
                 }
             } else {
+                // 🔥 KVKK ekranını gösterirken checkbox'ı da kontrol et
                 const lastCheckboxState = localStorage.getItem('vipcep_kvkk_checkbox') === 'true';
-                if (lastCheckboxState) {
-                    document.getElementById('kvkkCheckbox').checked = true;
-                    document.getElementById('kvkkAcceptBtn').disabled = false;
-                }
                 
                 document.getElementById('kvkkScreen').classList.remove('hidden');
                 document.getElementById('loginScreen').classList.add('hidden');
+                
+                // 🔥 DOM yüklendikten sonra checkbox durumunu ayarla
+                setTimeout(() => {
+                    const kvkkCheckbox = document.getElementById('kvkkCheckbox');
+                    const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
+                    
+                    if (kvkkCheckbox && kvkkAcceptBtn) {
+                        kvkkCheckbox.checked = lastCheckboxState;
+                        kvkkAcceptBtn.disabled = !lastCheckboxState;
+                        
+                        console.log('📋 KVKK Checkbox durumu ayarlandı:', { 
+                            checked: lastCheckboxState, 
+                            buttonDisabled: !lastCheckboxState 
+                        });
+                        
+                        // 🔥 Button stilini de güncelle
+                        if (lastCheckboxState) {
+                            kvkkAcceptBtn.removeAttribute('disabled');
+                            kvkkAcceptBtn.style.opacity = '1';
+                            kvkkAcceptBtn.style.pointerEvents = 'auto';
+                        } else {
+                            kvkkAcceptBtn.setAttribute('disabled', 'true');
+                            kvkkAcceptBtn.style.opacity = '0.5';
+                            kvkkAcceptBtn.style.pointerEvents = 'none';
+                        }
+                    }
+                }, 100);
             }
         }
         
@@ -1924,4 +1969,261 @@
         }
         
         function hideRateLimitWarning() {
-            const warningDiv = document.getElementById('rat
+            const warningDiv = document.getElementById('rateLimitWarning');
+            warningDiv.classList.add('hidden');
+        }
+        
+        function requestCreditWhatsApp() {
+            const phoneNumber = '+905374792403';
+            const message = currentLanguage === 'tr' ? 
+                `Merhaba! VIPCEP sistemi için kredi talep ediyorum.\n\nKullanıcı ID: ${userInfo.id || 'Henüz giriş yapmadım'}\nAd: ${userInfo.name || 'Henüz giriş yapmadım'}` :
+                `Hello! I am requesting credits for the VIPCEP system.\n\nUser ID: ${userInfo.id || 'Not logged in yet'}\nName: ${userInfo.name || 'Not logged in yet'}`;
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        function logoutUser() {
+            console.log('👋 Kullanıcı çıkış yapıyor');
+            
+            if (callState !== 'idle') {
+                endCall();
+            }
+            
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            
+            isLoggedIn = false;
+            userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
+            
+            if (!document.getElementById('rememberMe').checked) {
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+                localStorage.removeItem('vipcep_remember_me');
+            }
+            
+            document.getElementById('userIdInput').value = '';
+            document.getElementById('userNameInput').value = '';
+            
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            connectToServer();
+        }
+        
+        // Dil desteği
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'tr' ? 'en' : 'tr';
+            localStorage.setItem('vipcep_language', currentLanguage);
+            updateLanguage();
+        }
+        
+        function updateLanguage() {
+            const flagElement = document.getElementById('currentFlag');
+            const langElement = document.getElementById('currentLang');
+            
+            if (currentLanguage === 'tr') {
+                flagElement.textContent = '🇹🇷';
+                langElement.textContent = 'TR';
+            } else {
+                flagElement.textContent = '🇺🇸';
+                langElement.textContent = 'EN';
+            }
+            
+            const elements = document.querySelectorAll('[data-text-tr]');
+            elements.forEach(element => {
+                const trText = element.getAttribute('data-text-tr');
+                const enText = element.getAttribute('data-text-en');
+                
+                if (currentLanguage === 'tr' && trText) {
+                    element.textContent = trText;
+                } else if (currentLanguage === 'en' && enText) {
+                    element.textContent = enText;
+                }
+            });
+            
+            const placeholderElements = document.querySelectorAll('[data-placeholder-tr]');
+            placeholderElements.forEach(element => {
+                const trPlaceholder = element.getAttribute('data-placeholder-tr');
+                const enPlaceholder = element.getAttribute('data-placeholder-en');
+                
+                if (currentLanguage === 'tr' && trPlaceholder) {
+                    element.placeholder = trPlaceholder;
+                } else if (currentLanguage === 'en' && enPlaceholder) {
+                    element.placeholder = enPlaceholder;
+                }
+            });
+            
+            const connectionText = document.getElementById('connectionText');
+            if (connectionText) {
+                const currentText = connectionText.textContent;
+                if (currentText.includes('Bağlan') || currentText.includes('Connect')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                } else if (currentText.includes('Bağlı') || currentText.includes('Connected')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlı' : 'Connected';
+                } else if (currentText.includes('Bağlantı') || currentText.includes('Disconnect')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected';
+                }
+            }
+            
+            const userStatus = document.getElementById('displayUserStatus');
+            if (userStatus) {
+                const currentStatus = userStatus.textContent;
+                if (currentStatus.includes('Hazır') || currentStatus.includes('Ready')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
+                } else if (currentStatus.includes('Aranıyor') || currentStatus.includes('Calling')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Aranıyor...' : 'Calling...';
+                } else if (currentStatus.includes('Gelen') || currentStatus.includes('Incoming')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
+                } else if (currentStatus.includes('Bağlanıyor') || currentStatus.includes('Connecting')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                } else if (currentStatus.includes('Görüşmede') || currentStatus.includes('In call')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In call';
+                }
+            }
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!document.getElementById('creditModalOverlay').classList.contains('hidden')) {
+                    closeCreditModal();
+                } else if (callState === 'calling') {
+                    cancelCall();
+                } else if (callState === 'incoming') {
+                    rejectIncomingCall();
+                }
+            }
+            
+            if (e.key === 'Enter' && callState === 'incoming') {
+                acceptIncomingCall();
+            }
+            
+            if (e.key === ' ' && callState === 'idle' && isLoggedIn) {
+                e.preventDefault();
+                startCall();
+            }
+        });
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && callState === 'incoming') {
+                notificationAudio.forEach(node => {
+                    try {
+                        if (node.gain) {
+                            node.gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        }
+                    } catch(e) {}
+                });
+            }
+        });
+        
+        window.addEventListener('online', () => {
+            console.log('🌐 İnternet bağlantısı geri geldi');
+            if (!socket || socket.readyState === WebSocket.CLOSED) {
+                connectToServer();
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('🌐 İnternet bağlantısı kesildi');
+            updateConnectionStatus(false, currentLanguage === 'tr' ? 'Çevrimdışı' : 'Offline');
+        });
+        
+        window.addEventListener('beforeunload', (e) => {
+            if (callState !== 'idle') {
+                e.preventDefault();
+                e.returnValue = currentLanguage === 'tr' ? 
+                    'Aktif görüşmeniz var. Sayfayı kapatmak istediğinizden emin misiniz?' :
+                    'You have an active call. Are you sure you want to close the page?';
+                return e.returnValue;
+            }
+        });
+        
+        window.addEventListener('unload', () => {
+            if (callState !== 'idle') {
+                endCall();
+            }
+            
+            if (socket) {
+                socket.close();
+            }
+        });
+        
+        // Touch events için mobile optimizasyon
+        let touchStartY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            const touchEndY = e.touches[0].clientY;
+            const diffY = touchStartY - touchEndY;
+            
+            if (diffY < 0 && window.scrollY === 0) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Service Worker kaydı
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker kayıtlı:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker kayıt hatası:', error);
+                    });
+            });
+        }
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('📱 PWA install prompt hazır');
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('📱 PWA kuruldu');
+            deferredPrompt = null;
+        });
+        
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            if ('performance' in window) {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                console.log('⚡ Sayfa yüklenme süresi:', Math.round(perfData.loadEventEnd - perfData.fetchStart), 'ms');
+            }
+        });
+        
+        // Debug console (sadece development)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.vipcepDebug = {
+                getState: () => callState,
+                getUserInfo: () => userInfo,
+                getSocket: () => socket,
+                getPeerConnection: () => peerConnection,
+                forceReconnect: connectToServer,
+                testAudio: playTestSound,
+                playNotification: playIncomingCallSound,
+                stopNotification: stopIncomingCallSound
+            };
+            console.log('🐛 Debug modunda - window.vipcepDebug kullanılabilir');
+        }
+        
+        console.log('🎯 VIPCEP Customer App başlatıldı');
+        console.log('🔥 Multi-admin koordinasyon sistemi uyumlu');
+        console.log('🔊 Gelişmiş ses sistemi hazır');
+        console.log('🌐 WebRTC targeting düzeltmeleri uygulandı');
+        console.log('✅ Çoklu arama kuyruğu sistemi ile uyumlu');
+    </script>
+</body>
+</html>
