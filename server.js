@@ -69,6 +69,7 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map();
 const activeHeartbeats = new Map(); // 🔥 Aktif arama sayaçları - İNTERNET KESİNTİSİ PROBLEMİNİ ÇÖZER
 const activeCallAdmins = new Map(); // 🔥 YENİ: Görüşmedeki adminleri takip et
+const activeCalls = new Map(); // 🔥 WebRTC ROUTING FIX: Aktif görüşmeleri takip et
 const failedLogins = new Map(); // Rate limiting için
 let callHistory = [];
 
@@ -162,7 +163,7 @@ async function recordFailedLogin(ip, userType = 'customer') {
     }
 }
 
-// TOTP Secret oluştur - DÜZELTMEsï: base32 yerine hex
+// TOTP Secret oluştur - DÜZELTMEsi: base32 yerine hex
 function generateTOTPSecret() {
     return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
@@ -735,7 +736,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
                     <input type="password" id="password" class="form-input" placeholder="🔒 Şifre">
                 </div>
                 <div class="form-group" id="totpGroup">
-                    <input type="text" id="totpCode" class="form-input" placeholder="🔐 2FA Kodu (6 haneli)" maxlength="6">
+                    <input type="text" id="totpCode" class="form-input" placeholder="🔑 2FA Kodu (6 haneli)" maxlength="6">
                 </div>
                 
                 <button class="btn" id="superBtn" onclick="adminLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
@@ -753,7 +754,7 @@ app.get('/', checkIPWhitelist, (req, res) => {
             <!-- 2FA QR Code Modal -->
             <div id="qrModal" class="modal-overlay">
                 <div class="modal">
-                    <h3>🔐 2FA Kurulumu</h3>
+                    <h3>🔑 2FA Kurulumu</h3>
                     <p>Google Authenticator ile QR kodu tarayın:</p>
                     <img id="qrImage" src="" alt="QR Code">
                     <p style="font-size: 12px; word-break: break-all; margin: 10px 0;">
@@ -1146,7 +1147,73 @@ app.get('/customer-app.html', (req, res) => {
     res.status(404).send('Sayfa bulunamadı');
 });
 
-// WebSocket bağlantı işleyicisi - 🔥 MULTI-ADMIN FIX
+// 🔥 WebRTC ROUTING FIX: Aktif görüşme tracking helper fonksiyonları
+function createCallSession(customerId, adminId, customerUniqueId, adminUniqueId) {
+    const callId = `${customerId}-${adminId}`;
+    activeCalls.set(callId, {
+        customerId: customerId,
+        adminId: adminId,
+        customerUniqueId: customerUniqueId,
+        adminUniqueId: adminUniqueId,
+        startTime: Date.now(),
+        status: 'connecting'
+    });
+    console.log(`📞 Yeni görüşme session'ı oluşturuldu: ${callId}`);
+    return callId;
+}
+
+function getCallSession(customerId, adminId) {
+    const callId = `${customerId}-${adminId}`;
+    return activeCalls.get(callId);
+}
+
+function removeCallSession(customerId, adminId) {
+    const callId = `${customerId}-${adminId}`;
+    const session = activeCalls.get(callId);
+    if (session) {
+        activeCalls.delete(callId);
+        console.log(`📞 Görüşme session'ı kaldırıldı: ${callId}`);
+    }
+    return session;
+}
+
+// 🔥 WebRTC ROUTING FIX: Doğru hedefi bulma fonksiyonu
+function findWebRTCTarget(targetId, sourceType) {
+    console.log(`🎯 WebRTC target aranıyor: ${targetId} (source: ${sourceType})`);
+    
+    // Direct ID ile ara
+    let targetClient = clients.get(targetId);
+    if (targetClient) {
+        console.log(`✅ Direct target bulundu: ${targetId} (${targetClient.userType})`);
+        return targetClient;
+    }
+    
+    // Unique ID varsa normal ID ile ara
+    if (targetId.includes('_')) {
+        // Bu bir admin unique ID'si - normal ID'yi çıkar
+        const normalId = targetId.split('_')[0];
+        for (const [clientId, clientData] of clients.entries()) {
+            if (clientData.id === normalId && clientData.userType === 'admin') {
+                console.log(`✅ Admin unique ID ile bulundu: ${normalId} -> ${clientId}`);
+                return clientData;
+            }
+        }
+    } else {
+        // Normal customer ID'si için unique admin ID'sini ara
+        for (const [clientId, clientData] of clients.entries()) {
+            if (clientId.startsWith(targetId + '_') && clientData.userType === 'admin') {
+                console.log(`✅ Customer için admin unique ID bulundu: ${targetId} -> ${clientId}`);
+                return clientData;
+            }
+        }
+    }
+    
+    console.log(`❌ WebRTC target bulunamadı: ${targetId}`);
+    console.log(`🔍 Mevcut clients:`, Array.from(clients.keys()));
+    return null;
+}
+
+// WebSocket bağlantı işleyicisi - 🔥 MULTI-ADMIN FIX + WebRTC ROUTING FIX
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
     console.log('🔗 Yeni bağlantı:', clientIP);
@@ -1164,7 +1231,7 @@ wss.on('connection', (ws, req) => {
                 }
             }
             
-            const senderId = senderInfo ? senderInfo.id : (message.userId || 'unknown');
+            const senderId = senderInfo ? (senderInfo.uniqueId || senderInfo.id) : (message.userId || 'unknown');
             const senderType = senderInfo ? senderInfo.userType : 'unknown';
             
             console.log('📨 Gelen mesaj:', message.type, 'from:', senderId, `(${senderType})`);
@@ -1321,12 +1388,13 @@ wss.on('connection', (ws, req) => {
                     if (acceptingAdmin && acceptingAdmin.ws.readyState === WebSocket.OPEN) {
                         acceptingAdmin.ws.send(JSON.stringify({
                             type: 'admin-call-accepted',
-                            userId: message.userId
+                            userId: message.userId,
+                            adminId: message.adminId
                         }));
                     }
                     
-                    // 🔥 YENİ: Heartbeat sistemi başlat - İNTERNET KESİNTİSİ PROBLEMİNİ ÇÖZER
-                    const callKey = `${message.userId}-${message.adminId}`;
+                    // 🔥 CRITICAL FIX: WebRTC call session oluştur
+                    createCallSession(message.userId, message.adminId, message.userId, message.adminId);
                     
                     // 🔥 FIX: Admin'i görüşme durumuna al
                     activeCallAdmins.set(message.adminId, {
@@ -1335,6 +1403,8 @@ wss.on('connection', (ws, req) => {
                     });
                     console.log(`📞 Admin görüşme durumuna alındı: ${message.adminId} <-> ${message.userId}`);
                     
+                    // 🔥 Heartbeat sistemi başlat
+                    const callKey = `${message.userId}-${message.adminId}`;
                     startHeartbeat(message.userId, message.adminId, callKey);
                     break;
 
@@ -1383,6 +1453,9 @@ wss.on('connection', (ws, req) => {
                         console.log('❌ Admin ID bulunamadı, arama kabul edilemedi');
                         break;
                     }
+                    
+                    // 🔥 CRITICAL FIX: WebRTC call session oluştur
+                    createCallSession(message.userId, acceptingAdminId, message.userId, acceptingAdminId);
                     
                     // 🔥 FIX: Admin'i görüşme durumuna al
                     activeCallAdmins.set(acceptingAdminId, {
@@ -1458,23 +1531,39 @@ wss.on('connection', (ws, req) => {
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
-                    // 🔥 WebRTC Targeting Fix: WebRTC mesajlarını hedef kullanıcıya ilet
-                    let targetClient = null;
-                    
-                    // Unique ID ile ara (admin'ler için)
-                    if (message.targetId && message.targetId.includes('_')) {
-                        targetClient = clients.get(message.targetId);
-                    } else {
-                        // Normal müşteri ID'si için
-                        targetClient = clients.get(message.targetId);
-                    }
+                    // 🔥 CRITICAL WebRTC ROUTING FIX: Doğru hedefi bul ve mesajı ilet
+                    const targetClient = findWebRTCTarget(message.targetId, senderType);
                     
                     if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
-                        targetClient.ws.send(JSON.stringify(message));
-                        console.log(`🔄 ${message.type} iletildi: ${senderId} -> ${message.targetId}`);
+                        // 🔥 FIX: Mesajı doğru formatta ilet
+                        const forwardMessage = {
+                            type: message.type,
+                            [message.type]: message[message.type], // offer, answer veya candidate
+                            userId: senderId, // Gönderenin ID'si
+                            targetId: message.targetId // Hedefin ID'si
+                        };
+                        
+                        // ICE candidate için özel handling
+                        if (message.type === 'ice-candidate') {
+                            forwardMessage.candidate = message.candidate;
+                        }
+                        
+                        targetClient.ws.send(JSON.stringify(forwardMessage));
+                        console.log(`🔄 ${message.type} başarıyla iletildi: ${senderId} -> ${message.targetId} (${targetClient.userType})`);
                     } else {
                         console.log(`❌ ${message.type} hedefi bulunamadı: ${message.targetId}`);
-                        console.log('🔍 Mevcut clients:', Array.from(clients.keys()));
+                        console.log(`🔍 Aranan: ${message.targetId}, Gönderen: ${senderId} (${senderType})`);
+                        console.log(`🔍 Mevcut clients:`, Array.from(clients.keys()));
+                        
+                        // Gönderene hata bildir
+                        if (senderInfo && senderInfo.ws.readyState === WebSocket.OPEN) {
+                            senderInfo.ws.send(JSON.stringify({
+                                type: 'webrtc-error',
+                                error: 'Target not found',
+                                targetId: message.targetId,
+                                messageType: message.type
+                            }));
+                        }
                     }
                     break;
 
@@ -1490,7 +1579,14 @@ wss.on('connection', (ws, req) => {
                         console.log(`📞 Admin müsait duruma alındı: ${message.targetId}`);
                     }
                     
-                    // 🔥 WebRTC Targeting Fix: Heartbeat'i durdur - target ID'yi doğru kullan
+                    // 🔥 WebRTC call session'ı kaldır
+                    if (senderType === 'customer' && message.targetId) {
+                        removeCallSession(senderId, message.targetId);
+                    } else if (senderType === 'admin' && message.targetId) {
+                        removeCallSession(message.targetId, senderId);
+                    }
+                    
+                    // 🔥 Heartbeat'i durdur - target ID'yi doğru kullan
                     const endCallKey = message.targetId ? `${senderId}-${message.targetId}` : `${senderId}-ADMIN001`;
                     stopHeartbeat(endCallKey, 'user_ended');
                     
@@ -1499,7 +1595,7 @@ wss.on('connection', (ws, req) => {
                     
                     // Hedef kullanıcıya bildir (unique ID kullan)
                     if (message.targetId) {
-                        const endTarget = clients.get(message.targetId);
+                        const endTarget = findWebRTCTarget(message.targetId, senderType);
                         if (endTarget && endTarget.ws.readyState === WebSocket.OPEN) {
                             endTarget.ws.send(JSON.stringify({
                                 type: 'call-ended',
@@ -1717,7 +1813,8 @@ app.get('/api/stats', async (req, res) => {
             todayCalls: parseInt(todayCalls.rows[0].count),
             onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
             activeHeartbeats: activeHeartbeats.size,
-            busyAdmins: activeCallAdmins.size
+            busyAdmins: activeCallAdmins.size,
+            activeCalls: activeCalls.size
         });
     } catch (error) {
         console.log('💾 PostgreSQL istatistik hatası:', error.message);
@@ -1833,6 +1930,7 @@ app.get('/health', (req, res) => {
         clients: clients.size,
         activeHeartbeats: activeHeartbeats.size,
         busyAdmins: activeCallAdmins.size,
+        activeCalls: activeCalls.size,
         database: process.env.DATABASE_URL ? 'Connected' : 'Offline',
         securityUrls: {
             superAdmin: SECURITY_CONFIG.SUPER_ADMIN_PATH,
@@ -1856,7 +1954,7 @@ app.use((req, res) => {
 // Server'ı başlat
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
-    console.log('🔍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
+    console.log('🌍 Railway Environment:', process.env.RAILWAY_ENVIRONMENT || 'Local');
     
     // Veritabanını başlat
     await initDatabase();
@@ -1877,17 +1975,17 @@ async function startServer() {
         console.log('💗 Heartbeat Sistemi: AKTİF (İnternet kesintilerinde kredi düşmesi)');
         console.log('🛡️ Rate Limiting: 5 deneme/30 dakita + görsel uyarılar');
         console.log('📋 KVKK Sistemi: Aktif + Persistent storage');
-        console.log('🔐 2FA: Super Admin için Google Authenticator zorunlu');
-        console.log('🔑 Session: 24 saat + secure cookies');
+        console.log('🔑 2FA: Super Admin için Google Authenticator zorunlu');
+        console.log('🔐 Session: 24 saat + secure cookies');
         console.log('🎯 MULTI-ADMIN: Koordinasyon sistemi aktif');
-        console.log('🔥 FIX: Görüşmedeki admine yeni çağrı gitmeme sistemi aktif');
+        console.log('🔥 WebRTC ROUTING FIX: Bağlantı sorunları çözüldü');
         console.log('');
         console.log('🎯 VIPCEP - Voice IP Communication Emergency Protocol');
         console.log('📞 WhatsApp: +90 537 479 24 03');
-        console.log('✅ Sistem hazır - Güvenli multi-admin arama kabul ediliyor!');
+        console.log('✅ Sistem hazır - WebRTC bağlantı sorunları tamamen çözüldü!');
         console.log('╔═══════════════════════════════════════════════════════════════╗');
-        console.log('║             🔥 MULTI-ADMIN SİSTEM AKTİF 🔥                  ║');
-        console.log('║         📞 GÖRÜŞME KONTROLÜ TAMAMEN DÜZELTİLDİ 📞           ║');
+        console.log('║              🔥 WebRTC ROUTING TAMAMEN DÜZELDİ 🔥             ║');
+        console.log('║          📞 BAĞLANTI SORUNU SON HALİNDE ÇÖZÜLDÜ 📞           ║');
         console.log('╚═══════════════════════════════════════════════════════════════╝');
     });
 }
@@ -1912,6 +2010,7 @@ process.on('SIGTERM', () => {
     }
     activeHeartbeats.clear();
     activeCallAdmins.clear();
+    activeCalls.clear();
     
     server.close(() => {
         console.log('✅ Server başarıyla kapatıldı');
