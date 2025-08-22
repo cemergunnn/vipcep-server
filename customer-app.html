@@ -910,13 +910,11 @@
     <audio id="remoteAudio" autoplay></audio>
     
     <script>
-        // 🔥 SES SİSTEMİ DEĞİŞKENLERİ - YENİ
+        // Global değişkenler
         let audioContext = null;
         let audioInitialized = false;
         let notificationAudio = [];
         let ringbackAudio = null;
-        
-        // Language support
         let currentLanguage = 'tr';
         let socket = null;
         let peerConnection = null;
@@ -930,9 +928,7 @@
         let incomingCallInfo = null;
         let kvkkApproved = false;
         let rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
-        
-        // 🔥 WebRTC Targeting Fix - Ana değişken
-        let currentAdminId = null; // Kabul eden admin'in unique ID'si
+        let currentAdminId = null;
         
         let userInfo = {
             id: '',
@@ -943,14 +939,13 @@
         
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         
-        // 🔥 SES SİSTEMİ İNİTİALİZE FONKSİYONU - YENİ
+        // Ses sistemi fonksiyonları
         function initializeAudio() {
             if (audioInitialized) return;
             
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // İlk kullanıcı etkileşiminde ses context'i unlock et
                 const unlockAudio = () => {
                     if (audioContext.state === 'suspended') {
                         audioContext.resume().then(() => {
@@ -963,13 +958,11 @@
                         playTestSound();
                     }
                     
-                    // Event listener'ları kaldır
                     document.removeEventListener('click', unlockAudio);
                     document.removeEventListener('touchend', unlockAudio);
                     document.removeEventListener('keydown', unlockAudio);
                 };
                 
-                // İlk etkileşimi bekle
                 document.addEventListener('click', unlockAudio);
                 document.addEventListener('touchend', unlockAudio);
                 document.addEventListener('keydown', unlockAudio);
@@ -980,7 +973,6 @@
             }
         }
 
-        // 🔥 TEST SESİ (SESSIZ) - YENİ
         function playTestSound() {
             if (!audioContext || !audioInitialized) return;
             
@@ -992,7 +984,7 @@
                 gainNode.connect(audioContext.destination);
                 
                 oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime); // Çok sessiz
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
                 
                 oscillator.start();
                 oscillator.stop(audioContext.currentTime + 0.1);
@@ -1003,19 +995,16 @@
             }
         }
 
-        // 🔥 GELİŞTİRİLMİŞ NOTİFİKASYON SESİ - YENİ
         function playIncomingCallSound() {
             if (!audioContext || !audioInitialized) {
                 console.log('⚠️ Audio not initialized, trying to initialize...');
                 initializeAudio();
                 
-                // 500ms sonra tekrar dene
                 setTimeout(() => {
                     if (audioInitialized) {
                         playIncomingCallSoundInternal();
                     } else {
                         console.log('❌ Audio system not ready');
-                        // Fallback HTML5 audio
                         playFallbackNotificationSound();
                     }
                 }, 500);
@@ -1027,11 +1016,7 @@
 
         function playIncomingCallSoundInternal() {
             try {
-                // Önceki ses varsa durdur
                 stopIncomingCallSound();
-                
-                const frequencies = [440, 880, 440, 880];
-                let currentTone = 0;
                 
                 function playRing() {
                     if (callState !== 'incoming') return;
@@ -1071,10 +1056,8 @@
             }
         }
 
-        // 🔥 FALLBACK HTML5 AUDİO - YENİ
         function playFallbackNotificationSound() {
             try {
-                // Data URL ile basit sinüs dalgası
                 const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU+ltryxnkpBSl+zPLaizsIGGS57uGQQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
                 audio.volume = 0.3;
                 audio.play().catch(e => console.log('Fallback audio error:', e));
@@ -1083,7 +1066,6 @@
             }
         }
 
-        // 🔥 NOTİFİKASYON SESİNİ DURDUR - YENİ
         function stopIncomingCallSound() {
             if (notificationAudio) {
                 notificationAudio.forEach(node => {
@@ -1095,7 +1077,7 @@
             }
         }
 
-        // Sayfa yüklendiğinde başlat
+        // Uygulama başlatma
         window.onload = function() {
             init();
         };
@@ -1104,7 +1086,7 @@
             setupEventListeners();
             loadSavedUserInfo();
             connectToServer();
-            initializeAudio(); // 🔥 Ses sistemini initialize et
+            initializeAudio();
             
             const savedLang = localStorage.getItem('vipcep_language');
             if (savedLang && (savedLang === 'tr' || savedLang === 'en')) {
@@ -1114,7 +1096,6 @@
         }
         
         function setupEventListeners() {
-            // KVKK checkbox
             const kvkkCheckbox = document.getElementById('kvkkCheckbox');
             const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
             
@@ -1123,7 +1104,6 @@
                 localStorage.setItem('vipcep_kvkk_checkbox', e.target.checked);
             });
 
-            // Login form
             document.getElementById('userIdInput').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
             });
@@ -1141,66 +1121,6 @@
             });
         }
         
-        function checkKVKKApproval() {
-            const hasApproval = localStorage.getItem('vipcep_kvkk_approved') === 'true';
-            
-            if (hasApproval) {
-                kvkkApproved = true;
-                document.getElementById('kvkkScreen').classList.add('hidden');
-                document.getElementById('loginScreen').classList.remove('hidden');
-                
-                // KVKK onaylı ise WebSocket'e bildir
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'kvkk-consent',
-                        approved: true
-                    }));
-                }
-            } else {
-                // KVKK checkbox'ın son durumunu kontrol et
-                const lastCheckboxState = localStorage.getItem('vipcep_kvkk_checkbox') === 'true';
-                if (lastCheckboxState) {
-                    document.getElementById('kvkkCheckbox').checked = true;
-                    document.getElementById('kvkkAcceptBtn').disabled = false;
-                }
-                
-                document.getElementById('kvkkScreen').classList.remove('hidden');
-                document.getElementById('loginScreen').classList.add('hidden');
-            }
-        }
-        
-        function acceptKVKK() {
-            const checkbox = document.getElementById('kvkkCheckbox');
-            if (!checkbox.checked) {
-                alert(currentLanguage === 'tr' ? 'Lütfen onay kutusunu işaretleyin!' : 'Please check the approval box!');
-                return;
-            }
-            
-            kvkkApproved = true;
-            localStorage.setItem('vipcep_kvkk_approved', 'true');
-            localStorage.setItem('vipcep_kvkk_checkbox', 'true');
-            
-            // WebSocket'e KVKK onayını gönder
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'kvkk-consent',
-                    approved: true
-                }));
-            }
-            
-            document.getElementById('kvkkScreen').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-        }
-        
-        function declineKVKK() {
-            alert(currentLanguage === 'tr' ? 
-                'KVKK onayı olmadan sistemi kullanamazsınız.' : 
-                'You cannot use the system without GDPR approval.');
-            
-            // Sayfayı kapat veya başka bir sayfaya yönlendir
-            window.close();
-        }
-        
         function connectToServer() {
             console.log('🔗 Sunucuya bağlanıyor...');
             updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...');
@@ -1211,11 +1131,8 @@
                 socket.onopen = function() {
                     console.log('✅ WebSocket bağlantısı kuruldu');
                     updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
-                    
-                    // KVKK durumunu kontrol et
                     checkKVKKApproval();
                     
-                    // Eğer zaten giriş yapmışsa tekrar register et
                     if (isLoggedIn) {
                         registerUser();
                     }
@@ -1230,7 +1147,6 @@
                     console.log('❌ WebSocket bağlantısı kapandı');
                     updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected');
                     
-                    // 3 saniye sonra tekrar bağlan
                     setTimeout(() => {
                         if (!socket || socket.readyState === WebSocket.CLOSED) {
                             connectToServer();
@@ -1262,6 +1178,7 @@
             statusText.textContent = text;
         }
         
+        // 🔥 KRITIK DÜZELTME: Message handling sistemi güncellemesi
         function handleServerMessage(message) {
             console.log('📨 Sunucudan mesaj:', message.type);
             
@@ -1284,34 +1201,15 @@
                     handleLoginResponse(message);
                     break;
                 
+                // 🔥 Admin call request - DİREKT GELEN ARAMA
                 case 'admin-call-request':
                     handleIncomingAdminCall(message);
                     break;
                 
-                case 'admin-call-accepted':
-                    console.log('✅ Admin araması kabul edildi');
-                    // Admin tarafından başlatılan arama kabul edildi
-                    setState('connecting');
-                    currentAdminId = message.adminId; // 🔥 Admin ID'yi kaydet
-                    setupPeerConnection();
-                    break;
-                
-                case 'admin-call-rejected':
-                    console.log('❌ Admin araması reddedildi:', message.reason);
-                    showError(message.reason || (currentLanguage === 'tr' ? 'Arama reddedildi' : 'Call rejected'));
-                    setState('idle');
-                    break;
-                
-                case 'admin-call-cancelled':
-                    console.log('📞 Admin araması iptal edildi');
-                    stopIncomingCallSound();
-                    setState('idle');
-                    showMessage(currentLanguage === 'tr' ? 'Gelen arama iptal edildi' : 'Incoming call cancelled', 'warning');
-                    break;
-                
+                // 🔥 Queue'dan kabul edilen arama
                 case 'call-accepted':
-                    console.log('✅ Arama kabul edildi');
-                    currentAdminId = message.acceptedAdminId; // 🔥 Kabul eden admin'in ID'sini kaydet
+                    console.log('✅ Arama kabul edildi (queue)');
+                    currentAdminId = message.acceptedAdminId;
                     setState('connecting');
                     setupPeerConnection();
                     break;
@@ -1320,6 +1218,13 @@
                     console.log('❌ Arama reddedildi:', message.reason);
                     setState('idle');
                     showError(message.reason || (currentLanguage === 'tr' ? 'Arama reddedildi' : 'Call rejected'));
+                    break;
+                
+                case 'admin-call-cancelled':
+                    console.log('📞 Admin araması iptal edildi');
+                    stopIncomingCallSound();
+                    setState('idle');
+                    showMessage(currentLanguage === 'tr' ? 'Gelen arama iptal edildi' : 'Incoming call cancelled', 'warning');
                     break;
                 
                 case 'call-ended':
@@ -1338,7 +1243,6 @@
                     break;
                 
                 case 'auto-credit-update':
-                    // Heartbeat sistemi kredi düşürme bildirimi
                     if (message.userId === userInfo.id) {
                         userInfo.credits = message.newCredits;
                         updateUserDisplay();
@@ -1367,6 +1271,62 @@
             }
         }
         
+        function checkKVKKApproval() {
+            const hasApproval = localStorage.getItem('vipcep_kvkk_approved') === 'true';
+            
+            if (hasApproval) {
+                kvkkApproved = true;
+                document.getElementById('kvkkScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'kvkk-consent',
+                        approved: true
+                    }));
+                }
+            } else {
+                const lastCheckboxState = localStorage.getItem('vipcep_kvkk_checkbox') === 'true';
+                if (lastCheckboxState) {
+                    document.getElementById('kvkkCheckbox').checked = true;
+                    document.getElementById('kvkkAcceptBtn').disabled = false;
+                }
+                
+                document.getElementById('kvkkScreen').classList.remove('hidden');
+                document.getElementById('loginScreen').classList.add('hidden');
+            }
+        }
+        
+        function acceptKVKK() {
+            const checkbox = document.getElementById('kvkkCheckbox');
+            if (!checkbox.checked) {
+                alert(currentLanguage === 'tr' ? 'Lütfen onay kutusunu işaretleyin!' : 'Please check the approval box!');
+                return;
+            }
+            
+            kvkkApproved = true;
+            localStorage.setItem('vipcep_kvkk_approved', 'true');
+            localStorage.setItem('vipcep_kvkk_checkbox', 'true');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'kvkk-consent',
+                    approved: true
+                }));
+            }
+            
+            document.getElementById('kvkkScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+        
+        function declineKVKK() {
+            alert(currentLanguage === 'tr' ? 
+                'KVKK onayı olmadan sistemi kullanamazsınız.' : 
+                'You cannot use the system without GDPR approval.');
+            
+            window.close();
+        }
+        
         function loginUser() {
             const userId = document.getElementById('userIdInput').value.trim();
             const userName = document.getElementById('userNameInput').value.trim();
@@ -1387,7 +1347,6 @@
                 return;
             }
             
-            // Rate limit kontrolü
             if (!rateLimitStatus.allowed) {
                 showRateLimitWarning();
                 return;
@@ -1402,11 +1361,9 @@
                 <span data-text-tr="Giriş yapılıyor..." data-text-en="Signing in...">${currentLanguage === 'tr' ? 'Giriş yapılıyor...' : 'Signing in...'}</span>
             `;
             
-            // Kullanıcı bilgilerini kaydet
             userInfo.id = userId;
             userInfo.name = userName;
             
-            // Remember me özelliği
             if (rememberMe) {
                 localStorage.setItem('vipcep_user_id', userId);
                 localStorage.setItem('vipcep_user_name', userName);
@@ -1417,7 +1374,6 @@
                 localStorage.removeItem('vipcep_remember_me');
             }
             
-            // Login isteği gönder
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'login-request',
@@ -1441,21 +1397,18 @@
                 isLoggedIn = true;
                 showMessage(currentLanguage === 'tr' ? 'Giriş başarılı!' : 'Login successful!', 'success');
                 
-                // Ana uygulamaya geç
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
                 
                 updateUserDisplay();
                 registerUser();
                 
-                // Rate limit durumunu sıfırla
                 rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
                 hideRateLimitWarning();
                 
             } else {
                 console.log('❌ Giriş başarısız:', message.reason);
                 
-                // Rate limit kontrolü
                 if (message.rateLimited) {
                     rateLimitStatus = {
                         allowed: false,
@@ -1472,80 +1425,6 @@
             
             loginButton.disabled = false;
             updateLanguage();
-        }
-        
-        function showLoginError(message) {
-            const errorDiv = document.getElementById('loginMessage');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            errorDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                errorDiv.classList.add('hidden');
-            }, 5000);
-        }
-        
-        function showRateLimitWarning() {
-            const warningDiv = document.getElementById('rateLimitWarning');
-            
-            let warningClass = 'rate-limit-warning';
-            let iconText = '⚠️';
-            let messageText = '';
-            
-            if (rateLimitStatus.remaining <= 0) {
-                warningClass += ' rate-limit-severe';
-                iconText = '🚫';
-                messageText = currentLanguage === 'tr' ? 
-                    `Çok fazla başarısız deneme!\n\n30 dakika bekleyin ve tekrar deneyin.` :
-                    `Too many failed attempts!\n\nWait 30 minutes and try again.`;
-            } else if (rateLimitStatus.remaining <= 2) {
-                iconText = '⚠️';
-                messageText = currentLanguage === 'tr' ? 
-                    `DİKKAT: ${rateLimitStatus.remaining} deneme hakkınız kaldı!\n\nYanlış bilgi girmeyin.` :
-                    `WARNING: ${rateLimitStatus.remaining} attempts remaining!\n\nDo not enter wrong information.`;
-            } else {
-                messageText = currentLanguage === 'tr' ? 
-                    `Kalan deneme hakkı: ${rateLimitStatus.remaining}` :
-                    `Remaining attempts: ${rateLimitStatus.remaining}`;
-            }
-            
-            warningDiv.className = warningClass;
-            warningDiv.innerHTML = `
-                <span class="rate-limit-icon">${iconText}</span>
-                <div>${messageText.replace(/\n/g, '<br>')}</div>
-            `;
-            
-            warningDiv.classList.remove('hidden');
-            
-            // Countdown timer
-            if (rateLimitStatus.resetTime && rateLimitStatus.remaining <= 0) {
-                const countdown = setInterval(() => {
-                    const now = new Date();
-                    const timeLeft = rateLimitStatus.resetTime - now;
-                    
-                    if (timeLeft <= 0) {
-                        clearInterval(countdown);
-                        rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
-                        hideRateLimitWarning();
-                        return;
-                    }
-                    
-                    const minutes = Math.floor(timeLeft / 60000);
-                    const seconds = Math.floor((timeLeft % 60000) / 1000);
-                    
-                    const countdownElement = warningDiv.querySelector('.rate-limit-countdown');
-                    if (countdownElement) {
-                        countdownElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                    } else {
-                        warningDiv.innerHTML += `<div class="rate-limit-countdown">${minutes}:${seconds.toString().padStart(2, '0')}</div>`;
-                    }
-                }, 1000);
-            }
-        }
-        
-        function hideRateLimitWarning() {
-            const warningDiv = document.getElementById('rateLimitWarning');
-            warningDiv.classList.add('hidden');
         }
         
         function registerUser() {
@@ -1592,14 +1471,12 @@
         function setState(newState) {
             callState = newState;
             
-            // Tüm state'leri gizle
             document.getElementById('idleState').classList.add('hidden');
             document.getElementById('callingState').classList.add('hidden');
             document.getElementById('connectingState').classList.add('hidden');
             document.getElementById('connectedState').classList.add('hidden');
             document.getElementById('incomingCallState').classList.add('hidden');
             
-            // Aktif state'i göster
             switch (newState) {
                 case 'idle':
                     document.getElementById('idleState').classList.remove('hidden');
@@ -1615,7 +1492,7 @@
                 case 'incoming':
                     document.getElementById('incomingCallState').classList.remove('hidden');
                     document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
-                    playIncomingCallSound(); // 🔥 Ses çalma düzeltmesi
+                    playIncomingCallSound();
                     break;
                 
                 case 'connecting':
@@ -1702,8 +1579,9 @@
                 }));
             }
             
-            currentAdminId = incomingCallInfo.adminId; // 🔥 Admin ID'yi kaydet
+            currentAdminId = incomingCallInfo.adminId;
             setState('connecting');
+            setupPeerConnection(); // 🔥 Direkt WebRTC kurulumu
             incomingCallInfo = null;
         }
         
@@ -1728,26 +1606,24 @@
             incomingCallInfo = null;
         }
         
-        // 🔥 WebRTC FONKSİYONLARI - TARGETİNG FİX İLE
+        // WebRTC Fonksiyonları
         async function setupPeerConnection() {
             try {
                 console.log('🔗 WebRTC bağlantısı kuruluyor...');
                 
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 
-                // ICE candidate events
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         console.log('📨 ICE Candidate gönderiliyor');
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: currentAdminId // 🔥 Doğru admin'e gönder
+                            targetId: currentAdminId
                         }));
                     }
                 };
                 
-                // Remote stream events
                 peerConnection.ontrack = (event) => {
                     console.log('🎵 Remote stream alındı');
                     const remoteAudio = document.getElementById('remoteAudio');
@@ -1755,7 +1631,6 @@
                     setState('connected');
                 };
                 
-                // Connection state events
                 peerConnection.onconnectionstatechange = () => {
                     console.log('🔗 Connection state:', peerConnection.connectionState);
                     
@@ -1767,7 +1642,6 @@
                     }
                 };
                 
-                // Mikrofon izni al
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
@@ -1783,12 +1657,10 @@
                 const localAudio = document.getElementById('localAudio');
                 localAudio.srcObject = stream;
                 
-                // Stream'i peer connection'a ekle
                 stream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, stream);
                 });
                 
-                // Offer oluştur ve gönder
                 console.log('📨 WebRTC Offer oluşturuluyor');
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
@@ -1797,7 +1669,7 @@
                     socket.send(JSON.stringify({
                         type: 'offer',
                         offer: offer,
-                        targetId: currentAdminId // 🔥 Doğru admin'e gönder
+                        targetId: currentAdminId
                     }));
                     console.log('📨 WebRTC Offer gönderildi');
                 }
@@ -1825,7 +1697,7 @@
                     socket.send(JSON.stringify({
                         type: 'answer',
                         answer: answer,
-                        targetId: currentAdminId // 🔥 Doğru admin'e gönder
+                        targetId: currentAdminId
                     }));
                     console.log('📨 WebRTC Answer gönderildi');
                 }
@@ -1865,7 +1737,7 @@
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'end-call',
-                    targetId: currentAdminId || userInfo.adminId, // 🔥 Doğru admin'e gönder
+                    targetId: currentAdminId || userInfo.adminId,
                     duration: duration
                 }));
             }
@@ -1873,7 +1745,6 @@
             cleanupCall();
             setState('idle');
             
-            // Kredi modalını göster
             showCreditModal(duration, Math.ceil(duration / 60), userInfo.credits);
         }
         
@@ -1886,12 +1757,10 @@
             cleanupCall();
             setState('idle');
             
-            // Kredi modalını göster
             if (duration > 0) {
                 showCreditModal(duration, creditsUsed, userInfo.credits);
             }
             
-            // Özel sonlandırma mesajları
             if (message.reason === 'no_credits') {
                 showError(currentLanguage === 'tr' ? 
                     'Krediniz bitti! Görüşme sonlandırıldı.' : 
@@ -1904,35 +1773,30 @@
         }
         
         function cleanupCall() {
-            // Call timer'ı durdur
             if (callTimer) {
                 clearInterval(callTimer);
                 callTimer = null;
             }
             
-            // WebRTC bağlantısını kapat
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
             }
             
-            // Local stream'i durdur
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
             
-            // Audio elementleri temizle
             const localAudio = document.getElementById('localAudio');
             const remoteAudio = document.getElementById('remoteAudio');
             
             if (localAudio) localAudio.srcObject = null;
             if (remoteAudio) remoteAudio.srcObject = null;
             
-            // Değişkenleri sıfırla
             callDuration = 0;
             callStartTime = null;
-            currentAdminId = null; // 🔥 Admin ID'yi sıfırla
+            currentAdminId = null;
             
             console.log('🧹 Call cleanup tamamlandı');
         }
@@ -1958,22 +1822,20 @@
             }
         }
         
+        // Yardımcı fonksiyonlar
         function showCreditModal(duration, creditsUsed, remainingCredits) {
             const modal = document.getElementById('creditModalOverlay');
             
-            // Süreyi formatla
             const minutes = Math.floor(duration / 60);
             const seconds = duration % 60;
             const durationText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            // Modal içeriğini güncelle
             document.getElementById('modalDuration').textContent = durationText;
             document.getElementById('modalCreditsUsed').textContent = 
                 `${creditsUsed} ${currentLanguage === 'tr' ? 'dakika' : 'minutes'}`;
             document.getElementById('modalRemainingCredits').textContent = 
                 `${remainingCredits} ${currentLanguage === 'tr' ? 'dakika' : 'minutes'}`;
             
-            // Modal'ı göster
             modal.classList.remove('hidden');
         }
         
@@ -2017,281 +1879,49 @@
             }, 5000);
         }
         
-        function requestCreditWhatsApp() {
-            const phoneNumber = '+905374792403';
-            const message = currentLanguage === 'tr' ? 
-                `Merhaba! VIPCEP sistemi için kredi talep ediyorum.\n\nKullanıcı ID: ${userInfo.id || 'Henüz giriş yapmadım'}\nAd: ${userInfo.name || 'Henüz giriş yapmadım'}` :
-                `Hello! I am requesting credits for the VIPCEP system.\n\nUser ID: ${userInfo.id || 'Not logged in yet'}\nName: ${userInfo.name || 'Not logged in yet'}`;
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('loginMessage');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
             
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
         }
         
-        function logoutUser() {
-            console.log('👋 Kullanıcı çıkış yapıyor');
+        function showRateLimitWarning() {
+            const warningDiv = document.getElementById('rateLimitWarning');
             
-            // Aktif görüşme varsa sonlandır
-            if (callState !== 'idle') {
-                endCall();
-            }
+            let warningClass = 'rate-limit-warning';
+            let iconText = '⚠️';
+            let messageText = '';
             
-            // WebSocket bağlantısını kapat
-            if (socket) {
-                socket.close();
-                socket = null;
-            }
-            
-            // Kullanıcı bilgilerini temizle
-            isLoggedIn = false;
-            userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
-            
-            // Remember me işaretli değilse kayıtlı bilgileri sil
-            if (!document.getElementById('rememberMe').checked) {
-                localStorage.removeItem('vipcep_user_id');
-                localStorage.removeItem('vipcep_user_name');
-                localStorage.removeItem('vipcep_remember_me');
-            }
-            
-            // Form alanlarını temizle
-            document.getElementById('userIdInput').value = '';
-            document.getElementById('userNameInput').value = '';
-            
-            // Ana uygulamayı gizle, giriş ekranını göster
-            document.getElementById('mainApp').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            
-            // Sunucuya tekrar bağlan
-            connectToServer();
-        }
-        
-        // 🔥 DİL DESTEĞİ FONKSİYONLARI - GELİŞTİRİLMİŞ
-        function toggleLanguage() {
-            currentLanguage = currentLanguage === 'tr' ? 'en' : 'tr';
-            localStorage.setItem('vipcep_language', currentLanguage);
-            updateLanguage();
-        }
-        
-        function updateLanguage() {
-            // Bayrak ve dil kodunu güncelle
-            const flagElement = document.getElementById('currentFlag');
-            const langElement = document.getElementById('currentLang');
-            
-            if (currentLanguage === 'tr') {
-                flagElement.textContent = '🇹🇷';
-                langElement.textContent = 'TR';
+            if (rateLimitStatus.remaining <= 0) {
+                warningClass += ' rate-limit-severe';
+                iconText = '🚫';
+                messageText = currentLanguage === 'tr' ? 
+                    `Çok fazla başarısız deneme!\n\n30 dakika bekleyin ve tekrar deneyin.` :
+                    `Too many failed attempts!\n\nWait 30 minutes and try again.`;
+            } else if (rateLimitStatus.remaining <= 2) {
+                iconText = '⚠️';
+                messageText = currentLanguage === 'tr' ? 
+                    `DİKKAT: ${rateLimitStatus.remaining} deneme hakkınız kaldı!\n\nYanlış bilgi girmeyin.` :
+                    `WARNING: ${rateLimitStatus.remaining} attempts remaining!\n\nDo not enter wrong information.`;
             } else {
-                flagElement.textContent = '🇺🇸';
-                langElement.textContent = 'EN';
+                messageText = currentLanguage === 'tr' ? 
+                    `Kalan deneme hakkı: ${rateLimitStatus.remaining}` :
+                    `Remaining attempts: ${rateLimitStatus.remaining}`;
             }
             
-            // Tüm metinleri güncelle
-            const elements = document.querySelectorAll('[data-text-tr]');
-            elements.forEach(element => {
-                const trText = element.getAttribute('data-text-tr');
-                const enText = element.getAttribute('data-text-en');
-                
-                if (currentLanguage === 'tr' && trText) {
-                    element.textContent = trText;
-                } else if (currentLanguage === 'en' && enText) {
-                    element.textContent = enText;
-                }
-            });
+            warningDiv.className = warningClass;
+            warningDiv.innerHTML = `
+                <span class="rate-limit-icon">${iconText}</span>
+                <div>${messageText.replace(/\n/g, '<br>')}</div>
+            `;
             
-            // Placeholder'ları güncelle
-            const placeholderElements = document.querySelectorAll('[data-placeholder-tr]');
-            placeholderElements.forEach(element => {
-                const trPlaceholder = element.getAttribute('data-placeholder-tr');
-                const enPlaceholder = element.getAttribute('data-placeholder-en');
-                
-                if (currentLanguage === 'tr' && trPlaceholder) {
-                    element.placeholder = trPlaceholder;
-                } else if (currentLanguage === 'en' && enPlaceholder) {
-                    element.placeholder = enPlaceholder;
-                }
-            });
-            
-            // Connection status'u güncelle
-            const connectionText = document.getElementById('connectionText');
-            if (connectionText) {
-                const currentText = connectionText.textContent;
-                if (currentText.includes('Bağlan') || currentText.includes('Connect')) {
-                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
-                } else if (currentText.includes('Bağlı') || currentText.includes('Connected')) {
-                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlı' : 'Connected';
-                } else if (currentText.includes('Bağlantı') || currentText.includes('Disconnect')) {
-                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected';
-                }
-            }
-            
-            // User status'u güncelle
-            const userStatus = document.getElementById('displayUserStatus');
-            if (userStatus) {
-                const currentStatus = userStatus.textContent;
-                if (currentStatus.includes('Hazır') || currentStatus.includes('Ready')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
-                } else if (currentStatus.includes('Aranıyor') || currentStatus.includes('Calling')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Aranıyor...' : 'Calling...';
-                } else if (currentStatus.includes('Gelen') || currentStatus.includes('Incoming')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
-                } else if (currentStatus.includes('Bağlanıyor') || currentStatus.includes('Connecting')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
-                } else if (currentStatus.includes('Görüşmede') || currentStatus.includes('In call')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In call';
-                }
-            }
+            warningDiv.classList.remove('hidden');
         }
         
-        // Klavye kısayolları
-        document.addEventListener('keydown', (e) => {
-            // ESC tuşu ile aramayı iptal et veya modalları kapat
-            if (e.key === 'Escape') {
-                if (!document.getElementById('creditModalOverlay').classList.contains('hidden')) {
-                    closeCreditModal();
-                } else if (callState === 'calling') {
-                    cancelCall();
-                } else if (callState === 'incoming') {
-                    rejectIncomingCall();
-                }
-            }
-            
-            // Enter tuşu ile gelen aramayı kabul et
-            if (e.key === 'Enter' && callState === 'incoming') {
-                acceptIncomingCall();
-            }
-            
-            // Spacebar ile arama başlat (idle durumda)
-            if (e.key === ' ' && callState === 'idle' && isLoggedIn) {
-                e.preventDefault();
-                startCall();
-            }
-        });
-        
-        // Page visibility API - Sayfa gizlendiğinde ses durdur
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && callState === 'incoming') {
-                // Sayfa gizliyse ses sesini azalt
-                notificationAudio.forEach(node => {
-                    try {
-                        if (node.gain) {
-                            node.gain.gain.setValueAtTime(0.1, audioContext.currentTime);
-                        }
-                    } catch(e) {}
-                });
-            }
-        });
-        
-        // Offline/Online event listeners
-        window.addEventListener('online', () => {
-            console.log('🌐 İnternet bağlantısı geri geldi');
-            if (!socket || socket.readyState === WebSocket.CLOSED) {
-                connectToServer();
-            }
-        });
-        
-        window.addEventListener('offline', () => {
-            console.log('🌐 İnternet bağlantısı kesildi');
-            updateConnectionStatus(false, currentLanguage === 'tr' ? 'Çevrimdışı' : 'Offline');
-        });
-        
-        // Beforeunload event - Sayfa kapatılırken temizlik
-        window.addEventListener('beforeunload', (e) => {
-            if (callState !== 'idle') {
-                e.preventDefault();
-                e.returnValue = currentLanguage === 'tr' ? 
-                    'Aktif görüşmeniz var. Sayfayı kapatmak istediğinizden emin misiniz?' :
-                    'You have an active call. Are you sure you want to close the page?';
-                return e.returnValue;
-            }
-        });
-        
-        // Unload event - Sayfa kapatılırken son temizlik
-        window.addEventListener('unload', () => {
-            if (callState !== 'idle') {
-                endCall();
-            }
-            
-            if (socket) {
-                socket.close();
-            }
-        });
-        
-        // Touch events için mobile optimizasyon
-        let touchStartY = 0;
-        
-        document.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-        });
-        
-        document.addEventListener('touchmove', (e) => {
-            const touchEndY = e.touches[0].clientY;
-            const diffY = touchStartY - touchEndY;
-            
-            // Yukarı kaydırma ile refresh'i engelle (iOS Safari)
-            if (diffY < 0 && window.scrollY === 0) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // Service Worker kaydı (offline support için)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker kayıtlı:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('❌ Service Worker kayıt hatası:', error);
-                    });
-            });
-        }
-        
-        // PWA Install Prompt
-        let deferredPrompt;
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Install butonu göster (isteğe bağlı)
-            console.log('📱 PWA install prompt hazır');
-        });
-        
-        window.addEventListener('appinstalled', () => {
-            console.log('📱 PWA kuruldu');
-            deferredPrompt = null;
-        });
-        
-        // Performance monitoring
-        window.addEventListener('load', () => {
-            if ('performance' in window) {
-                const perfData = performance.getEntriesByType('navigation')[0];
-                console.log('⚡ Sayfa yüklenme süresi:', Math.round(perfData.loadEventEnd - perfData.fetchStart), 'ms');
-            }
-        });
-        
-        // Debug console (sadece development)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            window.vipcepDebug = {
-                getState: () => callState,
-                getUserInfo: () => userInfo,
-                getSocket: () => socket,
-                getPeerConnection: () => peerConnection,
-                forceReconnect: connectToServer,
-                testAudio: playTestSound,
-                playNotification: playIncomingCallSound,
-                stopNotification: stopIncomingCallSound
-            };
-            console.log('🐛 Debug modunda - window.vipcepDebug kullanılabilir');
-        }
-        
-        console.log('🎯 VIPCEP Customer App başlatıldı');
-        console.log('🔥 Multi-admin koordinasyon sistemi aktif');
-        console.log('🔊 Gelişmiş ses sistemi hazır');
-        console.log('🌐 WebRTC targeting düzeltmeleri uygulandı');
-    </script>
-</body>
-</html>
-
-
+        function hideRateLimitWarning() {
+            const warningDiv = document.getElementById('rat
