@@ -1797,7 +1797,7 @@
                     socket.send(JSON.stringify({
                         type: 'offer',
                         offer: offer,
-                        targetId: currentAdminId || userInfo.adminId // 🔥 Doğru admin'e gönder
+                        targetId: currentAdminId // 🔥 Doğru admin'e gönder
                     }));
                     console.log('📨 WebRTC Offer gönderildi');
                 }
@@ -1825,7 +1825,7 @@
                     socket.send(JSON.stringify({
                         type: 'answer',
                         answer: answer,
-                        targetId: currentAdminId || userInfo.adminId // 🔥 Doğru admin'e gönder
+                        targetId: currentAdminId // 🔥 Doğru admin'e gönder
                     }));
                     console.log('📨 WebRTC Answer gönderildi');
                 }
@@ -2293,3 +2293,4 @@
     </script>
 </body>
 </html>
+
