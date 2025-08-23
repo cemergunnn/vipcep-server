@@ -123,16 +123,26 @@ function broadcastCallQueueToAdmins() {
         queueSize: queueArray.length
     });
     
-    const allAdminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+    // Sadece aktif WebSocket bağlantısı olan ve görüşmede olmayan adminleri al
+    const allAdminClients = Array.from(clients.values()).filter(c => 
+        c.userType === 'admin' && 
+        c.ws.readyState === WebSocket.OPEN
+    );
+    
     const availableAdmins = allAdminClients.filter(adminClient => {
-        return !activeCallAdmins.has(adminClient.uniqueId || adminClient.id);
+        const adminKey = adminClient.uniqueId || adminClient.id;
+        return !activeCallAdmins.has(adminKey);
     });
     
-    console.log(`📡 Queue broadcast: ${queueArray.length} calls to ${availableAdmins.length} available admins`);
+    console.log(`📡 Queue broadcast: ${queueArray.length} calls to ${availableAdmins.length}/${allAdminClients.length} admins`);
     
     availableAdmins.forEach(adminClient => {
-        if (adminClient.ws.readyState === WebSocket.OPEN) {
-            adminClient.ws.send(message);
+        try {
+            if (adminClient.ws.readyState === WebSocket.OPEN) {
+                adminClient.ws.send(message);
+            }
+        } catch (error) {
+            console.log(`Error broadcasting to admin ${adminClient.uniqueId}:`, error.message);
         }
     });
 }
@@ -447,16 +457,39 @@ async function isUserApproved(userId, userName) {
 function startHeartbeat(userId, adminId, callKey) {
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
-        stopHeartbeat(callKey, 'duplicate_prevention');
+        clearInterval(activeHeartbeats.get(callKey));
+        activeHeartbeats.delete(callKey);
     }
     
     console.log(`💓 Starting heartbeat: ${callKey}`);
     
     const heartbeat = setInterval(async () => {
         try {
-            if (!activeCallAdmins.has(adminId)) {
-                console.log(`⚠️ Admin ${adminId} no longer active, stopping heartbeat`);
-                stopHeartbeat(callKey, 'admin_disconnected');
+            // Admin hala aktif mi ve WebSocket bağlantısı var mı kontrol et
+            const adminClient = Array.from(clients.values()).find(c => 
+                c.uniqueId === adminId && 
+                c.userType === 'admin' && 
+                c.ws.readyState === WebSocket.OPEN
+            );
+            
+            // Alternatif olarak aynı base ID'ye sahip aktif admin var mı?
+            const alternativeAdmin = Array.from(clients.values()).find(c =>
+                c.id === adminId.split('_')[0] &&
+                c.userType === 'admin' &&
+                c.ws.readyState === WebSocket.OPEN
+            );
+            
+            if (!adminClient && !alternativeAdmin) {
+                console.log(`⚠️ No active admin found for ${adminId}, stopping heartbeat`);
+                stopHeartbeat(callKey, 'admin_permanently_disconnected');
+                return;
+            }
+            
+            // Customer hala bağlı mı?
+            const customerClient = clients.get(userId);
+            if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
+                console.log(`⚠️ Customer ${userId} disconnected, stopping heartbeat`);
+                stopHeartbeat(callKey, 'customer_disconnected');
                 return;
             }
             
@@ -479,7 +512,7 @@ function startHeartbeat(userId, adminId, callKey) {
                 
                 broadcastCreditUpdate(userId, newCredits, 1);
                 
-                console.log(`💳 Credit deducted: ${userId} ${currentCredits}→${newCredits}`);
+                console.log(`💳 Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminClient?.uniqueId || alternativeAdmin?.uniqueId})`);
             }
         } catch (error) {
             console.log(`Heartbeat error ${userId}:`, error.message);
@@ -1217,63 +1250,68 @@ wss.on('connection', (ws, req) => {
 
             switch (message.type) {
                 case 'register':
-                    // Önce mevcut kaydı kontrol et (sayfa yenileme durumu)
-                    let existingClientId = null;
-                    for (const [clientId, clientData] of clients.entries()) {
-                        if (clientData.id === message.userId && 
-                            clientData.userType === message.userType &&
-                            clientData.ws.readyState !== WebSocket.OPEN) {
-                            existingClientId = clientId;
-                            break;
-                        }
-                    }
-                    
-                    // Eski kaydı temizle
-                    if (existingClientId) {
-                        console.log(`🔄 Replacing old client: ${existingClientId}`);
-                        clients.delete(existingClientId);
-                    }
-                    
-                    const uniqueClientId = message.userType === 'admin' 
-                        ? `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
-                        : message.userId;
-                    
-                    // Yeni client kaydı
-                    clients.set(uniqueClientId, {
-                        ws: ws,
-                        id: message.userId,
-                        uniqueId: uniqueClientId,
-                        name: message.name,
-                        userType: message.userType || 'customer',
-                        registeredAt: new Date().toLocaleTimeString(),
-                        online: true
-                    });
-
-                    console.log(`👤 Registered: ${message.name} as ${uniqueClientId} (${message.userType})`);
-
+                    // Admin reconnection için gelişmiş logic
                     if (message.userType === 'admin') {
-                        // Admin'in aktif görüşme durumunu kontrol et
-                        const adminInCall = Array.from(activeCallAdmins.entries()).find(([adminId, callInfo]) => {
+                        // Aynı base ID'ye sahip mevcut admin var mı?
+                        const existingAdmins = Array.from(clients.entries()).filter(([clientId, clientData]) => 
+                            clientData.id === message.userId && 
+                            clientData.userType === 'admin'
+                        );
+                        
+                        // Aktif görüşmedeki admin var mı?
+                        const activeAdminEntry = Array.from(activeCallAdmins.entries()).find(([adminId, callInfo]) => {
                             return adminId.startsWith(message.userId + '_');
                         });
                         
-                        if (adminInCall) {
-                            console.log(`🔄 Admin ${uniqueClientId} reconnected during active call`);
-                            // Eski admin ID'sini yeni ID ile değiştir
-                            const [oldAdminId, callInfo] = adminInCall;
-                            activeCallAdmins.delete(oldAdminId);
-                            activeCallAdmins.set(uniqueClientId, callInfo);
+                        let uniqueClientId;
+                        
+                        if (activeAdminEntry) {
+                            // Bu admin aktif görüşmede, mevcut ID'yi koru
+                            const [existingAdminId, callInfo] = activeAdminEntry;
                             
-                            // Heartbeat'i güncelle
-                            const oldCallKey = `${callInfo.customerId}-${oldAdminId}`;
-                            const newCallKey = `${callInfo.customerId}-${uniqueClientId}`;
-                            
-                            if (activeHeartbeats.has(oldCallKey)) {
-                                const heartbeat = activeHeartbeats.get(oldCallKey);
-                                activeHeartbeats.delete(oldCallKey);
-                                activeHeartbeats.set(newCallKey, heartbeat);
-                                console.log(`💓 Heartbeat transferred: ${oldCallKey} → ${newCallKey}`);
+                            // Eski client kaydını temizle
+                            for (const [oldClientId, clientData] of existingAdmins) {
+                                if (clientData.ws.readyState !== WebSocket.OPEN) {
+                                    clients.delete(oldClientId);
+                                    console.log(`🧹 Cleaned up old admin client: ${oldClientId}`);
+                                }
                             }
+                            
+                            uniqueClientId = existingAdminId;
+                            
+                            // Mevcut call state'i yeni WebSocket ile güncelle
+                            clients.set(uniqueClientId, {
+                                ws: ws,
+                                id: message.userId,
+                                uniqueId: uniqueClientId,
+                                name: message.name,
+                                userType: 'admin',
+                                registeredAt: new Date().toLocaleTimeString(),
+                                online: true
+                            });
+                            
+                            console.log(`🔄 Admin ${message.userId} reconnected with preserved call state: ${uniqueClientId}`);
+                            
+                        } else {
+                            // Yeni admin connection veya aktif görüşme yok
+                            for (const [oldClientId, clientData] of existingAdmins) {
+                                clients.delete(oldClientId);
+                                console.log(`🧹 Cleaned up old admin client: ${oldClientId}`);
+                            }
+                            
+                            uniqueClientId = `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                            
+                            clients.set(uniqueClientId, {
+                                ws: ws,
+                                id: message.userId,
+                                uniqueId: uniqueClientId,
+                                name: message.name,
+                                userType: 'admin',
+                                registeredAt: new Date().toLocaleTimeString(),
+                                online: true
+                            });
+                            
+                            console.log(`👤 New admin registered: ${message.name} as ${uniqueClientId}`);
                         }
                         
                         ws.send(JSON.stringify({
@@ -1282,10 +1320,29 @@ wss.on('connection', (ws, req) => {
                             originalId: message.userId
                         }));
                         
-                        // Sadece müsait adminlere queue gönder
+                        // Queue'yu sadece müsait adminlere gönder
                         setTimeout(() => {
                             broadcastCallQueueToAdmins();
                         }, 500);
+                        
+                    } else {
+                        // Customer registration (unchanged)
+                        const existingClient = clients.get(message.userId);
+                        if (existingClient && existingClient.ws.readyState !== WebSocket.OPEN) {
+                            clients.delete(message.userId);
+                        }
+                        
+                        clients.set(message.userId, {
+                            ws: ws,
+                            id: message.userId,
+                            uniqueId: message.userId,
+                            name: message.name,
+                            userType: 'customer',
+                            registeredAt: new Date().toLocaleTimeString(),
+                            online: true
+                        });
+                        
+                        console.log(`👤 Customer registered: ${message.name} (${message.userId})`);
                     }
                     
                     broadcastUserList();
@@ -1504,27 +1561,42 @@ wss.on('connection', (ws, req) => {
         
         if (client && client.userType === 'admin') {
             const adminKey = client.uniqueId || client.id;
-            if (activeCallAdmins.has(adminKey)) {
-                console.log(`🔴 Admin ${adminKey} disconnected during call`);
+            
+            // SADECE bu admin'in aktif bir görüşmesi varsa ve başka admin'ler bu görüşmeyi devralacaksa kontrol et
+            const adminCallInfo = activeCallAdmins.get(adminKey);
+            
+            if (adminCallInfo) {
+                console.log(`🔴 Admin ${adminKey} disconnected during call with ${adminCallInfo.customerId}`);
                 
-                const callInfo = activeCallAdmins.get(adminKey);
-                if (callInfo) {
-                    const callKey = `${callInfo.customerId}-${adminKey}`;
-                    stopHeartbeat(callKey, 'admin_disconnected');
-                }
+                // 10 saniye bekle - admin reconnect olabilir
+                setTimeout(() => {
+                    // Admin hala disconnected mı kontrol et
+                    const reconnectedAdmin = Array.from(clients.values()).find(c => 
+                        c.userType === 'admin' && 
+                        c.id === client.id &&
+                        c.ws.readyState === WebSocket.OPEN
+                    );
+                    
+                    if (!reconnectedAdmin) {
+                        console.log(`💔 Admin ${adminKey} failed to reconnect, ending call`);
+                        // Admin gerçekten gitti, görüşmeyi sonlandır
+                        const callKey = `${adminCallInfo.customerId}-${adminKey}`;
+                        stopHeartbeat(callKey, 'admin_permanently_disconnected');
+                        activeCallAdmins.delete(adminKey);
+                    } else {
+                        console.log(`🔄 Admin ${client.id} successfully reconnected as ${reconnectedAdmin.uniqueId}`);
+                        // Admin reconnect oldu, güncelleme gerek yok
+                    }
+                }, 10000); // 10 saniye grace period
                 
+                // Şimdilik admin'i aktif tutmaya devam et
+            } else {
+                // Bu admin zaten görüşmede değil, güvenle temizle
                 activeCallAdmins.delete(adminKey);
             }
         }
         
-        if (client) {
-            for (const [callKey, heartbeat] of activeHeartbeats.entries()) {
-                if (callKey.includes(client.id)) {
-                    stopHeartbeat(callKey, 'connection_lost');
-                }
-            }
-        }
-        
+        // Client'ı listeden çıkar (ama aktif call state'i koru)
         for (const [key, clientData] of clients.entries()) {
             if (clientData.ws === ws) {
                 clients.delete(key);
@@ -1534,6 +1606,7 @@ wss.on('connection', (ws, req) => {
         
         broadcastUserList();
         
+        // Admin ayrıldıysa queue'yu tekrar broadcast et
         if (client && client.userType === 'admin') {
             setTimeout(() => {
                 broadcastCallQueueToAdmins();
