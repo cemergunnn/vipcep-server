@@ -6,7 +6,6 @@ const path = require('path');
 const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
-const PGSimpleStore = require('connect-pg-simple')(session);
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -27,14 +26,10 @@ const SECURITY_CONFIG = {
 };
 
 app.use(session({
-    store: new PGSimpleStore({
-        pool: pool,
-        tableName: 'session'
-    }),
     secret: SECURITY_CONFIG.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
+    resave: true,
+    saveUninitialized: true,
+    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
 app.use(cors());
@@ -43,7 +38,7 @@ app.use(express.static('.'));
 
 const wss = new WebSocket.Server({ server });
 
-// Global variables
+// Global değişkenler
 const clients = new Map();
 const activeHeartbeats = new Map();
 const activeCallAdmins = new Map();
@@ -54,7 +49,7 @@ const MAX_QUEUE_SIZE = 5;
 const CALL_TIMEOUT_DURATION = 30000;
 const HEARTBEAT_INTERVAL = 60000;
 
-// Helper Functions
+// Çoklu Arama Sistemi Helper Functions
 function generateCallId() {
     return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -94,9 +89,6 @@ function addToCallQueue(callData) {
     
     callTimeouts.set(callId, timeoutId);
     
-    broadcastCallQueueToAdmins();
-    broadcastQueuePosition(callData.userId);
-    
     return callEntry;
 }
 
@@ -112,10 +104,6 @@ function removeFromCallQueue(callId, reason = 'manual') {
     
     incomingCallQueue.delete(callId);
     broadcastCallQueueToAdmins();
-    
-    if (callData.userId) {
-        broadcastQueuePosition(callData.userId);
-    }
     
     return callData;
 }
@@ -139,20 +127,6 @@ function broadcastCallQueueToAdmins() {
             adminClient.ws.send(message);
         }
     });
-}
-
-function broadcastQueuePosition(userId) {
-    const queueArray = Array.from(incomingCallQueue.values()).sort((a, b) => a.timestamp - b.timestamp);
-    const position = queueArray.findIndex(call => call.userId === userId) + 1;
-    
-    const client = clients.get(userId);
-    if (client && client.ws.readyState === WebSocket.OPEN) {
-        client.ws.send(JSON.stringify({
-            type: 'queue-position',
-            position: position > 0 ? position : 0,
-            queueSize: queueArray.length
-        }));
-    }
 }
 
 function removeUserCallFromQueue(userId, reason = 'user_cancelled') {
@@ -219,7 +193,8 @@ async function recordFailedLogin(ip, userType = 'customer') {
             [ip, userType]
         );
         
-        return await checkRateLimit(ip, userType);
+        const rateStatus = await checkRateLimit(ip, userType);
+        return rateStatus;
     } catch (error) {
         return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
     }
@@ -292,9 +267,7 @@ async function initDatabase() {
             CREATE TABLE IF NOT EXISTS call_history (
                 id SERIAL PRIMARY KEY,
                 user_id VARCHAR(10),
-                user_name VARCHAR(255),
                 admin_id VARCHAR(10),
-                admin_name VARCHAR(255),
                 duration INTEGER DEFAULT 0,
                 credits_used INTEGER DEFAULT 0,
                 call_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -376,234 +349,442 @@ async function initDatabase() {
                 `, [id, name, credits]);
             }
         }
-    } catch (error) {
-        console.log('Database initialization error:', error.message);
-    }
-}
 
-// Super Admin Functions
-async function addUser(userId, name, credits) {
-    try {
-        const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [userId]);
-        if (existingUser.rows.length > 0) {
-            return { success: false, reason: 'User ID already exists' };
+        // Create normal admin
+        const normalAdminCheck = await pool.query('SELECT * FROM admins WHERE username = $1', ['admin1']);
+        if (normalAdminCheck.rows.length === 0) {
+            const hashedPassword = crypto.createHash('sha256').update('password123').digest('hex');
+            await pool.query(`
+                INSERT INTO admins (username, password_hash, role) 
+                VALUES ($1, $2, $3)
+            `, ['admin1', hashedPassword, 'normal']);
         }
-        
-        await pool.query(`
-            INSERT INTO approved_users (id, name, credits)
-            VALUES ($1, $2, $3)
-        `, [userId, name, credits]);
-        
-        return { success: true };
+
     } catch (error) {
-        return { success: false, reason: error.message };
+        console.log('Database error:', error.message);
     }
 }
 
-async function deleteUser(userId) {
+async function authenticateAdmin(username, password) {
     try {
-        const result = await pool.query('DELETE FROM approved_users WHERE id = $1', [userId]);
-        return { success: result.rowCount > 0, reason: result.rowCount > 0 ? '' : 'User not found' };
-    } catch (error) {
-        return { success: false, reason: error.message };
-    }
-}
-
-async function updateUserCredits(userId, credits) {
-    try {
-        const result = await pool.query(`
-            UPDATE approved_users 
-            SET credits = $2 
-            WHERE id = $1 
-            RETURNING *
-        `, [userId, credits]);
+        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+        const result = await pool.query(
+            'SELECT * FROM admins WHERE username = $1 AND password_hash = $2 AND is_active = TRUE',
+            [username, hashedPassword]
+        );
         
-        if (result.rowCount === 0) {
-            return { success: false, reason: 'User not found' };
+        if (result.rows.length > 0) {
+            const admin = result.rows[0];
+            await pool.query('UPDATE admins SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [admin.id]);
+            return admin;
         }
-        
-        await pool.query(`
-            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-            VALUES ($1, $2, $3, $4, $5)
-        `, [userId, 'update', credits, credits, 'Super admin credit update']);
-        
-        return { success: true };
+        return null;
     } catch (error) {
-        return { success: false, reason: error.message };
+        return null;
     }
 }
 
-async function getCallHistory() {
+async function isUserApproved(userId, userName) {
     try {
-        const result = await pool.query(`
-            SELECT ch.*, au.name as user_name, a.username as admin_name 
-            FROM call_history ch
-            LEFT JOIN approved_users au ON ch.user_id = au.id
-            LEFT JOIN admins a ON ch.admin_id = a.id
-            ORDER BY call_time DESC
-        `);
-        return { success: true, history: result.rows };
+        const result = await pool.query('SELECT * FROM approved_users WHERE id = $1', [userId]);
+        
+        if (result.rows.length > 0) {
+            const user = result.rows[0];
+            
+            if (user.name.toLowerCase().trim() === userName.toLowerCase().trim()) {
+                return {
+                    approved: true,
+                    credits: user.credits,
+                    totalCalls: user.total_calls || 0,
+                    lastCall: user.last_call,
+                    user: user
+                };
+            } else {
+                return { approved: false, reason: 'İsim uyuşmuyor.' };
+            }
+        } else {
+            return { approved: false, reason: 'ID kodu bulunamadı.' };
+        }
     } catch (error) {
-        return { success: false, reason: error.message };
+        return { approved: false, reason: 'Sistem hatası.' };
     }
 }
 
-// WebSocket Handling
-wss.on('connection', (ws, req) => {
-    const clientIP = req.socket.remoteAddress;
+// Heartbeat Functions
+function startHeartbeat(userId, adminId, callKey) {
+    const heartbeat = setInterval(async () => {
+        try {
+            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+            if (userResult.rows.length > 0) {
+                const currentCredits = userResult.rows[0].credits;
+                
+                if (currentCredits <= 0) {
+                    stopHeartbeat(callKey, 'no_credits');
+                    return;
+                }
+                
+                const newCredits = Math.max(0, currentCredits - 1);
+                await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+                
+                await pool.query(`
+                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                    VALUES ($1, $2, $3, $4, $5)
+                `, [userId, 'heartbeat', -1, newCredits, `Arama dakikası`]);
+                
+                broadcastCreditUpdate(userId, newCredits, 1);
+            }
+        } catch (error) {
+            console.log(`Heartbeat error ${userId}:`, error.message);
+        }
+    }, HEARTBEAT_INTERVAL);
     
+    activeHeartbeats.set(callKey, heartbeat);
+}
+
+function stopHeartbeat(callKey, reason = 'normal') {
+    const heartbeat = activeHeartbeats.get(callKey);
+    if (heartbeat) {
+        clearInterval(heartbeat);
+        activeHeartbeats.delete(callKey);
+        
+        const [userId, adminId] = callKey.split('-');
+        broadcastCallEnd(userId, adminId, reason);
+    }
+}
+
+function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
+    const customerClient = clients.get(userId);
+    if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+        customerClient.ws.send(JSON.stringify({
+            type: 'credit-update',
+            credits: newCredits,
+            creditsUsed: creditsUsed,
+            source: 'heartbeat'
+        }));
+    }
+    
+    const adminClients = Array.from(clients.values()).filter(c => c.userType === 'admin');
+    adminClients.forEach(client => {
+        if (client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(JSON.stringify({
+                type: 'auto-credit-update',
+                userId: userId,
+                creditsUsed: creditsUsed,
+                newCredits: newCredits,
+                source: 'heartbeat'
+            }));
+        }
+    });
+}
+
+function broadcastCallEnd(userId, adminId, reason) {
+    const customerClient = clients.get(userId);
+    if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+        customerClient.ws.send(JSON.stringify({
+            type: 'call-ended',
+            reason: reason,
+            endedBy: 'system'
+        }));
+    }
+    
+    const adminClient = clients.get(adminId);
+    if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
+        adminClient.ws.send(JSON.stringify({
+            type: 'call-ended',
+            userId: userId,
+            reason: reason,
+            endedBy: 'system'
+        }));
+    }
+}
+
+// Main Routes
+app.get('/', (req, res) => {
+    if (req.session.superAdmin) {
+        return res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
+    }
+    if (req.session.normalAdmin) {
+        return res.redirect(SECURITY_CONFIG.NORMAL_ADMIN_PATH);
+    }
+    
+    const host = req.get('host');
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🔐 VIPCEP Güvenli Giriş</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: system-ui; background: linear-gradient(135deg, #1e293b, #334155); color: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+                .login-container { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); max-width: 400px; width: 100%; }
+                .form-group { margin-bottom: 20px; }
+                .form-input { width: 100%; padding: 14px; border: 2px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box; }
+                .form-input::placeholder { color: rgba(255,255,255,0.6); }
+                .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; transition: all 0.3s ease; }
+                .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+                .btn-customer { background: linear-gradient(135deg, #059669, #047857); }
+                .title { text-align: center; margin-bottom: 30px; color: #dc2626; font-size: 24px; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <div class="title">🔐 VIPCEP</div>
+                <div class="form-group">
+                    <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                </div>
+                <button class="btn" onclick="adminLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
+                <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
+                <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
+            </div>
+            <script>
+                async function adminLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    if (!username || !password) return alert('Kullanıcı adı ve şifre gerekli!');
+                    
+                    try {
+                        const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                        } else {
+                            alert(result.error || 'Giriş başarısız!');
+                        }
+                    } catch (error) {
+                        alert('Bağlantı hatası!');
+                    }
+                }
+                
+                async function normalAdminLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    if (!username || !password) return alert('Kullanıcı adı ve şifre gerekli!');
+                    
+                    try {
+                        const response = await fetch('/auth/admin-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                        } else {
+                            alert(result.error || 'Giriş başarısız!');
+                        }
+                    } catch (error) {
+                        alert('Bağlantı hatası!');
+                    }
+                }
+            </script>
+        </body>
+        </html>
+    `);
+});
+
+// Auth endpoints
+app.post('/auth/super-login', async (req, res) => {
+    const { username, password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    try {
+        const rateStatus = await checkRateLimit(clientIP, 'super-admin');
+        if (!rateStatus.allowed) {
+            return res.json({ success: false, error: 'Çok fazla başarısız deneme!' });
+        }
+        
+        const admin = await authenticateAdmin(username, password);
+        if (admin && admin.role === 'super') {
+            req.session.superAdmin = { id: admin.id, username: admin.username, loginTime: new Date() };
+            res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
+        } else {
+            await recordFailedLogin(clientIP, 'super-admin');
+            res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
+        }
+    } catch (error) {
+        res.json({ success: false, error: 'Sistem hatası!' });
+    }
+});
+
+app.post('/auth/admin-login', async (req, res) => {
+    const { username, password } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress;
+    
+    try {
+        const rateStatus = await checkRateLimit(clientIP, 'admin');
+        if (!rateStatus.allowed) {
+            return res.json({ success: false, error: 'Çok fazla başarısız deneme!' });
+        }
+        
+        const admin = await authenticateAdmin(username, password);
+        if (admin && admin.role === 'normal') {
+            req.session.normalAdmin = { id: admin.id, username: admin.username, loginTime: new Date() };
+            res.json({ success: true, redirectUrl: SECURITY_CONFIG.NORMAL_ADMIN_PATH });
+        } else {
+            await recordFailedLogin(clientIP, 'admin');
+            res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
+        }
+    } catch (error) {
+        res.json({ success: false, error: 'Sistem hatası!' });
+    }
+});
+
+app.get('/auth/check-session', (req, res) => {
+    if (req.session && req.session.superAdmin) {
+        res.json({ authenticated: true, role: 'super', username: req.session.superAdmin.username });
+    } else if (req.session && req.session.normalAdmin) {
+        res.json({ authenticated: true, role: 'normal', username: req.session.normalAdmin.username });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+app.post('/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.json({ success: false, error: 'Çıkış hatası' });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Route handlers
+app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'super-admin.html'));
+});
+
+app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
+});
+
+app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'customer-app.html'));
+});
+
+// API Routes
+app.get('/api/approved-users', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/stats', async (req, res) => {
+    try {
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
+        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
+        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
+        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
+        
+        res.json({
+            totalUsers: parseInt(totalUsers.rows[0].count),
+            totalCalls: parseInt(totalCalls.rows[0].count),
+            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
+            todayCalls: parseInt(todayCalls.rows[0].count),
+            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
+            callQueueSize: incomingCallQueue.size,
+            maxQueueSize: MAX_QUEUE_SIZE
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        clients: clients.size,
+        callQueueSize: incomingCallQueue.size,
+        maxQueueSize: MAX_QUEUE_SIZE
+    });
+});
+
+// WebSocket Handler
+wss.on('connection', (ws, req) => {
+    const clientIP = req.socket.remoteAddress || 'unknown';
+
     ws.on('message', async (data) => {
         try {
             const message = JSON.parse(data);
-            const senderId = message.userId || message.uniqueId;
-            const senderType = message.userType;
             
+            let senderInfo = null;
+            for (const [clientId, clientData] of clients.entries()) {
+                if (clientData.ws === ws) {
+                    senderInfo = clientData;
+                    break;
+                }
+            }
+            
+            const senderId = senderInfo ? (senderInfo.uniqueId || senderInfo.id) : (message.userId || 'unknown');
+            const senderType = senderInfo ? senderInfo.userType : 'unknown';
+
             switch (message.type) {
-                case 'login':
-                    const rateStatus = await checkRateLimit(clientIP, message.userType);
-                    if (!rateStatus.allowed) {
+                case 'register':
+                    const uniqueClientId = message.userType === 'admin' 
+                        ? `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                        : message.userId;
+                    
+                    clients.set(uniqueClientId, {
+                        ws: ws,
+                        id: message.userId,
+                        uniqueId: uniqueClientId,
+                        name: message.name,
+                        userType: message.userType || 'customer',
+                        registeredAt: new Date().toLocaleTimeString(),
+                        online: true
+                    });
+
+                    if (message.userType === 'admin') {
+                        ws.send(JSON.stringify({
+                            type: 'admin-registered',
+                            uniqueId: uniqueClientId,
+                            originalId: message.userId
+                        }));
+                        broadcastCallQueueToAdmins();
+                    }
+                    
+                    broadcastUserList();
+                    break;
+
+                case 'login-request':
+                    const rateLimit = await checkRateLimit(clientIP);
+                    if (!rateLimit.allowed) {
                         ws.send(JSON.stringify({
                             type: 'login-response',
                             success: false,
-                            reason: `Rate limit exceeded. Try again after ${new Date(rateStatus.resetTime).toLocaleTimeString()}`,
-                            attempts: rateStatus.attempts,
-                            remaining: rateStatus.remaining
+                            rateLimited: true,
+                            error: `Çok fazla başarısız deneme!`
                         }));
-                        return;
+                        break;
                     }
+
+                    const approval = await isUserApproved(message.userId, message.userName);
                     
-                    if (message.userType === 'customer') {
-                        const userResult = await pool.query('SELECT * FROM approved_users WHERE id = $1 AND status = $2', [message.userId, 'active']);
-                        if (userResult.rows.length > 0) {
-                            const clientData = {
-                                id: message.userId,
-                                name: userResult.rows[0].name,
-                                userType: 'customer',
-                                credits: userResult.rows[0].credits,
-                                ws: ws,
-                                registeredAt: Date.now(),
-                                online: true
-                            };
-                            clients.set(message.userId, clientData);
-                            
-                            ws.send(JSON.stringify({
-                                type: 'login-response',
-                                success: true,
-                                user: clientData
-                            }));
-                            broadcastUserList();
-                            broadcastQueuePosition(message.userId);
-                        } else {
-                            await recordFailedLogin(clientIP);
-                            ws.send(JSON.stringify({
-                                type: 'login-response',
-                                success: false,
-                                reason: 'Invalid user ID'
-                            }));
-                        }
-                    } else if (message.userType === 'admin') {
-                        const adminResult = await pool.query('SELECT * FROM admins WHERE username = $1', [message.username]);
-                        if (adminResult.rows.length > 0) {
-                            const admin = adminResult.rows[0];
-                            const hashedPassword = crypto.createHash('sha256').update(message.password).digest('hex');
-                            
-                            if (hashedPassword === admin.password_hash) {
-                                if (admin.role === 'super' && !verifyTOTP(admin.totp_secret, message.totp)) {
-                                    await recordFailedLogin(clientIP, 'admin');
-                                    ws.send(JSON.stringify({
-                                        type: 'login-response',
-                                        success: false,
-                                        reason: 'Invalid 2FA code'
-                                    }));
-                                    return;
-                                }
-                                
-                                const uniqueId = `${admin.id}_${crypto.randomBytes(4).toString('hex')}`;
-                                const clientData = {
-                                    id: admin.id,
-                                    uniqueId: uniqueId,
-                                    username: admin.username,
-                                    userType: 'admin',
-                                    role: admin.role,
-                                    ws: ws,
-                                    registeredAt: Date.now(),
-                                    online: true,
-                                    status: activeCallAdmins.has(uniqueId) ? 'busy' : 'available'
-                                };
-                                clients.set(uniqueId, clientData);
-                                
-                                ws.send(JSON.stringify({
-                                    type: 'login-response',
-                                    success: true,
-                                    user: clientData,
-                                    totpQR: admin.role === 'super' && !admin.totp_secret ? generateTOTPQR(admin.username, generateTOTPSecret()) : null
-                                }));
-                                broadcastUserList();
-                                if (admin.role === 'super') {
-                                    const callHistory = await getCallHistory();
-                                    ws.send(JSON.stringify({
-                                        type: 'call-history',
-                                        history: callHistory.history
-                                    }));
-                                }
-                            } else {
-                                await recordFailedLogin(clientIP, 'admin');
-                                ws.send(JSON.stringify({
-                                    type: 'login-response',
-                                    success: false,
-                                    reason: 'Invalid credentials'
-                                }));
-                            }
-                        } else {
-                            await recordFailedLogin(clientIP, 'admin');
-                            ws.send(JSON.stringify({
-                                type: 'login-response',
-                                success: false,
-                                reason: 'Invalid credentials'
-                            }));
-                        }
-                    }
-                    break;
-
-                case 'add-user':
-                    if (senderType === 'admin' && clients.get(senderId).role === 'super') {
-                        const result = await addUser(message.userId, message.name, message.credits);
+                    if (approval.approved) {
                         ws.send(JSON.stringify({
-                            type: 'add-user-response',
-                            success: result.success,
-                            reason: result.reason
+                            type: 'login-response',
+                            success: true,
+                            credits: approval.credits,
+                            user: approval.user
                         }));
-                        if (result.success) {
-                            broadcastUserList();
-                        }
-                    }
-                    break;
-
-                case 'delete-user':
-                    if (senderType === 'admin' && clients.get(senderId).role === 'super') {
-                        const result = await deleteUser(message.userId);
+                    } else {
+                        await recordFailedLogin(clientIP);
                         ws.send(JSON.stringify({
-                            type: 'delete-user-response',
-                            success: result.success,
-                            reason: result.reason
+                            type: 'login-response',
+                            success: false,
+                            reason: approval.reason
                         }));
-                        if (result.success) {
-                            broadcastUserList();
-                        }
-                    }
-                    break;
-
-                case 'update-credits':
-                    if (senderType === 'admin' && clients.get(senderId).role === 'super') {
-                        const result = await updateUserCredits(message.userId, message.credits);
-                        ws.send(JSON.stringify({
-                            type: 'update-credits-response',
-                            success: result.success,
-                            reason: result.reason
-                        }));
-                        if (result.success) {
-                            broadcastUserList();
-                        }
                     }
                     break;
 
@@ -613,6 +794,7 @@ wss.on('connection', (ws, req) => {
                         userName: message.userName,
                         credits: message.credits
                     });
+                    
                     broadcastCallQueueToAdmins();
                     break;
 
@@ -630,12 +812,6 @@ wss.on('connection', (ws, req) => {
                         customerId: acceptedCall.userId,
                         callStartTime: Date.now()
                     });
-                    
-                    const senderClient = clients.get(senderId);
-                    if (senderClient) {
-                        senderClient.status = 'busy';
-                        broadcastUserList();
-                    }
                     
                     const acceptedCustomer = clients.get(acceptedCall.userId);
                     if (acceptedCustomer && acceptedCustomer.ws.readyState === WebSocket.OPEN) {
@@ -660,13 +836,6 @@ wss.on('connection', (ws, req) => {
                     
                     const acceptCallKey = `${acceptedCall.userId}-${senderId}`;
                     startHeartbeat(acceptedCall.userId, senderId, acceptCallKey);
-                    
-                    // Record call in history
-                    const adminClient = clients.get(senderId);
-                    await pool.query(`
-                        INSERT INTO call_history (user_id, user_name, admin_id, admin_name, call_time)
-                        VALUES ($1, $2, $3, $4, $5)
-                    `, [acceptedCall.userId, acceptedCall.userName, adminClient.id, adminClient.username, new Date()]);
                     break;
 
                 case 'reject-call-by-id':
@@ -710,18 +879,8 @@ wss.on('connection', (ws, req) => {
                 case 'end-call':
                     if (senderType === 'admin') {
                         activeCallAdmins.delete(senderId);
-                        const senderClient = clients.get(senderId);
-                        if (senderClient) {
-                            senderClient.status = 'available';
-                            broadcastUserList();
-                        }
                     } else if (message.targetId) {
                         activeCallAdmins.delete(message.targetId);
-                        const targetClient = clients.get(message.targetId);
-                        if (targetClient) {
-                            targetClient.status = 'available';
-                            broadcastUserList();
-                        }
                     }
                     
                     const endCallKey = message.targetId ? `${senderId}-${message.targetId}` : `${senderId}-ADMIN001`;
@@ -729,25 +888,6 @@ wss.on('connection', (ws, req) => {
                     
                     const duration = message.duration || 0;
                     const creditsUsed = Math.ceil(duration / 60);
-                    
-                    // Update call history
-                    await pool.query(`
-                        UPDATE call_history 
-                        SET duration = $1, credits_used = $2, end_reason = $3
-                        WHERE user_id = $4 AND admin_id = $5 AND call_time = (SELECT MAX(call_time) FROM call_history WHERE user_id = $4 AND admin_id = $5)
-                    `, [duration, creditsUsed, 'normal', senderType === 'customer' ? senderId : message.targetId, senderType === 'admin' ? senderId : message.targetId]);
-                    
-                    if (creditsUsed > 0 && senderType === 'customer') {
-                        await pool.query(`
-                            UPDATE approved_users 
-                            SET credits = credits - $1 
-                            WHERE id = $2
-                        `, [creditsUsed, senderId]);
-                        await pool.query(`
-                            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-                            VALUES ($1, $2, $3, (SELECT credits FROM approved_users WHERE id = $1), $4)
-                        `, [senderId, 'deduction', -creditsUsed, 'Call credit deduction']);
-                    }
                     
                     if (message.targetId) {
                         const endTarget = findWebRTCTarget(message.targetId, senderType);
@@ -767,20 +907,9 @@ wss.on('connection', (ws, req) => {
                             broadcastCallQueueToAdmins();
                         }, 1000);
                     }
-                    
-                    // Send updated call history to super admins
-                    const superAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.role === 'super');
-                    const callHistory = await getCallHistory();
-                    superAdmins.forEach(admin => {
-                        if (admin.ws.readyState === WebSocket.OPEN) {
-                            admin.ws.send(JSON.stringify({
-                                type: 'call-history',
-                                history: callHistory.history
-                            }));
-                        }
-                    });
                     break;
             }
+
         } catch (error) {
             console.log('Message processing error:', error.message);
         }
@@ -797,7 +926,6 @@ wss.on('connection', (ws, req) => {
             const adminKey = client.uniqueId || client.id;
             if (activeCallAdmins.has(adminKey)) {
                 activeCallAdmins.delete(adminKey);
-                client.status = 'available';
             }
         }
         
@@ -863,73 +991,13 @@ function findWebRTCTarget(targetId, sourceType) {
     return null;
 }
 
-function startHeartbeat(userId, adminId, callKey) {
-    const heartbeat = setInterval(() => {
-        const userClient = clients.get(userId);
-        const adminClient = clients.get(adminId);
-        
-        if (!userClient || !adminClient || 
-            userClient.ws.readyState !== WebSocket.OPEN || 
-            adminClient.ws.readyState !== WebSocket.OPEN) {
-            stopHeartbeat(callKey, 'connection_lost');
-            return;
-        }
-        
-        userClient.ws.send(JSON.stringify({ type: 'heartbeat' }));
-        adminClient.ws.send(JSON.stringify({ type: 'heartbeat' }));
-    }, HEARTBEAT_INTERVAL);
-    
-    activeHeartbeats.set(callKey, heartbeat);
-}
-
-function stopHeartbeat(callKey, reason) {
-    const heartbeat = activeHeartbeats.get(callKey);
-    if (heartbeat) {
-        clearInterval(heartbeat);
-        activeHeartbeats.delete(callKey);
-    }
-    
-    const [userId, adminId] = callKey.split('-');
-    if (reason === 'connection_lost') {
-        const userClient = clients.get(userId);
-        const adminClient = clients.get(adminId);
-        
-        if (userClient && userClient.ws.readyState === WebSocket.OPEN) {
-            userClient.ws.send(JSON.stringify({
-                type: 'call-ended',
-                reason: 'connection_lost'
-            }));
-        }
-        
-        if (adminClient && adminClient.ws.readyState === WebSocket.OPEN) {
-            adminClient.ws.send(JSON.stringify({
-                type: 'call-ended',
-                reason: 'connection_lost'
-            }));
-            adminClient.status = 'available';
-            broadcastUserList();
-        }
-        
-        activeCallAdmins.delete(adminId);
-        broadcastCallQueueToAdmins();
-        
-        // Update call history for connection loss
-        pool.query(`
-            UPDATE call_history 
-            SET end_reason = $1, connection_lost = $2
-            WHERE user_id = $3 AND admin_id = $4 AND call_time = (SELECT MAX(call_time) FROM call_history WHERE user_id = $3 AND admin_id = $4)
-        `, ['connection_lost', true, userId, adminId]);
-    }
-}
-
 function broadcastUserList() {
     const userList = Array.from(clients.values()).map(client => ({
         id: client.id,
-        name: client.name || client.username,
+        name: client.name,
         userType: client.userType,
         registeredAt: client.registeredAt,
-        online: client.online,
-        status: client.status || 'available'
+        online: client.online
     }));
 
     const message = JSON.stringify({
@@ -955,7 +1023,7 @@ app.use((req, res) => {
     `);
 });
 
-// Server start
+// Server başlatma
 async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
     
@@ -982,7 +1050,7 @@ async function startServer() {
     });
 }
 
-// Error handling
+// Hata yakalama
 process.on('uncaughtException', (error) => {
     console.log('❌ Yakalanmamış hata:', error.message);
 });
@@ -1010,7 +1078,7 @@ process.on('SIGTERM', () => {
     });
 });
 
-// Start server
+// Server'ı başlat
 startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
