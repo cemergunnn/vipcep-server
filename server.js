@@ -592,52 +592,175 @@ app.get('/', (req, res) => {
                 .form-group { margin-bottom: 20px; }
                 .form-input { width: 100%; padding: 14px; border: 2px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box; }
                 .form-input::placeholder { color: rgba(255,255,255,0.6); }
+                .form-input:focus { outline: none; border-color: #dc2626; }
                 .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; transition: all 0.3s ease; }
                 .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+                .btn:disabled { opacity: 0.6; cursor: not-allowed; }
                 .btn-customer { background: linear-gradient(135deg, #059669, #047857); }
                 .title { text-align: center; margin-bottom: 30px; color: #dc2626; font-size: 24px; font-weight: bold; }
+                .twofa-section { display: none; }
+                .twofa-section.active { display: block; }
+                .twofa-code { text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; }
+                .back-btn { background: linear-gradient(135deg, #64748b, #475569); }
+                .error-msg { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 10px; border-radius: 6px; margin: 10px 0; text-align: center; font-size: 14px; }
+                .success-msg { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; padding: 10px; border-radius: 6px; margin: 10px 0; text-align: center; font-size: 14px; }
+                .loading { opacity: 0.7; pointer-events: none; }
+                .twofa-info { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; padding: 12px; border-radius: 6px; margin: 10px 0; font-size: 13px; text-align: center; }
             </style>
         </head>
         <body>
             <div class="login-container">
                 <div class="title">🔐 VIPCEP</div>
-                <div class="form-group">
-                    <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
+                
+                <!-- İlk Adım: Username/Password -->
+                <div id="step1">
+                    <div class="form-group">
+                        <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                    </div>
+                    <button class="btn" id="superAdminBtn" onclick="startSuperLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
+                    <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
+                    <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
                 </div>
-                <div class="form-group">
-                    <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                
+                <!-- İkinci Adım: 2FA -->
+                <div id="step2" class="twofa-section">
+                    <div class="twofa-info">
+                        🔐 İki faktörlü kimlik doğrulaması gerekli
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="totpCode" class="form-input twofa-code" placeholder="000000" maxlength="6" autocomplete="off">
+                    </div>
+                    <button class="btn" id="verify2FABtn" onclick="verify2FA()">🔐 DOĞ​RULA</button>
+                    <button class="btn back-btn" onclick="goBackToStep1()">← GERİ</button>
                 </div>
-                <button class="btn" onclick="adminLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
-                <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
-                <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
+                
+                <div id="messageArea"></div>
             </div>
+            
             <script>
-                async function adminLogin() {
+                let currentStep = 1;
+                let currentUsername = '';
+                let currentPassword = '';
+                
+                function showMessage(message, type = 'error') {
+                    const area = document.getElementById('messageArea');
+                    area.innerHTML = \`<div class="\${type}-msg">\${message}</div>\`;
+                    setTimeout(() => { area.innerHTML = ''; }, 5000);
+                }
+                
+                function setLoading(loading) {
+                    const container = document.querySelector('.login-container');
+                    if (loading) {
+                        container.classList.add('loading');
+                    } else {
+                        container.classList.remove('loading');
+                    }
+                }
+                
+                function goToStep2() {
+                    currentStep = 2;
+                    document.getElementById('step1').style.display = 'none';
+                    document.getElementById('step2').style.display = 'block';
+                    document.getElementById('totpCode').focus();
+                }
+                
+                function goBackToStep1() {
+                    currentStep = 1;
+                    document.getElementById('step1').style.display = 'block';
+                    document.getElementById('step2').style.display = 'none';
+                    document.getElementById('totpCode').value = '';
+                    document.getElementById('messageArea').innerHTML = '';
+                }
+                
+                async function startSuperLogin() {
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
-                    if (!username || !password) return alert('Kullanıcı adı ve şifre gerekli!');
+                    
+                    if (!username || !password) {
+                        return showMessage('Kullanıcı adı ve şifre gerekli!');
+                    }
+                    
+                    currentUsername = username;
+                    currentPassword = password;
+                    
+                    setLoading(true);
                     
                     try {
                         const response = await fetch('/auth/super-login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, password })
+                            body: JSON.stringify({ username, password, step: 'credentials' })
                         });
+                        
                         const result = await response.json();
+                        
                         if (result.success) {
+                            // 2FA gerektirmeyen giriş
                             window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                        } else if (result.require2FA) {
+                            // 2FA gerekli
+                            showMessage('2FA kodu girin', 'success');
+                            goToStep2();
                         } else {
-                            alert(result.error || 'Giriş başarısız!');
+                            // Hata
+                            showMessage(result.error || 'Giriş başarısız!');
                         }
                     } catch (error) {
-                        alert('Bağlantı hatası!');
+                        showMessage('Bağlantı hatası!');
                     }
+                    
+                    setLoading(false);
+                }
+                
+                async function verify2FA() {
+                    const totpCode = document.getElementById('totpCode').value.trim();
+                    
+                    if (!totpCode || totpCode.length !== 6 || !/^\\d{6}$/.test(totpCode)) {
+                        return showMessage('6 haneli kod gerekli!');
+                    }
+                    
+                    setLoading(true);
+                    
+                    try {
+                        const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                username: currentUsername, 
+                                password: currentPassword,
+                                totpCode: totpCode,
+                                step: '2fa' 
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showMessage('Giriş başarılı! Yönlendiriliyor...', 'success');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                            }, 1000);
+                        } else {
+                            showMessage(result.error || '2FA kodu hatalı!');
+                            document.getElementById('totpCode').value = '';
+                            document.getElementById('totpCode').focus();
+                        }
+                    } catch (error) {
+                        showMessage('Bağlantı hatası!');
+                    }
+                    
+                    setLoading(false);
                 }
                 
                 async function normalAdminLogin() {
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
-                    if (!username || !password) return alert('Kullanıcı adı ve şifre gerekli!');
+                    if (!username || !password) return showMessage('Kullanıcı adı ve şifre gerekli!');
+                    
+                    setLoading(true);
                     
                     try {
                         const response = await fetch('/auth/admin-login', {
@@ -647,14 +770,35 @@ app.get('/', (req, res) => {
                         });
                         const result = await response.json();
                         if (result.success) {
-                            window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                            showMessage('Giriş başarılı!', 'success');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                            }, 1000);
                         } else {
-                            alert(result.error || 'Giriş başarısız!');
+                            showMessage(result.error || 'Giriş başarısız!');
                         }
                     } catch (error) {
-                        alert('Bağlantı hatası!');
+                        showMessage('Bağlantı hatası!');
                     }
+                    
+                    setLoading(false);
                 }
+                
+                // Enter tuşu desteği
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (currentStep === 1) {
+                            startSuperLogin();
+                        } else if (currentStep === 2) {
+                            verify2FA();
+                        }
+                    }
+                });
+                
+                // 2FA kod input sadece sayı kabul et
+                document.getElementById('totpCode').addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                });
             </script>
         </body>
         </html>
@@ -663,7 +807,7 @@ app.get('/', (req, res) => {
 
 // Auth endpoints
 app.post('/auth/super-login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, totpCode, step } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
     
     try {
@@ -673,14 +817,53 @@ app.post('/auth/super-login', async (req, res) => {
         }
         
         const admin = await authenticateAdmin(username, password);
-        if (admin && admin.role === 'super') {
-            req.session.superAdmin = { id: admin.id, username: admin.username, loginTime: new Date() };
-            res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
-        } else {
+        if (!admin || admin.role !== 'super') {
             await recordFailedLogin(clientIP, 'super-admin');
-            res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
+            return res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
         }
+        
+        // 2FA kontrolü
+        if (admin.totp_secret) {
+            if (step !== '2fa') {
+                // İlk adım - username/password doğru, 2FA iste
+                req.session.tempSuperAdmin = { 
+                    id: admin.id, 
+                    username: admin.username,
+                    timestamp: Date.now()
+                };
+                return res.json({ 
+                    success: false, 
+                    require2FA: true,
+                    message: '2FA kodu gerekli'
+                });
+            } else {
+                // İkinci adım - 2FA kod kontrolü
+                if (!req.session.tempSuperAdmin || 
+                    req.session.tempSuperAdmin.id !== admin.id ||
+                    Date.now() - req.session.tempSuperAdmin.timestamp > 300000) { // 5 dakika timeout
+                    return res.json({ success: false, error: 'Oturum süresi doldu, tekrar deneyin!' });
+                }
+                
+                if (!totpCode || !verifyTOTP(admin.totp_secret, totpCode)) {
+                    await recordFailedLogin(clientIP, 'super-admin');
+                    return res.json({ success: false, error: 'Geçersiz 2FA kodu!' });
+                }
+                
+                // 2FA başarılı
+                delete req.session.tempSuperAdmin;
+            }
+        }
+        
+        // Giriş başarılı
+        req.session.superAdmin = { 
+            id: admin.id, 
+            username: admin.username, 
+            loginTime: new Date() 
+        };
+        res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
+        
     } catch (error) {
+        console.log('Super login error:', error);
         res.json({ success: false, error: 'Sistem hatası!' });
     }
 });
@@ -1034,10 +1217,28 @@ wss.on('connection', (ws, req) => {
 
             switch (message.type) {
                 case 'register':
+                    // Önce mevcut kaydı kontrol et (sayfa yenileme durumu)
+                    let existingClientId = null;
+                    for (const [clientId, clientData] of clients.entries()) {
+                        if (clientData.id === message.userId && 
+                            clientData.userType === message.userType &&
+                            clientData.ws.readyState !== WebSocket.OPEN) {
+                            existingClientId = clientId;
+                            break;
+                        }
+                    }
+                    
+                    // Eski kaydı temizle
+                    if (existingClientId) {
+                        console.log(`🔄 Replacing old client: ${existingClientId}`);
+                        clients.delete(existingClientId);
+                    }
+                    
                     const uniqueClientId = message.userType === 'admin' 
                         ? `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
                         : message.userId;
                     
+                    // Yeni client kaydı
                     clients.set(uniqueClientId, {
                         ws: ws,
                         id: message.userId,
@@ -1051,12 +1252,40 @@ wss.on('connection', (ws, req) => {
                     console.log(`👤 Registered: ${message.name} as ${uniqueClientId} (${message.userType})`);
 
                     if (message.userType === 'admin') {
+                        // Admin'in aktif görüşme durumunu kontrol et
+                        const adminInCall = Array.from(activeCallAdmins.entries()).find(([adminId, callInfo]) => {
+                            return adminId.startsWith(message.userId + '_');
+                        });
+                        
+                        if (adminInCall) {
+                            console.log(`🔄 Admin ${uniqueClientId} reconnected during active call`);
+                            // Eski admin ID'sini yeni ID ile değiştir
+                            const [oldAdminId, callInfo] = adminInCall;
+                            activeCallAdmins.delete(oldAdminId);
+                            activeCallAdmins.set(uniqueClientId, callInfo);
+                            
+                            // Heartbeat'i güncelle
+                            const oldCallKey = `${callInfo.customerId}-${oldAdminId}`;
+                            const newCallKey = `${callInfo.customerId}-${uniqueClientId}`;
+                            
+                            if (activeHeartbeats.has(oldCallKey)) {
+                                const heartbeat = activeHeartbeats.get(oldCallKey);
+                                activeHeartbeats.delete(oldCallKey);
+                                activeHeartbeats.set(newCallKey, heartbeat);
+                                console.log(`💓 Heartbeat transferred: ${oldCallKey} → ${newCallKey}`);
+                            }
+                        }
+                        
                         ws.send(JSON.stringify({
                             type: 'admin-registered',
                             uniqueId: uniqueClientId,
                             originalId: message.userId
                         }));
-                        broadcastCallQueueToAdmins();
+                        
+                        // Sadece müsait adminlere queue gönder
+                        setTimeout(() => {
+                            broadcastCallQueueToAdmins();
+                        }, 500);
                     }
                     
                     broadcastUserList();
