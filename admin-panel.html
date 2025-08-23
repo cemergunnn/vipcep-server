@@ -5,83 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIPCEP Admin Panel</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
         
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe); 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
             padding: 20px; 
             min-height: 100vh; 
         }
         
-        .container { max-width: 1400px; margin: 0 auto; }
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+        }
         
-        /* Header */
         .header { 
             background: linear-gradient(135deg, #22c55e, #16a34a); 
             color: white; 
-            padding: 8px 16px; 
-            border-radius: 6px; 
-            margin-bottom: 16px; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3); 
+            margin-bottom: 25px; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
         }
         
-        .header h1 { font-size: 18px; margin-bottom: 1px; }
-        .header p { opacity: 0.8; font-size: 11px; }
+        .header-left h1 { 
+            font-size: 24px; 
+            margin-bottom: 5px; 
+        }
         
-        .admin-info { text-align: right; }
-        .admin-name { font-weight: 600; font-size: 13px; }
+        .header-left p { 
+            opacity: 0.9; 
+            font-size: 14px; 
+        }
+        
+        .header-right { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        
+        .admin-info { 
+            text-align: right; 
+        }
+        
+        .admin-name { 
+            font-weight: 700; 
+            font-size: 16px; 
+        }
+        
         .admin-role { 
-            font-size: 9px; 
+            font-size: 12px; 
+            opacity: 0.8; 
             background: rgba(255,255,255,0.2); 
-            padding: 1px 5px; 
-            border-radius: 6px; 
-            margin-top: 2px; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            margin-top: 5px; 
         }
         
         .logout-btn { 
             background: rgba(239, 68, 68, 0.3); 
             color: white; 
             border: 1px solid rgba(239, 68, 68, 0.5); 
-            padding: 4px 10px; 
-            border-radius: 4px; 
+            padding: 8px 16px; 
+            border-radius: 6px; 
             cursor: pointer; 
-            font-size: 11px; 
+            font-size: 14px; 
+            transition: all 0.3s ease; 
         }
         
-        .logout-btn:hover { background: rgba(239, 68, 68, 0.5); }
+        .logout-btn:hover { 
+            background: rgba(239, 68, 68, 0.5); 
+            transform: translateY(-1px); 
+        }
         
         .status { 
             display: flex; 
             align-items: center; 
-            gap: 5px; 
-            background: rgba(255,255,255,0.15); 
-            padding: 3px 8px; 
-            border-radius: 12px; 
-            font-size: 11px;
+            gap: 10px; 
+            background: rgba(255,255,255,0.2); 
+            padding: 8px 15px; 
+            border-radius: 20px; 
         }
         
         .status-dot { 
-            width: 6px; 
-            height: 6px; 
+            width: 12px; 
+            height: 12px; 
             border-radius: 50%; 
-            background: #22c55e;
             animation: pulse 2s infinite; 
         }
         
-        @keyframes pulse { 
-            0%, 100% { transform: scale(1); opacity: 1; } 
-            50% { transform: scale(1.1); opacity: 0.8; } 
+        .connected { 
+            background: #22c55e; 
         }
         
-        /* Main Layout */
+        .disconnected { 
+            background: #ef4444; 
+        }
+        
+        .busy { 
+            background: #f59e0b; 
+        }
+        
+        @keyframes pulse { 
+            0%, 100% { 
+                transform: scale(1); 
+                opacity: 1; 
+            } 
+            50% { 
+                transform: scale(1.1); 
+                opacity: 0.8; 
+            } 
+        }
+        
         .main-content { 
             display: grid; 
             grid-template-columns: 1fr 1fr 300px; 
             gap: 20px; 
-            margin-bottom: 20px;
         }
         
         .panel { 
@@ -101,11 +147,49 @@
             gap: 8px; 
         }
         
-        /* Call Queue */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        }
+        
+        .stat-card { 
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9); 
+            padding: 20px; 
+            border-radius: 10px; 
+            text-align: center; 
+            border-left: 4px solid #22c55e; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number { 
+            font-size: 28px; 
+            font-weight: 800; 
+            color: #22c55e; 
+            margin-bottom: 5px; 
+        }
+        
+        .stat-label { 
+            font-size: 12px; 
+            color: #64748b; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+            letter-spacing: 0.5px; 
+        }
+        
+        /* Enhanced Call Queue System */
         .call-queue-container { 
             background: white; 
             border-radius: 12px; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            border: 1px solid rgba(34, 197, 94, 0.1); 
             overflow: hidden; 
             margin-bottom: 20px; 
         }
@@ -119,7 +203,13 @@
             align-items: center; 
         }
         
-        .queue-title { font-size: 16px; font-weight: 600; }
+        .queue-title { 
+            font-size: 16px; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
         
         .queue-counter { 
             background: rgba(255,255,255,0.2); 
@@ -129,7 +219,30 @@
             font-weight: bold; 
         }
         
-        .call-queue-list { max-height: 500px; overflow-y: auto; }
+        .queue-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .queue-clear-btn {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .queue-clear-btn:hover {
+            background: rgba(239, 68, 68, 0.4);
+        }
+        
+        .call-queue-list { 
+            max-height: 500px; 
+            overflow-y: auto; 
+        }
         
         .call-queue-empty { 
             text-align: center; 
@@ -139,22 +252,47 @@
         
         .call-item { 
             border-bottom: 1px solid #e5e7eb; 
-            padding: 20px; 
             transition: all 0.3s ease; 
             cursor: pointer;
+            position: relative;
         }
         
-        .call-item:hover { background: #f8fafc; }
+        .call-item:hover { 
+            background: #f8fafc; 
+        }
+        
+        .call-item:last-child { 
+            border-bottom: none; 
+        }
         
         .call-item.priority-1 { 
+            padding: 25px; 
             background: linear-gradient(135deg, #fbbf24, #f59e0b); 
             color: white; 
             animation: callPulse 1.5s infinite; 
         }
         
+        .call-item.priority-2, 
+        .call-item.priority-3, 
+        .call-item.priority-4, 
+        .call-item.priority-5 { 
+            padding: 18px 25px; 
+            background: linear-gradient(135deg, #6b7280, #4b5563); 
+            color: white; 
+        }
+        
+        .call-item.priority-2 { opacity: 0.9; } 
+        .call-item.priority-3 { opacity: 0.8; } 
+        .call-item.priority-4 { opacity: 0.7; } 
+        .call-item.priority-5 { opacity: 0.6; }
+        
         @keyframes callPulse { 
-            0%, 100% { transform: scale(1); } 
-            50% { transform: scale(1.02); } 
+            0%, 100% { 
+                transform: scale(1); 
+            } 
+            50% { 
+                transform: scale(1.02); 
+            } 
         }
         
         .call-item-content { 
@@ -163,18 +301,89 @@
             align-items: center; 
         }
         
-        .call-item-name { font-size: 18px; font-weight: 700; margin-bottom: 5px; }
-        .call-item-details { font-size: 14px; opacity: 0.9; display: flex; gap: 15px; }
+        .call-item-info { 
+            flex: 1; 
+        }
+        
+        .call-item-name { 
+            font-size: 18px; 
+            font-weight: 700; 
+            margin-bottom: 5px; 
+        }
+        
+        .call-item.priority-2 .call-item-name, 
+        .call-item.priority-3 .call-item-name, 
+        .call-item.priority-4 .call-item-name, 
+        .call-item.priority-5 .call-item-name { 
+            font-size: 16px; 
+        }
+        
+        .call-item-details { 
+            font-size: 14px; 
+            opacity: 0.9; 
+            display: flex; 
+            gap: 15px; 
+            flex-wrap: wrap; 
+        }
+        
+        .call-item.priority-2 .call-item-details, 
+        .call-item.priority-3 .call-item-details, 
+        .call-item.priority-4 .call-item-details, 
+        .call-item.priority-5 .call-item-details { 
+            font-size: 13px; 
+        }
+        
         .call-item-timer { 
             font-family: 'Courier New', monospace; 
             font-weight: bold; 
             margin-top: 5px; 
         }
         
-        .call-item-actions { display: flex; gap: 8px; }
+        .call-item-actions { 
+            display: flex; 
+            gap: 8px; 
+        }
+
+        .call-waiting-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
         
         /* Call Status Cards */
-        .call-status-card { margin-bottom: 20px; border-radius: 12px; overflow: hidden; }
+        .call-status-card {
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .outgoing-call { 
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); 
+            color: white; 
+            padding: 25px; 
+            text-align: center; 
+            animation: callPulse 1.5s infinite; 
+        }
+        
+        .call-cancelled { 
+            background: linear-gradient(135deg, #ef4444, #dc2626); 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        
+        .call-taken { 
+            background: linear-gradient(135deg, #6b7280, #4b5563); 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+        }
         
         .active-call { 
             background: linear-gradient(135deg, #22c55e, #16a34a); 
@@ -182,13 +391,24 @@
             padding: 25px; 
             text-align: center; 
         }
-        
-        .call-status-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
-        .call-timer-display { 
-            font-size: 32px; 
-            font-weight: 800; 
-            font-family: 'Courier New', monospace; 
-            margin: 15px 0; 
+
+        .call-status-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .call-status-details {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+
+        .call-timer-display {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
         }
         
         .call-buttons { 
@@ -211,28 +431,61 @@
             gap: 8px; 
         }
         
-        .btn:hover { transform: translateY(-2px); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn:hover:not(:disabled) { 
+            transform: translateY(-2px); 
+            filter: brightness(1.1); 
+        }
+        
+        .btn:disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            transform: none; 
+        }
         
         .btn-accept { 
             background: linear-gradient(135deg, #22c55e, #16a34a); 
             color: white; 
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); 
         }
         
         .btn-reject { 
             background: linear-gradient(135deg, #ef4444, #dc2626); 
             color: white; 
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); 
         }
         
-        .btn-end { 
-            background: linear-gradient(135deg, #ef4444, #dc2626); 
+        .btn-primary { 
+            background: linear-gradient(135deg, #2563eb, #1d4ed8); 
             color: white; 
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); 
         }
         
-        .btn-small { padding: 8px 16px; font-size: 12px; }
+        .btn-call { 
+            background: linear-gradient(135deg, #059669, #047857); 
+            color: white; 
+            padding: 6px 12px; 
+            font-size: 12px; 
+            border-radius: 6px; 
+            margin-left: 8px; 
+            box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); 
+        }
         
-        /* User Search */
-        .search-container { position: relative; margin-bottom: 20px; }
+        .btn-small { 
+            padding: 8px 16px; 
+            font-size: 12px; 
+        }
+
+        .btn-end {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Enhanced User Search */
+        .search-container { 
+            position: relative; 
+            margin-bottom: 20px; 
+        }
         
         .search-input { 
             width: 100%; 
@@ -241,6 +494,7 @@
             border-radius: 10px; 
             font-size: 15px; 
             background: white; 
+            transition: all 0.3s ease; 
         }
         
         .search-input:focus { 
@@ -257,7 +511,10 @@
             color: #6b7280; 
         }
         
-        .user-list { max-height: 450px; overflow-y: auto; }
+        .user-list { 
+            max-height: 450px; 
+            overflow-y: auto; 
+        }
         
         .user-item { 
             display: flex; 
@@ -274,11 +531,16 @@
         .user-item:hover { 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
             border-color: #22c55e; 
+            transform: translateY(-1px);
         }
         
         .user-item.online-user { 
             background: linear-gradient(135deg, #dcfce7, #bbf7d0); 
             border-color: #22c55e; 
+        }
+        
+        .user-info { 
+            flex: 1; 
         }
         
         .user-id { 
@@ -288,22 +550,37 @@
             font-size: 16px; 
         }
         
-        .user-name { color: #374151; font-size: 15px; font-weight: 600; margin: 2px 0; }
-        .user-credits { color: #059669; font-size: 13px; font-weight: 600; }
-        .user-status { color: #6b7280; font-size: 12px; margin-top: 4px; }
-        .user-status.online { color: #22c55e; font-weight: 600; }
-        
-        .user-actions { display: flex; align-items: center; gap: 8px; }
-        
-        .btn-call { 
-            background: linear-gradient(135deg, #059669, #047857); 
-            color: white; 
-            padding: 6px 12px; 
-            font-size: 12px; 
-            border-radius: 6px; 
+        .user-name { 
+            color: #374151; 
+            font-size: 15px; 
+            font-weight: 600; 
+            margin: 2px 0; 
         }
         
-        /* Connected Users */
+        .user-credits { 
+            color: #059669; 
+            font-size: 13px; 
+            font-weight: 600; 
+        }
+        
+        .user-status { 
+            color: #6b7280; 
+            font-size: 12px; 
+            margin-top: 4px; 
+        }
+        
+        .user-status.online { 
+            color: #22c55e; 
+            font-weight: 600; 
+        }
+        
+        .user-actions { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        
+        /* Connected Users Panel */
         .connected-user { 
             display: flex; 
             align-items: center; 
@@ -313,6 +590,12 @@
             border-radius: 8px; 
             margin-bottom: 8px; 
             background: white; 
+            transition: all 0.3s ease;
+        }
+
+        .connected-user:hover {
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
         }
         
         .user-online-dot { 
@@ -323,61 +606,20 @@
             animation: pulse 2s infinite; 
         }
         
-        /* Stats Grid - Moved to Bottom */
-        .stats-grid { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 15px; 
-            margin-top: 20px;
+        .user-offline-dot { 
+            width: 10px; 
+            height: 10px; 
+            background: #6b7280; 
+            border-radius: 50%; 
         }
-        
-        .stat-card { 
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9); 
-            padding: 20px; 
-            border-radius: 10px; 
-            text-align: center; 
-            border-left: 4px solid #22c55e; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
-        }
-        
-        .stat-number { 
-            font-size: 28px; 
-            font-weight: 800; 
-            color: #22c55e; 
-            margin-bottom: 5px; 
-        }
-        
-        .stat-label { 
-            font-size: 12px; 
-            color: #64748b; 
-            text-transform: uppercase; 
-            font-weight: 600; 
-        }
-        
-        /* Audio Controls */
-        .audio-controls { 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 10px; 
-            margin-bottom: 20px; 
-            border-left: 4px solid #3b82f6; 
-        }
-        
-        .volume-control { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .volume-slider { flex: 1; height: 4px; border-radius: 2px; background: #e5e7eb; }
-        
-        .audio-toggle { 
-            padding: 6px 12px; 
-            font-size: 12px; 
-            border-radius: 6px; 
-            border: none; 
-            cursor: pointer; 
-        }
-        
-        .audio-toggle.enabled { background: #22c55e; color: white; }
-        .audio-toggle.disabled { background: #ef4444; color: white; }
-        
 
+        .user-busy-dot { 
+            width: 10px; 
+            height: 10px; 
+            background: #f59e0b; 
+            border-radius: 50%; 
+            animation: pulse 2s infinite; 
+        }
         
         /* Notifications */
         .notification-container { 
@@ -395,127 +637,330 @@
             margin-bottom: 10px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
             border-left: 4px solid #22c55e; 
+            animation: slideIn 0.3s ease-out; 
         }
         
-        .hidden { display: none !important; }
-        .loading { opacity: 0.7; pointer-events: none; }
+        @keyframes slideIn { 
+            from { 
+                opacity: 0; 
+                transform: translateX(100%); 
+            } 
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            } 
+        }
         
-        /* Mobile Responsive */
+        .notification.slide-out { 
+            animation: slideOut 0.3s ease-in; 
+        }
+        
+        @keyframes slideOut { 
+            from { 
+                opacity: 1; 
+                transform: translateX(0); 
+            } 
+            to { 
+                opacity: 0; 
+                transform: translateX(100%); 
+            } 
+        }
+
+        .notification.success {
+            border-left-color: #22c55e;
+        }
+
+        .notification.error {
+            border-left-color: #ef4444;
+        }
+
+        .notification.warning {
+            border-left-color: #f59e0b;
+        }
+
+        .notification.info {
+            border-left-color: #3b82f6;
+        }
+        
+        /* System Logs */
+        .log-container { 
+            background: #1f2937; 
+            color: #f9fafb; 
+            padding: 15px; 
+            border-radius: 8px; 
+            height: 200px; 
+            overflow-y: auto; 
+            font-family: 'Courier New', monospace; 
+            font-size: 12px; 
+            margin-top: 20px; 
+        }
+        
+        .log-container div { 
+            margin-bottom: 4px; 
+            opacity: 0.9; 
+        }
+
+        .log-entry {
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-bottom: 2px;
+        }
+
+        .log-entry.info {
+            color: #60a5fa;
+        }
+
+        .log-entry.success {
+            color: #4ade80;
+        }
+
+        .log-entry.warning {
+            color: #fbbf24;
+        }
+
+        .log-entry.error {
+            color: #f87171;
+        }
+        
+        .hidden { 
+            display: none !important; 
+        }
+        
+        .loading { 
+            opacity: 0.7; 
+            pointer-events: none; 
+        }
+        
+        .highlighted { 
+            background: #fef3c7; 
+            font-weight: 600; 
+            padding: 0 2px; 
+            border-radius: 2px; 
+        }
+        
         @media (max-width: 1200px) { 
-            .main-content { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .main-content { 
+                grid-template-columns: 1fr; 
+                gap: 20px; 
+            } 
         }
         
+        .quick-actions { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+        
+        .btn-secondary { 
+            background: linear-gradient(135deg, #64748b, #475569); 
+            color: white; 
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); 
+        }
+        
+        .btn-success { 
+            background: linear-gradient(135deg, #059669, #047857); 
+            color: white; 
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3); 
+        }
+
+        /* Admin Status Indicator */
+        .admin-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: 15px;
+            background: rgba(255,255,255,0.1);
+            font-size: 12px;
+        }
+
+        .admin-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .admin-status.available .admin-status-dot {
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        .admin-status.busy .admin-status-dot {
+            background: #f59e0b;
+            animation: pulse 2s infinite;
+        }
+
+        .admin-status.offline .admin-status-dot {
+            background: #6b7280;
+        }
+
+        /* Performance Metrics */
+        .performance-card {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .performance-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+
+        .performance-number {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .performance-label {
+            font-size: 10px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        /* Audio Controls */
+        .audio-controls {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .audio-controls h4 {
+            margin-bottom: 10px;
+            color: #1e293b;
+            font-size: 14px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: #e5e7eb;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .audio-toggle {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .audio-toggle.enabled {
+            background: #22c55e;
+            color: white;
+        }
+
+        .audio-toggle.disabled {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .header { flex-direction: column; gap: 15px; text-align: center; }
-            .stats-grid { grid-template-columns: 1fr; }
-            .call-item-content { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-right {
+                justify-content: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .call-item-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .call-item-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        /* Dark mode support (optional) */
+        @media (prefers-color-scheme: dark) {
+            .panel {
+                background: #1f2937;
+                border-color: rgba(255,255,255,0.1);
+            }
+
+            .panel h3 {
+                color: #f9fafb;
+            }
+
+            .user-item {
+                background: #374151;
+                border-color: rgba(255,255,255,0.1);
+            }
+
+            .connected-user {
+                background: #374151;
+                border-color: rgba(255,255,255,0.1);
+            }
+
+            .search-input {
+                background: #374151;
+                border-color: rgba(255,255,255,0.1);
+                color: #f9fafb;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <h1>📱 VIPCEP Admin Panel</h1>
-                <p>Teknik Servis Danışmanlık Hizmeti</p>
+                <h1>🎯 VIPCEP Admin Panel</h1>
+                <p>Voice IP Communication Emergency Protocol</p>
             </div>
             <div class="header-right">
                 <div class="status">
-                    <div class="status-dot" id="statusDot"></div>
+                    <div class="status-dot disconnected" id="statusDot"></div>
                     <span id="statusText">Bağlanıyor...</span>
                 </div>
                 <div class="admin-info">
                     <div class="admin-name" id="adminName">-</div>
                     <div class="admin-role" id="adminRole">🟡 Normal Admin</div>
+                    <div class="admin-status available" id="adminStatus">
+                        <div class="admin-status-dot"></div>
+                        <span>Müsait</span>
+                    </div>
                 </div>
                 <button class="logout-btn" onclick="performLogout()">🚪 Çıkış</button>
             </div>
         </div>
         
-        <!-- Main Content - Call Management First -->
-        <div class="main-content">
-            <!-- Call Management Panel -->
-            <div class="panel">
-                <h3>📞 Arama Yönetimi</h3>
-                
-                <!-- Audio Controls -->
-                <div class="audio-controls">
-                    <h4>🔊 Ses Kontrolleri</h4>
-                    <div class="volume-control">
-                        <span>Ses:</span>
-                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
-                        <span id="volumeValue">70%</span>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="audio-toggle enabled" id="micToggle" onclick="toggleMicrophone()">🎤 Mikrofon</button>
-                        <button class="audio-toggle enabled" id="speakerToggle" onclick="toggleSpeaker()">🔊 Hoparlör</button>
-                        <button class="audio-toggle disabled" id="noiseToggle" onclick="toggleNoiseSuppression()">🚫 Gürültü</button>
-                    </div>
-                </div>
-                
-                <!-- Call Queue -->
-                <div class="call-queue-container" id="callQueueContainer">
-                    <div class="call-queue-header">
-                        <div class="queue-title">📋 Gelen Aramalar</div>
-                        <div class="queue-counter" id="queueCounter">0/5</div>
-                    </div>
-                    <div class="call-queue-list" id="callQueueList">
-                        <div class="call-queue-empty">
-                            <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📞</div>
-                            <div>Henüz gelen arama yok</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Active Call Status -->
-                <div id="activeCall" class="call-status-card active-call hidden">
-                    <div class="call-status-title">📊 GÖRÜŞME AKTİF</div>
-                    <div>
-                        <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
-                        <div class="call-timer-display" id="callTimer">00:00</div>
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-end" onclick="endCall()">📞 Görüşmeyi Bitir</button>
-                    </div>
-                </div>
-                
-
-            </div>
-            
-            <!-- User Management Panel -->
-            <div class="panel">
-                <h3>👥 Onaylı Kullanıcılar</h3>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı ara..." oninput="searchUsers()">
-                    <div class="search-icon">⚲</div>
-                </div>
-                <div class="user-list" id="approvedUsersList">
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
-                        <div>Kullanıcılar yükleniyor...</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Connected Users Panel -->
-            <div class="panel">
-                <h3>👥 Aktif Bağlantılar</h3>
-                <div id="userList" style="margin-top: 15px;">
-                    <div style="text-align: center; color: #6b7280; padding: 30px;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🌍</div>
-                        <div>Henüz kullanıcı bağlanmadı</div>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-                    <button class="btn" style="background: #64748b; color: white;" onclick="refreshData()">🔄 Yenile</button>
-                    <button class="btn" style="background: #2563eb; color: white;" onclick="window.open('https://wa.me/905374792403', '_blank')">💬 WhatsApp</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Stats Grid - Moved to Bottom -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number" id="totalApproved">0</div>
@@ -534,41 +979,640 @@
                 <div class="stat-label">Bugün Arama</div>
             </div>
         </div>
+        
+        <div class="main-content">
+            <div class="panel">
+                <h3>📞 Arama Yönetimi</h3>
+                
+                <!-- Performance Metrics -->
+                <div class="performance-card">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">⚡ Performans Metrikleri</div>
+                    <div class="performance-grid">
+                        <div class="performance-item">
+                            <div class="performance-number" id="avgResponseTime">-</div>
+                            <div class="performance-label">Ort. Yanıt</div>
+                        </div>
+                        <div class="performance-item">
+                            <div class="performance-number" id="callsHandled">0</div>
+                            <div class="performance-label">İşlenen</div>
+                        </div>
+                        <div class="performance-item">
+                            <div class="performance-number" id="successRate">-%</div>
+                            <div class="performance-label">Başarı</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Controls -->
+                <div class="audio-controls">
+                    <h4>🔊 Ses Kontrolleri</h4>
+                    <div class="volume-control">
+                        <span style="font-size: 12px; width: 80px;">Ses Seviyesi:</span>
+                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                        <span style="font-size: 12px; width: 30px;" id="volumeValue">70%</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="audio-toggle enabled" id="micToggle" onclick="toggleMicrophone()">🎤 Mikrofon</button>
+                        <button class="audio-toggle enabled" id="speakerToggle" onclick="toggleSpeaker()">🔊 Hoparlör</button>
+                        <button class="audio-toggle disabled" id="noiseToggle" onclick="toggleNoiseSuppression()">🚫 Gürültü</button>
+                    </div>
+                </div>
+                
+                <!-- Call Queue -->
+                <div class="call-queue-container" id="callQueueContainer">
+                    <div class="call-queue-header">
+                        <div class="queue-title">
+                            <span>📋 Gelen Aramalar</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="queue-counter" id="queueCounter">0/5</div>
+                            <div class="queue-actions">
+                                <button class="queue-clear-btn" onclick="clearQueue()" title="Kuyruğu temizle">
+                                    🗑️
+                                </button>
+                                <button class="queue-clear-btn" onclick="refreshQueue()" title="Yenile">
+                                    🔄
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="call-queue-list" id="callQueueList">
+                        <div class="call-queue-empty">
+                            <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📞</div>
+                            <div>Henüz gelen arama yok</div>
+                            <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Müşteriler arama yaptığında burada görünecek</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Call Status -->
+                <div id="outgoingCall" class="call-status-card outgoing-call hidden">
+                    <div class="call-status-title">📞 GİDEN ARAMA</div>
+                    <div class="call-status-details">
+                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
+                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Bağlantı kuruluyor...</p>
+                    </div>
+                    <div class="call-buttons">
+                        <button class="btn btn-reject" onclick="cancelOutgoingCall()">❌ İptal Et</button>
+                    </div>
+                </div>
+
+                <div id="callCancelled" class="call-status-card call-cancelled hidden">
+                    <div class="call-status-title">❌ ARAMA İPTAL EDİLDİ</div>
+                    <div class="call-status-details">
+                        <p style="font-weight: 600;"><span id="cancelledName">-</span></p>
+                        <p style="opacity: 0.9;" id="cancelledReason">Müşteri aramayı iptal etti</p>
+                    </div>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissCancelledCall()">✔️ Tamam</button>
+                </div>
+
+                <div id="callTaken" class="call-status-card call-taken hidden">
+                    <div class="call-status-title">👥 ARAMA BAŞKA ADMİN TARAFINDAN ALINDI</div>
+                    <div class="call-status-details">
+                        <p style="font-weight: 600;"><span id="takenCallerName">-</span></p>
+                        <p style="opacity: 0.9;">Alınan Admin: <span id="takenByAdmin">-</span></p>
+                    </div>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 10px;" onclick="dismissTakenCall()">✔️ Tamam</button>
+                </div>
+                
+                <div id="activeCall" class="call-status-card active-call hidden">
+                    <div class="call-status-title">📊 GÖRÜŞME AKTİF</div>
+                    <div class="call-status-details">
+                        <p style="font-size: 18px; font-weight: 600; margin: 10px 0;"><span id="activeCaller">-</span></p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                            <div>
+                                <div style="font-size: 12px; opacity: 0.8;">Görüşme Süresi</div>
+                                <div class="call-timer-display" id="callTimer">00:00</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 12px; opacity: 0.8;">Bağlantı</div>
+                                <div style="font-size: 14px; font-weight: 600;" id="connectionQuality">İyi</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="call-buttons">
+                        <button class="btn btn-end" onclick="endCall()">📞 Görüşmeyi Bitir</button>
+                        <button class="btn btn-primary" onclick="muteCall()" id="muteButton">🔇 Sessize Al</button>
+                    </div>
+                </div>
+                
+                <h3 style="margin-top: 25px;">📋 Sistem Logları</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry info">[Sistem] Admin panel başlatılıyor...</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>👥 Onaylı Kullanıcılar</h3>
+                <div class="search-container">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
+                    <div class="search-icon">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </div>
+                </div>
+                <div id="searchResults" class="hidden"></div>
+                <div class="user-list" id="approvedUsersList">
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                        <div>Kullanıcılar yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h3>👥 Aktif Bağlantılar</h3>
+                <div id="userList" style="margin-top: 15px;">
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌍</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <button class="btn btn-secondary" onclick="refreshData()">🔄 Verileri Yenile</button>
+                    <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">💬 WhatsApp Destek</button>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <!-- Notifications Container -->
     <div id="creditNotifications" class="notification-container"></div>
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
     
     <script>
-        // Core Variables
+        // Global değişkenler
         let socket, peerConnection, localStream, currentCall, callTimer, callDuration = 0;
-        let connectedUsers = [], approvedUsers = [], filteredUsers = [];
-        let isLoggedIn = false, currentAdmin = null, adminUniqueId = null;
+        let connectedUsers = [], approvedUsers = [], filteredUsers = [], outgoingCallInfo = null;
+        let isLoggedIn = false, currentAdmin = null, adminUniqueId = null, originalAdminId = "ADMIN001";
         let currentCallQueue = [], queueTimers = new Map();
-        let micEnabled = true, speakerEnabled = true;
+        let micEnabled = true, speakerEnabled = true, noiseSuppression = false;
+        let callStartTime = null, performanceMetrics = {
+            callsHandled: 0,
+            totalResponseTime: 0,
+            successfulCalls: 0
+        };
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-        // Initialize App
-        window.onload = function() {
-            checkAuthStatus();
-            setupEventListeners();
-        };
-
-        function setupEventListeners() {
-            document.getElementById('volumeSlider').addEventListener('input', (e) => {
-                const volume = e.target.value;
-                document.getElementById('volumeValue').textContent = volume + '%';
-                const remoteAudio = document.getElementById('remoteAudio');
-                if (speakerEnabled) remoteAudio.volume = volume / 100;
-            });
+        // Queue Management Functions
+        function updateCallQueue(queue) {
+            currentCallQueue = queue || [];
+            document.getElementById('queueCounter').textContent = `${currentCallQueue.length}/5`;
+            renderCallQueue();
+            
+            if (currentCallQueue.length > 0) {
+                playNotificationSound();
+                updateAdminStatus('busy');
+            } else {
+                stopNotificationSound();
+                if (!currentCall) updateAdminStatus('available');
+            }
         }
 
-        // Auth Functions
+        function renderCallQueue() {
+            const list = document.getElementById('callQueueList');
+            if (currentCallQueue.length === 0) {
+                list.innerHTML = `
+                    <div class="call-queue-empty">
+                        <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📞</div>
+                        <div>Henüz gelen arama yok</div>
+                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Müşteriler arama yaptığında burada görünecek</div>
+                    </div>`;
+                return;
+            }
+            
+            list.innerHTML = [...currentCallQueue]
+                .sort((a, b) => a.timestamp - b.timestamp)
+                .map((call, index) => {
+                    const priority = index + 1;
+                    const waitTime = Date.now() - call.timestamp;
+                    const isUrgent = waitTime > 120000; // 2 dakikadan fazla bekleyen
+                    
+                    return `
+                        <div class="call-item priority-${Math.min(priority, 5)}" data-call-id="${call.callId}">
+                            ${isUrgent ? '<div class="call-waiting-indicator"></div>' : ''}
+                            <div class="call-item-content">
+                                <div class="call-item-info">
+                                    <div class="call-item-name">${call.userName}</div>
+                                    <div class="call-item-details">
+                                        <span>ID: ${call.userId}</span>
+                                        <span>💳 ${call.credits} dk</span>
+                                        <span>📍 Sıra: ${priority}</span>
+                                        ${isUrgent ? '<span style="color: #ef4444;">⚠️ ACIL</span>' : ''}
+                                    </div>
+                                    <div class="call-item-timer">${formatTimer(waitTime)}</div>
+                                </div>
+                                <div class="call-item-actions">
+                                    <button class="btn btn-accept btn-small" onclick="acceptCall('${call.callId}')">
+                                        ✅ Kabul
+                                    </button>
+                                    <button class="btn btn-reject btn-small" onclick="rejectCall('${call.callId}')">
+                                        ❌ Ret
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+        }
+
+        function formatTimer(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function acceptCall(callId) {
+            const call = currentCallQueue.find(c => c.callId === callId);
+            if (!call || currentCall || outgoingCallInfo) {
+                showNotification('Arama bulunamadı veya zaten aramada!', 'error');
+                return;
+            }
+            
+            stopNotificationSound();
+            const responseStart = Date.now();
+            
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ 
+                    type: 'accept-call-by-id', 
+                    callId, 
+                    userId: call.userId, 
+                    adminId: adminUniqueId || originalAdminId 
+                }));
+                
+                setupCall(call);
+                
+                // Performance tracking
+                const responseTime = Date.now() - responseStart;
+                performanceMetrics.totalResponseTime += responseTime;
+                performanceMetrics.callsHandled++;
+                updatePerformanceMetrics();
+                
+                addLog(`Arama kabul edildi: ${call.userName} (${call.userId})`, 'success');
+            }
+        }
+
+        function rejectCall(callId) {
+            const call = currentCallQueue.find(c => c.callId === callId);
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ 
+                    type: 'reject-call-by-id', 
+                    callId, 
+                    reason: 'Admin reddetti' 
+                }));
+                
+                if (call) {
+                    addLog(`Arama reddedildi: ${call.userName} (${call.userId})`, 'warning');
+                }
+            }
+        }
+
+        function clearQueue() {
+            if (confirm('Tüm bekleyen aramaları temizlemek istediğinizden emin misiniz?')) {
+                currentCallQueue.forEach(call => {
+                    rejectCall(call.callId);
+                });
+                addLog('Arama kuyruğu temizlendi', 'warning');
+            }
+        }
+
+        function refreshQueue() {
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'refresh-queue' }));
+                addLog('Kuyruk yenilendi', 'info');
+            }
+        }
+
+        // Call Management Functions
+        async function setupCall(callInfo) {
+            try {
+                updateAdminStatus('busy');
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { 
+                        echoCancellation: true, 
+                        noiseSuppression: noiseSuppression,
+                        autoGainControl: true 
+                    } 
+                });
+                
+                localStream = stream;
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Apply audio settings
+                const audioTrack = stream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = micEnabled;
+                }
+                
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                peerConnection.ontrack = e => { 
+                    if (e.streams?.[0]) {
+                        const remoteAudio = document.getElementById('remoteAudio');
+                        remoteAudio.srcObject = e.streams[0];
+                        remoteAudio.volume = document.getElementById('volumeSlider').value / 100;
+                    }
+                };
+                
+                peerConnection.onicecandidate = e => { 
+                    if (e.candidate && socket) {
+                        socket.send(JSON.stringify({ 
+                            type: 'ice-candidate', 
+                            candidate: e.candidate, 
+                            targetId: callInfo.userId 
+                        }));
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    updateConnectionQuality(peerConnection.connectionState);
+                    
+                    if (peerConnection.connectionState === 'connected') {
+                        currentCall = callInfo;
+                        document.getElementById('activeCaller').textContent = callInfo.userName;
+                        document.getElementById('activeCall').classList.remove('hidden');
+                        document.getElementById('callQueueContainer').style.display = 'none';
+                        startTimer();
+                        addLog(`Görüşme başladı: ${callInfo.userName}`, 'success');
+                    } else if (['failed', 'disconnected'].includes(peerConnection.connectionState)) {
+                        endCall();
+                        addLog('Bağlantı koptu', 'error');
+                    }
+                };
+                
+            } catch (error) {
+                showNotification('Mikrofon erişimi gerekli!', 'error');
+                addLog('Mikrofon erişim hatası', 'error');
+                updateAdminStatus('available');
+            }
+        }
+
+        function endCall() {
+            if (callTimer) { 
+                clearInterval(callTimer); 
+                callTimer = null; 
+            }
+            
+            if (peerConnection) { 
+                peerConnection.close(); 
+                peerConnection = null; 
+            }
+            
+            if (localStream) { 
+                localStream.getTracks().forEach(track => track.stop()); 
+                localStream = null; 
+            }
+            
+            if (currentCall && socket) {
+                const duration = callDuration;
+                
+                socket.send(JSON.stringify({ 
+                    type: 'end-call', 
+                    userId: adminUniqueId || originalAdminId, 
+                    targetId: currentCall.userId, 
+                    duration: duration, 
+                    userType: 'admin', 
+                    endedBy: 'admin' 
+                }));
+                
+                // Performance tracking
+                performanceMetrics.successfulCalls++;
+                updatePerformanceMetrics();
+                
+                addLog(`Görüşme sonlandırıldı: ${currentCall.userName} (${formatTimer(duration * 1000)})`, 'info');
+            }
+            
+            document.getElementById('activeCall').classList.add('hidden');
+            document.getElementById('callQueueContainer').style.display = 'block';
+            
+            currentCall = null; 
+            callDuration = 0;
+            callStartTime = null;
+            
+            updateAdminStatus('available');
+            addLog('Admin müsait duruma geçti', 'info');
+        }
+
+        function muteCall() {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const button = document.getElementById('muteButton');
+                    if (audioTrack.enabled) {
+                        button.textContent = '🔇 Sessize Al';
+                        button.className = 'btn btn-primary';
+                    } else {
+                        button.textContent = '🔊 Sesi Aç';
+                        button.className = 'btn btn-success';
+                    }
+                    addLog(audioTrack.enabled ? 'Mikrofon açıldı' : 'Mikrofon kapatıldı', 'info');
+                }
+            }
+        }
+
+        function updateConnectionQuality(state) {
+            const qualityElement = document.getElementById('connectionQuality');
+            if (!qualityElement) return;
+            
+            switch (state) {
+                case 'connected':
+                    qualityElement.textContent = 'Mükemmel';
+                    qualityElement.style.color = '#22c55e';
+                    break;
+                case 'connecting':
+                    qualityElement.textContent = 'Bağlanıyor';
+                    qualityElement.style.color = '#f59e0b';
+                    break;
+                case 'failed':
+                case 'disconnected':
+                    qualityElement.textContent = 'Kötü';
+                    qualityElement.style.color = '#ef4444';
+                    break;
+                default:
+                    qualityElement.textContent = 'Bilinmiyor';
+                    qualityElement.style.color = '#6b7280';
+            }
+        }
+
+        // Audio Controls
+        function toggleMicrophone() {
+            micEnabled = !micEnabled;
+            const button = document.getElementById('micToggle');
+            
+            if (micEnabled) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '🎤 Mikrofon';
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🎤 Kapalı';
+            }
+            
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) audioTrack.enabled = micEnabled;
+            }
+            
+            addLog(micEnabled ? 'Mikrofon etkinleştirildi' : 'Mikrofon devre dışı', 'info');
+        }
+
+        function toggleSpeaker() {
+            speakerEnabled = !speakerEnabled;
+            const button = document.getElementById('speakerToggle');
+            const remoteAudio = document.getElementById('remoteAudio');
+            
+            if (speakerEnabled) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '🔊 Hoparlör';
+                remoteAudio.volume = document.getElementById('volumeSlider').value / 100;
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🔊 Kapalı';
+                remoteAudio.volume = 0;
+            }
+            
+            addLog(speakerEnabled ? 'Hoparlör etkinleştirildi' : 'Hoparlör devre dışı', 'info');
+        }
+
+        function toggleNoiseSuppression() {
+            noiseSuppression = !noiseSuppression;
+            const button = document.getElementById('noiseToggle');
+            
+            if (noiseSuppression) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '✅ Gürültü';
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🚫 Gürültü';
+            }
+            
+            addLog(noiseSuppression ? 'Gürültü önleme etkin' : 'Gürültü önleme kapalı', 'info');
+        }
+
+        // Volume Control
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            const volume = e.target.value;
+            document.getElementById('volumeValue').textContent = volume + '%';
+            
+            const remoteAudio = document.getElementById('remoteAudio');
+            if (speakerEnabled) {
+                remoteAudio.volume = volume / 100;
+            }
+        });
+
+        // Performance Metrics
+        function updatePerformanceMetrics() {
+            const avgResponse = performanceMetrics.callsHandled > 0 ? 
+                Math.round(performanceMetrics.totalResponseTime / performanceMetrics.callsHandled / 1000) : 0;
+            
+            const successRate = performanceMetrics.callsHandled > 0 ? 
+                Math.round((performanceMetrics.successfulCalls / performanceMetrics.callsHandled) * 100) : 0;
+            
+            document.getElementById('avgResponseTime').textContent = avgResponse + 's';
+            document.getElementById('callsHandled').textContent = performanceMetrics.callsHandled;
+            document.getElementById('successRate').textContent = successRate + '%';
+        }
+
+        // Admin Status Management
+        function updateAdminStatus(status) {
+            const statusElement = document.getElementById('adminStatus');
+            const dot = statusElement.querySelector('.admin-status-dot');
+            const text = statusElement.querySelector('span');
+            const mainStatusDot = document.getElementById('statusDot');
+            
+            switch (status) {
+                case 'available':
+                    statusElement.className = 'admin-status available';
+                    text.textContent = 'Müsait';
+                    mainStatusDot.className = 'status-dot connected';
+                    break;
+                case 'busy':
+                    statusElement.className = 'admin-status busy';
+                    text.textContent = 'Meşgul';
+                    mainStatusDot.className = 'status-dot busy';
+                    break;
+                case 'offline':
+                    statusElement.className = 'admin-status offline';
+                    text.textContent = 'Çevrimdışı';
+                    mainStatusDot.className = 'status-dot disconnected';
+                    break;
+            }
+        }
+
+        // Sound Management
+        function playNotificationSound() {
+            try { 
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                audio.volume = 0.3;
+                audio.play().catch(e => {}); 
+            } catch (e) {}
+        }
+        
+        function stopNotificationSound() {
+            // Notification sound handling
+        }
+
+        // Timer Functions
+        function startTimer() {
+            callStartTime = Date.now();
+            callDuration = 0;
+            
+            callTimer = setInterval(() => {
+                callDuration = Math.floor((Date.now() - callStartTime) / 1000);
+                const timerElement = document.getElementById('callTimer');
+                if (timerElement) {
+                    timerElement.textContent = formatTimer(callDuration * 1000);
+                }
+            }, 1000);
+        }
+
+        // Logging System
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 100 entries
+            while (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('creditNotifications');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('slide-out');
+                setTimeout(() => {
+                    container.removeChild(notification);
+                }, 300);
+            }, duration);
+        }
+
+        // App Initialization
+        window.onload = function() {
+            checkAuthStatus();
+        };
+
         async function checkAuthStatus() {
             try {
                 const response = await fetch('/auth/check-session', { credentials: 'include' });
@@ -591,131 +1635,393 @@
             
             connectToServer();
             loadUsers();
+            updateAdminStatus('available');
             addLog('Admin panel başlatıldı', 'success');
         }
 
         async function performLogout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 if (currentCall) endCall();
-                try { await fetch('/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
+                
+                try { 
+                    await fetch('/auth/logout', { method: 'POST', credentials: 'include' }); 
+                } catch (e) {}
+                
                 if (socket) socket.close();
+                addLog('Çıkış yapılıyor...', 'warning');
                 window.location.href = '/';
             }
         }
 
         // Server Connection
         function connectToServer() {
-            socket = new WebSocket(serverUrl);
+            if (!isLoggedIn) return;
             
-            socket.onopen = () => {
-                updateConnectionStatus(true);
-                socket.send(JSON.stringify({ 
-                    type: 'register', 
-                    userId: "ADMIN001", 
-                    name: currentAdmin.username || 'Admin', 
-                    userType: 'admin' 
-                }));
-                addLog('Sunucuya bağlandı', 'success');
-            };
-            
-            socket.onclose = () => { 
-                updateConnectionStatus(false);
-                if (isLoggedIn) setTimeout(connectToServer, 3000); 
-            };
-            
-            socket.onmessage = e => handleMessage(JSON.parse(e.data));
-            socket.onerror = () => updateConnectionStatus(false);
+            try {
+                socket = new WebSocket(serverUrl);
+                
+                socket.onopen = () => {
+                    updateConnectionStatus('connected');
+                    socket.send(JSON.stringify({ 
+                        type: 'register', 
+                        userId: originalAdminId, 
+                        name: currentAdmin.username || 'Admin', 
+                        userType: 'admin' 
+                    }));
+                    addLog('Sunucuya bağlandı', 'success');
+                };
+                
+                socket.onclose = () => { 
+                    updateConnectionStatus('disconnected'); 
+                    addLog('Sunucu bağlantısı kesildi', 'error');
+                    if (isLoggedIn) setTimeout(connectToServer, 3000); 
+                };
+                
+                socket.onmessage = e => handleMessage(JSON.parse(e.data));
+                
+                socket.onerror = () => {
+                    updateConnectionStatus('error');
+                    addLog('WebSocket bağlantı hatası', 'error');
+                };
+            } catch (e) { 
+                updateConnectionStatus('error'); 
+                addLog('Bağlantı başlatılamadı', 'error');
+            }
         }
 
-        function updateConnectionStatus(connected) {
-            document.getElementById('statusDot').style.background = connected ? '#22c55e' : '#ef4444';
-            document.getElementById('statusText').textContent = connected ? 'Bağlı' : 'Bağlantı Yok';
+        function updateConnectionStatus(status) {
+            document.getElementById('statusDot').className = 
+                'status-dot ' + (status === 'connected' ? 'connected' : 'disconnected');
+            document.getElementById('statusText').textContent = 
+                status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
+                
+            if (status === 'connected') {
+                updateAdminStatus('available');
+            } else {
+                updateAdminStatus('offline');
+            }
         }
 
-        // Core Functions
-        function addLog(message, type) {
-            // Simplified - no visual logs needed
-            console.log(`[${type.toUpperCase()}] ${message}`);
-        }
         // Message Handling
         function handleMessage(message) {
+            console.log('📨 Sunucudan mesaj:', message.type);
+            addLog(`Mesaj alındı: ${message.type}`, 'info');
+            
+            switch (message.type) {
                 case 'admin-registered':
                     adminUniqueId = message.uniqueId;
+                    addLog(`Admin kaydedildi: ${adminUniqueId}`, 'success');
                     break;
+                    
                 case 'call-queue-update':
                     updateCallQueue(message.queue);
                     break;
+                    
                 case 'user-list-update':
                     connectedUsers = message.users || [];
                     updateStats();
                     renderUsers();
                     renderConnectedUsers();
                     break;
+                    
+                case 'call-taken':
+                    if (message.takenBy !== (adminUniqueId || originalAdminId)) {
+                        currentCallQueue = currentCallQueue.filter(call => call.callId !== message.callId);
+                        updateCallQueue(currentCallQueue);
+                        showNotification('Arama başka admin tarafından alındı', 'warning');
+                    }
+                    break;
+                    
+                case 'credit-update':
+                    showNotification(`Kredi güncellendi: ${message.credits} dk`, 'success');
+                    break;
+                    
+                case 'call-ended':
+                    if (currentCall) {
+                        showNotification('Görüşme sonlandırıldı', 'info');
+                        endCall();
+                    }
+                    break;
+                    
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
                     handleWebRTCMessage(message);
                     break;
+                    
+                default:
+                    addLog(`Bilinmeyen mesaj: ${message.type}`, 'warning');
             }
         }
 
-        // Call Queue Management
-        function updateCallQueue(queue) {
-            currentCallQueue = queue || [];
-            document.getElementById('queueCounter').textContent = `${currentCallQueue.length}/5`;
-            renderCallQueue();
+        // WebRTC Message Handling
+        function handleWebRTCMessage(message) {
+            if (!peerConnection) return;
+            
+            try {
+                switch (message.type) {
+                    case 'offer':
+                        peerConnection.setRemoteDescription(message.offer)
+                            .then(() => peerConnection.createAnswer())
+                            .then(answer => peerConnection.setLocalDescription(answer))
+                            .then(() => {
+                                if (socket?.readyState === WebSocket.OPEN) {
+                                    socket.send(JSON.stringify({
+                                        type: 'answer',
+                                        answer: peerConnection.localDescription,
+                                        targetId: message.userId
+                                    }));
+                                }
+                            });
+                        break;
+                        
+                    case 'answer':
+                        peerConnection.setRemoteDescription(message.answer);
+                        break;
+                        
+                    case 'ice-candidate':
+                        peerConnection.addIceCandidate(message.candidate);
+                        break;
+                }
+            } catch (error) {
+                addLog(`WebRTC hata: ${error.message}`, 'error');
+            }
         }
 
-        function renderCallQueue() {
-            const list = document.getElementById('callQueueList');
-            if (currentCallQueue.length === 0) {
-                list.innerHTML = `
-                    <div class="call-queue-empty">
-                        <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📞</div>
-                        <div>Henüz gelen arama yok</div>
+        // User Management
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/approved-users', { credentials: 'include' });
+                if (response.ok) {
+                    const users = await response.json();
+                    approvedUsers = users.map(u => ({ 
+                        id: u.id, 
+                        name: u.name, 
+                        credits: u.credits || 0,
+                        lastCall: u.last_call,
+                        totalCalls: u.total_calls || 0
+                    }));
+                    renderUsers();
+                    updateStats();
+                    addLog(`${users.length} kullanıcı yüklendi`, 'success');
+                }
+            } catch (e) {
+                addLog('Kullanıcı verisi yüklenemedi', 'error');
+            }
+        }
+
+        function renderUsers() {
+            const container = document.getElementById('approvedUsersList');
+            const users = filteredUsers.length > 0 ? filteredUsers : approvedUsers;
+            
+            if (users.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                        <div>Henüz onaylı kullanıcı yok</div>
                     </div>`;
                 return;
             }
             
-            list.innerHTML = [...currentCallQueue]
-                .sort((a, b) => a.timestamp - b.timestamp)
-                .map((call, index) => {
-                    const priority = index + 1;
-                    const waitTime = Date.now() - call.timestamp;
-                    
-                    return `
-                        <div class="call-item priority-${Math.min(priority, 5)}" data-call-id="${call.callId}">
-                            <div class="call-item-content">
-                                <div class="call-item-info">
-                                    <div class="call-item-name">${call.userName}</div>
-                                    <div class="call-item-details">
-                                        <span>ID: ${call.userId}</span>
-                                        <span>💳 ${call.credits} dk</span>
-                                        <span>📍 Sıra: ${priority}</span>
-                                    </div>
-                                    <div class="call-item-timer">${formatTimer(waitTime)}</div>
-                                </div>
-                                <div class="call-item-actions">
-                                    <button class="btn btn-accept btn-small" onclick="acceptCall('${call.callId}')">✅ Kabul</button>
-                                    <button class="btn btn-reject btn-small" onclick="rejectCall('${call.callId}')">❌ Ret</button>
-                                </div>
+            container.innerHTML = users.map(user => {
+                const isOnline = connectedUsers.some(u => u.id === user.id && u.userType === 'customer');
+                const canCall = isOnline && !currentCall && !outgoingCallInfo;
+                const lastCallDate = user.lastCall ? new Date(user.lastCall).toLocaleDateString() : 'Hiç';
+                
+                return `
+                    <div class="user-item ${isOnline ? 'online-user' : ''}">
+                        <div class="user-info">
+                            <div class="user-id">#${user.id}</div>
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-credits">${user.credits} dakika kredi</div>
+                            <div class="user-status ${isOnline ? 'online' : ''}">
+                                ${isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı'}
+                                | Son Arama: ${lastCallDate}
+                                | Toplam: ${user.totalCalls} arama
                             </div>
-                        </div>`;
-                }).join('');
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-call" 
+                                ${canCall ? `onclick="callUser('${user.id}')"` : 'disabled'}>
+                                📞 Ara
+                            </button>
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
-        function formatTimer(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        function acceptCall(callId) {
-            const call = currentCallQueue.find(c => c.callId === callId);
-            if (!call || currentCall) {
-                showNotification('Arama bulunamadı veya zaten aramada!', 'error');
+        function renderConnectedUsers() {
+            const container = document.getElementById('userList');
+            const onlineUsers = connectedUsers.filter(u => u.userType === 'customer');
+            
+            if (onlineUsers.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🌍</div>
+                        <div>Henüz kullanıcı bağlanmadı</div>
+                    </div>`;
                 return;
             }
             
-            if (socket?.ready
+            container.innerHTML = onlineUsers.map(user => `
+                <div class="connected-user">
+                    <div class="user-online-dot"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #1e293b;">${user.name || user.id}</div>
+                        <div style="font-size: 12px; color: #64748b;">
+                            ID: ${user.id} | Bağlandı: ${user.registeredAt || 'Bilinmiyor'}
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('totalApproved').textContent = approvedUsers.length;
+            document.getElementById('onlineUsers').textContent = 
+                connectedUsers.filter(u => u.userType === 'customer').length;
+            document.getElementById('totalCredits').textContent = 
+                approvedUsers.reduce((sum, u) => sum + u.credits, 0);
+        }
+
+        function searchUsers() {
+            const term = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (term === '') {
+                filteredUsers = [];
+            } else {
+                filteredUsers = approvedUsers.filter(u => 
+                    u.name.toLowerCase().includes(term) || u.id.includes(term)
+                );
+            }
+            renderUsers();
+        }
+
+        // Direct Call Function
+        function callUser(userId) {
+            const user = approvedUsers.find(u => u.id === userId);
+            if (!user || !connectedUsers.find(u => u.id === userId && u.userType === 'customer')) {
+                showNotification('Kullanıcı bulunamadı veya çevrimdışı!', 'error');
+                return;
+            }
+            
+            if (currentCall || outgoingCallInfo) {
+                showNotification('Zaten bir aramada bulunuyorsunuz!', 'warning');
+                return;
+            }
+            
+            // Direct call implementation
+            outgoingCallInfo = { userId, userName: user.name, credits: user.credits };
+            document.getElementById('outgoingName').textContent = user.name;
+            document.getElementById('outgoingId').textContent = userId;
+            document.getElementById('outgoingCall').classList.remove('hidden');
+            document.getElementById('callQueueContainer').style.display = 'none';
+            
+            updateAdminStatus('busy');
+            addLog(`Kullanıcı aranıyor: ${user.name} (${userId})`, 'info');
+            
+            // Send direct call request to server
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-request',
+                    targetId: userId,
+                    adminId: adminUniqueId || originalAdminId,
+                    adminName: currentAdmin.username || 'Admin'
+                }));
+            }
+        }
+
+        function cancelOutgoingCall() {
+            if (outgoingCallInfo && socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-cancelled',
+                    targetId: outgoingCallInfo.userId,
+                    adminId: adminUniqueId || originalAdminId
+                }));
+            }
+            
+            document.getElementById('outgoingCall').classList.add('hidden');
+            document.getElementById('callQueueContainer').style.display = 'block';
+            
+            if (outgoingCallInfo) {
+                addLog(`Giden arama iptal edildi: ${outgoingCallInfo.userName}`, 'warning');
+            }
+            
+            outgoingCallInfo = null;
+            updateAdminStatus('available');
+        }
+
+        // Utility Functions
+        function dismissCancelledCall() { 
+            document.getElementById('callCancelled').classList.add('hidden'); 
+        }
+        
+        function dismissTakenCall() { 
+            document.getElementById('callTaken').classList.add('hidden'); 
+        }
+        
+        function refreshData() { 
+            loadUsers(); 
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'refresh-data' }));
+            }
+            addLog('Veriler yenilendi', 'info');
+        }
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        refreshData();
+                        break;
+                    case 'q':
+                        e.preventDefault();
+                        if (currentCallQueue.length > 0) {
+                            acceptCall(currentCallQueue[0].callId);
+                        }
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        if (currentCall) endCall();
+                        break;
+                    case 'm':
+                        e.preventDefault();
+                        if (currentCall) muteCall();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Escape') {
+                if (outgoingCallInfo) {
+                    cancelOutgoingCall();
+                } else if (currentCall) {
+                    if (confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) {
+                        endCall();
+                    }
+                }
+            }
+        });
+
+        // Auto-refresh data every 30 seconds
+        setInterval(() => {
+            if (isLoggedIn && socket?.readyState === WebSocket.OPEN) {
+                refreshData();
+            }
+        }, 30000);
+
+        // Initialize performance metrics
+        updatePerformanceMetrics();
+        
+        // Add welcome log entry
+        addLog('VIPCEP Admin Panel v2.0 - Gelişmiş çoklu arama sistemi', 'success');
+        addLog('Kısayollar: Ctrl+R (Yenile), Ctrl+Q (İlk aramayı kabul), Ctrl+E (Aramayı bitir), Ctrl+M (Mikrofon)', 'info');
+        
+        console.log('🎯 VIPCEP Enhanced Admin Panel başlatıldı');
+        console.log('🔥 Çoklu admin koordinasyon sistemi aktif');
+        console.log('🔊 Gelişmiş ses kontrolleri hazır');
+        console.log('📊 Performans metrikleri etkin');
+        console.log('⌨️ Klavye kısayolları aktif');
+        console.log('🎨 Modern UI/UX iyileştirmeleri');
+    </script>
+</body>
+</html>
