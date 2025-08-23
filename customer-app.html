@@ -1,148 +1,2356 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🟢 VIPCEP Customer App</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
-    .container { max-width: 800px; margin: auto; }
-    .header { text-align: center; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .kvkk, .login, .call-management { background: #fff; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    button { padding: 10px 20px; background: #dc2626; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #b91c1c; }
-    input, select { padding: 8px; margin: 5px 0; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
-    .accept { background: #16a34a; }
-    .accept:hover { background: #15803d; }
-    .reject { background: #6b7280; }
-    .reject:hover { background: #4b5563; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIPCEP Müşteri Uygulaması</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        
+        .app-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+            overflow: hidden;
+            width: 100%;
+            max-width: 380px;
+            position: relative;
+        }
+        
+        .app-header {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .connection-status {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-connected { 
+            background: #22c55e; 
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+        }
+        .status-disconnected { 
+            background: #ef4444; 
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+        }
+        .status-waiting {
+            background: #f59e0b;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        .lang-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .lang-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        .logo {
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 10px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        
+        .app-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        
+        .app-subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        
+        .app-content {
+            padding: 20px;
+        }
+
+        /* Queue Position Display */
+        .queue-position {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: pulse 2s infinite;
+            border: 2px solid #fbbf24;
+        }
+
+        .queue-position-number {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+
+        .queue-estimated-wait {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* KVKK Onay Ekranı */
+        .kvkk-screen {
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .kvkk-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .kvkk-content {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #22c55e;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #374151;
+            max-height: 450px;
+            overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .kvkk-content h4 {
+            color: #1e293b;
+            margin: 15px 0 8px 0;
+            font-size: 15px;
+        }
+
+        .kvkk-content h4:first-child {
+            margin-top: 0;
+        }
+
+        .kvkk-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .kvkk-checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 15px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            border: 2px solid #bbf7d0;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .kvkk-checkbox-container:hover {
+            border-color: #22c55e;
+            background: #dcfce7;
+        }
+
+        .kvkk-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            transform: scale(1.2);
+        }
+
+        .kvkk-checkbox-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #16a34a;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .kvkk-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 13px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #22c55e;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+        }
+        
+        .user-id-input {
+            text-align: center;
+            font-weight: bold;
+            font-size: 24px;
+            letter-spacing: 2px;
+            font-family: monospace;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+        
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+        }
+        
+        .btn-call {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+        
+        .btn-call:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+        }
+        
+        .btn-call-disabled {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+            cursor: not-allowed;
+        }
+        
+        .btn-end {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-whatsapp {
+            background: #25d366;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .btn-whatsapp:hover:not(:disabled) {
+            background: #1da851;
+            transform: translateY(-1px);
+        }
+        
+        .btn-logout {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-accept {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-reject {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-kvkk-accept {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-kvkk-decline {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            flex: 1;
+        }
+        
+        .user-info {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 3px solid #22c55e;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 14px;
+        }
+        
+        .credits-value {
+            color: #22c55e;
+            font-size: 18px;
+        }
+        
+        .credits-zero {
+            color: #ef4444;
+            font-size: 18px;
+        }
+        
+        .call-status {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .call-timer {
+            font-size: 32px;
+            font-weight: 800;
+            color: #22c55e;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .incoming-call-status {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        .incoming-call-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .incoming-call-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+
+        .incoming-call-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 15px;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .success-message {
+            background: #f0fdf4;
+            color: #16a34a;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 15px;
+            border-left: 4px solid #22c55e;
+        }
+        
+        .warning-message {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 15px;
+            border-left: 4px solid #f59e0b;
+        }
+
+        /* Rate Limit Uyarıları */
+        .rate-limit-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 15px 0;
+            font-weight: 600;
+            animation: glow 2s ease-in-out infinite alternate;
+            border: 2px solid #fbbf24;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .rate-limit-severe {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            animation: shake 0.5s ease-in-out infinite;
+            border-color: #fca5a5;
+            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.6);
+        }
+
+        .rate-limit-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .rate-limit-countdown {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: 800;
+            margin: 10px 0;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4); }
+            to { box-shadow: 0 4px 25px rgba(245, 158, 11, 0.7); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .footer {
+            background: #f8fafc;
+            padding: 15px;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .contact-info {
+            background: #eff6ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            text-align: center;
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .contact-info strong {
+            color: #1e40af;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        
+        .contact-info span {
+            color: #374151;
+            font-size: 13px;
+        }
+        
+        .credit-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .credit-modal {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 320px;
+            width: 90%;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .credit-modal-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .credit-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .credit-modal-details {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 3px solid #22c55e;
+        }
+        
+        .credit-modal-duration {
+            font-size: 24px;
+            font-weight: 800;
+            color: #2563eb;
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        
+        .credit-modal-credit {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ef4444;
+            margin: 5px 0;
+        }
+        
+        .credit-modal-remaining {
+            font-size: 16px;
+            font-weight: 600;
+            color: #22c55e;
+            margin: 5px 0;
+        }
+        
+        .credit-modal-close {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .credit-modal-close:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1); 
+            }
+            50% { 
+                transform: scale(1.05); 
+            }
+        }
+
+        .btn-calling {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Loading State */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 400px) {
+            .app-container {
+                max-width: 320px;
+            }
+            
+            .app-header {
+                padding: 15px;
+            }
+            
+            .app-content {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <p id="connectionStatus">Bağlanıyor...</p>
-      <select id="languageSelect">
-        <option value="tr">🇹🇷 TR</option>
-      </select>
-      <h1>USTAMA SOR</h1>
-      <p>Teknik Servis Danışmanlığı</p>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="connection-status">
+                <div class="status-dot" id="connectionDot"></div>
+                <span id="connectionText" data-text-tr="Bağlanıyor..." data-text-en="Connecting...">Bağlanıyor...</span>
+            </div>
+            
+            <div class="lang-toggle" onclick="toggleLanguage()">
+                <span id="currentFlag">🇹🇷</span>
+                <span id="currentLang">TR</span>
+            </div>
+            
+            <div class="logo">
+                <svg width="40" height="40" fill="white" viewBox="0 0 24 24">
+                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                </svg>
+            </div>
+            <div class="app-title" data-text-tr="USTAMA SOR" data-text-en="ASK MY MASTER">USTAMA SOR</div>
+            <div class="app-subtitle" data-text-tr="Teknik Servis Danışmanlığı" data-text-en="Technical Support Service">Teknik Servis Danışmanlığı</div>
+        </div>
+        
+        <!-- KVKK Onay Ekranı -->
+        <div id="kvkkScreen" class="kvkk-screen">
+            <div class="kvkk-title" data-text-tr="📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme" data-text-en="📋 Personal Data Protection Information">📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme</div>
+            
+            <div class="kvkk-content">
+                <h4 data-text-tr="1. Veri İşleme ve Gizlilik" data-text-en="1. Data Processing and Privacy">1. Veri İşleme ve Gizlilik</h4>
+                <p data-text-tr="Bu hizmet kapsamında kullanıcıların sesli görüşmeleri kayıt altına alınmamaktadır. Görüşme içerikleri tarafımızca saklanmaz, üçüncü kişilerle paylaşılmaz." data-text-en="Under this service, users' voice conversations are not recorded. Conversation contents are not stored or shared with third parties by us.">Bu hizmet kapsamında kullanıcıların sesli görüşmeleri kayıt altına alınmamaktadır. Görüşme içerikleri tarafımızca saklanmaz, üçüncü kişilerle paylaşılmaz.</p>
+                
+                <h4 data-text-tr="2. Anonim Kullanım" data-text-en="2. Anonymous Usage">2. Anonim Kullanım</h4>
+                <p data-text-tr="Sistemi kullanmak için kimlik, ad-soyad, telefon numarası, e-posta gibi herhangi bir kişisel bilgi talep edilmez veya saklanmaz. Kullanıcılar tamamen anonim olarak hizmetten yararlanır." data-text-en="No personal information such as identity, name-surname, phone number, e-mail is requested or stored to use the system. Users benefit from the service completely anonymously.">Sistemi kullanmak için kimlik, ad-soyad, telefon numarası, e-posta gibi herhangi bir kişisel bilgi talep edilmez veya saklanmaz. Kullanıcılar tamamen anonim olarak hizmetten yararlanır.</p>
+                
+                <h4 data-text-tr="3. KVKK Uyarısı" data-text-en="3. GDPR Notice">3. KVKK Uyarısı</h4>
+                <p data-text-tr="6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında, sistem yalnızca teknik gerekli anonim bilgileri (tarayıcı tipi, bağlantı süresi) geçici işler. Bu veriler kimliğinizi tespit etmez ve kısa süre saklanır." data-text-en="Under Personal Data Protection Law No. 6698, the system only processes technically necessary anonymous information (browser type, connection time) temporarily. This data does not identify you and is stored briefly.">6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında, sistem yalnızca teknik gerekli anonim bilgileri (tarayıcı tipi, bağlantı süresi) geçici işler. Bu veriler kimliğinizi tespit etmez ve kısa süre saklanır.</p>
+                
+                <h4 data-text-tr="4. Kullanıcı Sorumluluğu" data-text-en="4. User Responsibility">4. Kullanıcı Sorumluluğu</h4>
+                <p data-text-tr="Bu hizmet, teknik destek amacıyla sunulur. Görüşme esnasında kullanıcı tarafından iletilen her türlü bilgi, belge veya kişisel veri paylaşımı tamamen kullanıcının kendi sorumluluğundadır." data-text-en="This service is provided for technical support purposes. Any information, documents or personal data shared by the user during the conversation is entirely the user's own responsibility.">Bu hizmet, teknik destek amacıyla sunulur. Görüşme esnasında kullanıcı tarafından iletilen her türlü bilgi, belge veya kişisel veri paylaşımı tamamen kullanıcının kendi sorumluluğundadır.</p>
+                
+                <h4 data-text-tr="5. Onay" data-text-en="5. Consent">5. Onay</h4>
+                <p data-text-tr="Bu metni onaylayarak:" data-text-en="By approving this text:">Bu metni onaylayarak:</p>
+                <ul>
+                    <li data-text-tr="Ses kayıtlarının tutulmayacağını," data-text-en="That voice recordings will not be kept,">Ses kayıtlarının tutulmayacağını,</li>
+                    <li data-text-tr="Kimliğimin tespitine imkân verecek herhangi bir bilginin talep edilmediğini," data-text-en="That no information that would allow identification of my identity is requested,">Kimliğimin tespitine imkân verecek herhangi bir bilginin talep edilmediğini,</li>
+                    <li data-text-tr="Görüşme sırasında kendi isteğimle paylaşacağım bilgilerden yalnızca kendimin sorumlu olacağımı" data-text-en="That I will be solely responsible for the information I share voluntarily during the conversation">Görüşme sırasında kendi isteğimle paylaşacağım bilgilerden yalnızca kendimin sorumlu olacağımı</li>
+                </ul>
+                <p data-text-tr="kabul ve beyan ediyorum." data-text-en="I accept and declare.">kabul ve beyan ediyorum.</p>
+            </div>
+            
+            <div class="kvkk-checkbox-container">
+                <input type="checkbox" id="kvkkCheckbox" class="kvkk-checkbox">
+                <label for="kvkkCheckbox" class="kvkk-checkbox-label" data-text-tr="Okudum, anladım, onaylıyorum" data-text-en="I have read, understood and approve">Okudum, anladım, onaylıyorum</label>
+            </div>
+            
+            <div class="kvkk-buttons">
+                <button class="btn btn-kvkk-decline" onclick="declineKVKK()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <span data-text-tr="Reddet" data-text-en="Decline">Reddet</span>
+                </button>
+                <button class="btn btn-kvkk-accept" id="kvkkAcceptBtn" disabled onclick="acceptKVKK()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span data-text-tr="Onaylıyorum" data-text-en="I Approve">Onaylıyorum</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="app-content">
+            <!-- Giriş Ekranı -->
+            <div id="loginScreen" class="hidden">
+                <div class="form-group">
+                    <label class="form-label" data-text-tr="4 Haneli ID Kodunuz" data-text-en="Your 4-Digit ID Code">4 Haneli ID Kodunuz</label>
+                    <input type="text" class="form-input user-id-input" id="userIdInput" 
+                           placeholder="0000" maxlength="4" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-text-tr="Ad Soyad" data-text-en="Full Name">Ad Soyad</label>
+                    <input type="text" class="form-input" id="userNameInput" 
+                           data-placeholder-tr="Adınızı ve Soyadınızı" data-placeholder-en="Your First and Last Name"
+                           placeholder="Adınızı ve Soyadınızı">
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="rememberMe" style="width: auto; margin: 0;">
+                    <label for="rememberMe" style="margin: 0; font-size: 14px; color: #374151; cursor: pointer;" 
+                           data-text-tr="🔒 Beni Hatırla" data-text-en="🔒 Remember Me">
+                        🔒 Beni Hatırla
+                    </label>
+                </div>
+                <button class="btn btn-login" id="loginButton" onclick="loginUser()">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span data-text-tr="Giriş Yap" data-text-en="Sign In">Giriş Yap</span>
+                </button>
+                
+                <div class="contact-info">
+                    <strong data-text-tr="💳 Kredi Talebi" data-text-en="💳 Credit Request">💳 Kredi Talebi</strong>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
+                            </svg>
+                            <span data-text-tr="WhatsApp ile Kredi Talep Et" data-text-en="Request Credit via WhatsApp">WhatsApp ile Kredi Talep Et</span>
+                        </button>
+                        <div style="font-size: 12px; color: #64748b; text-align: center;">
+                            📞 +90 537 479 24 03
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="loginMessage"></div>
+                <div id="rateLimitWarning" class="hidden"></div>
+            </div>
+            
+            <!-- Ana Uygulama -->
+            <div id="mainApp" class="hidden">
+                <!-- Kullanıcı Bilgileri -->
+                <div class="user-info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label" data-text-tr="Kullanıcı" data-text-en="User">Kullanıcı</div>
+                            <div class="info-value" id="displayUserName">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ID</div>
+                            <div class="info-value" id="displayUserId">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label" data-text-tr="Kredi Bakiye" data-text-en="Credit Balance">Kredi Bakiye</div>
+                            <div class="info-value credits-value" id="displayUserCredits">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label" data-text-tr="Durum" data-text-en="Status">Durum</div>
+                            <div class="info-value" id="displayUserStatus" data-text-tr="Hazır" data-text-en="Ready">Hazır</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kuyruk Pozisyonu -->
+                <div id="queuePosition" class="queue-position hidden">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px;" 
+                         data-text-tr="🎯 Sıranda Bekliyor" data-text-en="🎯 Waiting in Queue">
+                        🎯 Sıranda Bekliyor
+                    </div>
+                    <div class="queue-position-number" id="queuePositionNumber">-</div>
+                    <div style="font-size: 14px; opacity: 0.9;" 
+                         data-text-tr="Sıranız" data-text-en="Your Position">Sıranız</div>
+                    <div class="queue-estimated-wait" id="estimatedWait" 
+                         data-text-tr="Tahmini bekleme: ~3-5 dk" data-text-en="Estimated wait: ~3-5 min">
+                        Tahmini bekleme: ~3-5 dk
+                    </div>
+                    <button class="btn btn-end" style="margin-top: 15px;" onclick="cancelCall()">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span data-text-tr="Aramayı İptal Et" data-text-en="Cancel Call">Aramayı İptal Et</span>
+                    </button>
+                </div>
+
+                <!-- Gelen Arama Ekranı -->
+                <div id="incomingCallState" class="hidden">
+                    <div class="incoming-call-status">
+                        <div class="incoming-call-title" data-text-tr="📞 GELEN ARAMA" data-text-en="📞 INCOMING CALL">📞 GELEN ARAMA</div>
+                        <div class="incoming-call-subtitle" data-text-tr="🔧 USTAM ARIYOR" data-text-en="🔧 MASTER CALLING">🔧 USTAM ARIYOR</div>
+                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 15px;" 
+                             data-text-tr="Aramayı kabul ediyor musunuz?" data-text-en="Do you accept the call?">
+                            Aramayı kabul ediyor musunuz?
+                        </div>
+                        <div class="incoming-call-buttons">
+                            <button class="btn btn-accept" onclick="acceptIncomingCall()">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                                </svg>
+                                <span data-text-tr="Kabul Et" data-text-en="Accept">Kabul Et</span>
+                            </button>
+                            <button class="btn btn-reject" onclick="rejectIncomingCall()">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                                </svg>
+                                <span data-text-tr="Reddet" data-text-en="Reject">Reddet</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Boş Durum -->
+                <div id="idleState">
+                    <button class="btn btn-call" id="callButton" onclick="startCall()">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                        </svg>
+                        <span data-text-tr="Ustamı Ara" data-text-en="Call Master">Ustamı Ara</span>
+                    </button>
+                    
+                    <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
+                        </svg>
+                        <span data-text-tr="WhatsApp Kredi Talebi" data-text-en="WhatsApp Credit Request">WhatsApp Kredi Talebi</span>
+                    </button>
+                    
+                    <button class="btn btn-logout" onclick="logoutUser()">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                        </svg>
+                        <span data-text-tr="Çıkış Yap" data-text-en="Sign Out">Çıkış Yap</span>
+                    </button>
+                    
+                    <div id="errorMessage" class="error-message hidden"></div>
+                </div>
+                
+                <!-- Bağlanıyor Durumu -->
+                <div id="connectingState" class="hidden">
+                    <div class="call-status">
+                        <div style="color: #2563eb; font-weight: 700; font-size: 18px;" 
+                             data-text-tr="🔗 Bağlanıyor..." data-text-en="🔗 Connecting...">🔗 Bağlanıyor...</div>
+                        <div style="font-size: 14px; color: #64748b; margin-top: 8px;" 
+                             data-text-tr="Ses bağlantısı kuruluyor" data-text-en="Establishing audio connection">Ses bağlantısı kuruluyor</div>
+                    </div>
+                    <button class="btn btn-end" onclick="endCall()">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                        </svg>
+                        <span data-text-tr="İptal Et" data-text-en="Cancel">İptal Et</span>
+                    </button>
+                </div>
+                
+                <!-- Aktif Görüşme -->
+                <div id="connectedState" class="hidden">
+                    <div class="call-status">
+                        <div style="color: #22c55e; font-weight: 700; font-size: 18px;" 
+                             data-text-tr="📊 Görüşme Aktif" data-text-en="📊 Call Active">📊 Görüşme Aktif</div>
+                        <div class="call-timer" id="callTimer">00:00</div>
+                    </div>
+                    <button class="btn btn-end" onclick="endCall()">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                        </svg>
+                        <span data-text-tr="Görüşmeyi Sonlandır" data-text-en="End Call">Görüşmeyi Sonlandır</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div data-text-tr="VIPCEP Teknik Servis © 2025" data-text-en="VIPCEP Technical Service © 2025">VIPCEP Teknik Servis © 2025</div>
+            <div style="margin-top: 5px;" data-text-tr="Mobil Cihaz Teknik Danışmanlığı" data-text-en="Mobile Device Technical Consultancy">Mobil Cihaz Teknik Danışmanlığı</div>
+        </div>
     </div>
-
-    <div class="kvkk">
-      <h3>📋 Kişisel Verilerin Korunması</h3>
-      <p>1. Ses kayıtları tutulmaz, bilgiler paylaşılmaz.</p>
-      <p>2. Kimlik bilgisi talep edilmez, anonim kullanım.</p>
-      <p>3. KVKK uyarınca sadece teknik veriler geçici saklanır.</p>
-      <p>4. Paylaşılan bilgiler kullanıcının sorumluluğundadır.</p>
-      <p>5. Onaylayarak bu şartları kabul etmiş sayılırsınız.</p>
-      <button class="reject" onclick="rejectKvkk()">Reddet</button>
-      <button class="accept" onclick="acceptKvkk()">Onaylıyorum</button>
+    
+    <!-- Kredi Bildirimi Modal -->
+    <div id="creditModalOverlay" class="credit-modal-overlay hidden">
+        <div class="credit-modal">
+            <div class="credit-modal-icon">💳</div>
+            <div class="credit-modal-title" data-text-tr="Görüşme Sona Erdi" data-text-en="Call Ended">Görüşme Sona Erdi</div>
+            
+            <div class="credit-modal-details">
+                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;" 
+                     data-text-tr="Görüşme Süresi" data-text-en="Call Duration">Görüşme Süresi</div>
+                <div class="credit-modal-duration" id="modalDuration">00:00</div>
+                
+                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px; margin-top: 12px;" 
+                     data-text-tr="Kullanılan Kredi" data-text-en="Credits Used">Kullanılan Kredi</div>
+                <div class="credit-modal-credit" id="modalCreditsUsed" 
+                     data-text-tr="0 dakika" data-text-en="0 minutes">0 dakika</div>
+                
+                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px; margin-top: 12px;" 
+                     data-text-tr="Kalan Krediniz" data-text-en="Remaining Credits">Kalan Krediniz</div>
+                <div class="credit-modal-remaining" id="modalRemainingCredits" 
+                     data-text-tr="0 dakika" data-text-en="0 minutes">0 dakika</div>
+            </div>
+            
+            <button class="credit-modal-close" onclick="closeCreditModal()">
+                <span data-text-tr="✔ Tamam" data-text-en="✔ OK">✔ Tamam</span>
+            </button>
+        </div>
     </div>
+    
+    <!-- Gizli ses elementleri -->
+    <audio id="localAudio" muted></audio>
+    <audio id="remoteAudio" autoplay></audio>
+    
+    <script>
+        // Global değişkenler
+        let audioContext = null;
+        let audioInitialized = false;
+        let notificationAudio = [];
+        let currentLanguage = 'tr';
+        let socket = null;
+        let peerConnection = null;
+        let localStream = null;
+        let callState = 'idle';
+        let callTimer = null;
+        let callDuration = 0;
+        let callStartTime = null;
+        let isLoggedIn = false;
+        let serverUrl = window.location.hostname === 'localhost' ? 
+            'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
+        let incomingCallInfo = null;
+        let kvkkApproved = false;
+        let rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
+        let currentAdminId = null;
+        let queuePosition = 0;
+        let queueUpdateInterval = null;
+        
+        let userInfo = {
+            id: '',
+            name: '',
+            credits: 0,
+            adminId: "ADMIN001"
+        };
+        
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        
+        // Ses sistemi fonksiyonları
+        function initializeAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const unlockAudio = () => {
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().then(() => {
+                            console.log('🔊 Audio context unlocked');
+                            audioInitialized = true;
+                            playTestSound();
+                        });
+                    } else {
+                        audioInitialized = true;
+                        playTestSound();
+                    }
+                    
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchend', unlockAudio);
+                    document.removeEventListener('keydown', unlockAudio);
+                };
+                
+                document.addEventListener('click', unlockAudio);
+                document.addEventListener('touchend', unlockAudio);
+                document.addEventListener('keydown', unlockAudio);
+                
+            } catch (error) {
+                console.log('Audio initialization error:', error);
+                audioInitialized = false;
+            }
+        }
 
-    <div class="login" style="display: none;">
-      <h3>Giriş</h3>
-      <input type="text" id="userId" placeholder="4 Haneli ID Kodunuz">
-      <input type="text" id="userName" placeholder="Ad Soyad">
-      <label><input type="checkbox" id="rememberMe"> 🔒 Beni Hatırla</label>
-      <button onclick="login()">Giriş Yap</button>
-      <div>
-        <h4>💳 Kredi Talebi</h4>
-        <button onclick="requestCredit()">WhatsApp ile Kredi Talep Et</button>
-        <p>📞 +90 537 479 24 03</p>
-      </div>
-    </div>
+        function playTestSound() {
+            if (!audioContext || !audioInitialized) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                
+                console.log('🔊 Audio system ready');
+            } catch (error) {
+                console.log('Test sound error:', error);
+            }
+        }
 
-    <div class="call-management" style="display: none;">
-      <div>
-        <p>Kullanıcı: <span id="userNameDisplay">-</span></p>
-        <p>ID: <span id="userIdDisplay">-</span></p>
-        <p>Kredi Bakiye: <span id="creditBalance">-</span></p>
-        <p>Durum: <span id="userStatus">Hazır</span></p>
-      </div>
-      <div id="waitingQueue" style="display: none;">
-        <h3>🎯 Sırada Bekliyor</h3>
-        <p>Sıranız: <span id="queuePosition">-</span></p>
-        <p>Tahmini bekleme: ~3-5 dk</p>
-        <button onclick="cancelCall()">Aramayı İptal Et</button>
-      </div>
-      <div id="incomingCall" style="display: none;">
-        <h3>📞 Gelen Arama</h3>
-        <p>🔧 USTAM ARIYOR</p>
-        <p>Aramayı kabul ediyor musunuz?</p>
-        <button class="accept" onclick="acceptCall()">Kabul Et</button>
-        <button class="reject" onclick="rejectCall()">Reddet</button>
-      </div>
-      <div>
-        <button onclick="startCall()">Ustamı Ara</button>
-        <button onclick="requestCredit()">WhatsApp Kredi Talebi</button>
-        <button onclick="logout()">Çıkış Yap</button>
-      </div>
-      <div id="callConnecting" style="display: none;">
-        <h3>🔗 Bağlanıyor...</h3>
-        <p>Ses bağlantısı kuruluyor</p>
-        <button onclick="cancelCall()">İptal Et</button>
-      </div>
-      <div id="activeCall" style="display: none;">
-        <h3>📊 Görüşme Aktif</h3>
-        <p id="callDuration">00:00</p>
-        <button onclick="endCall()">Görüşmeyi Sonlandır</button>
-      </div>
-    </div>
+        function playIncomingCallSound() {
+            if (!audioContext || !audioInitialized) {
+                console.log('⚠️ Audio not initialized, trying to initialize...');
+                initializeAudio();
+                
+                setTimeout(() => {
+                    if (audioInitialized) {
+                        playIncomingCallSoundInternal();
+                    } else {
+                        console.log('❌ Audio system not ready');
+                        playFallbackNotificationSound();
+                    }
+                }, 500);
+                return;
+            }
+            
+            playIncomingCallSoundInternal();
+        }
 
-    <div class="footer">
-      <p>VIPCEP Teknik Servis © 2025</p>
-      <p>Mobil Cihaz Teknik Danışmanlığı</p>
-    </div>
-  </div>
+        function playIncomingCallSoundInternal() {
+            try {
+                stopIncomingCallSound();
+                
+                function playRing() {
+                    if (callState !== 'incoming') return;
+                    
+                    const oscillator1 = audioContext.createOscillator();
+                    const oscillator2 = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator1.connect(gainNode);
+                    oscillator2.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator1.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator2.frequency.setValueAtTime(880, audioContext.currentTime);
+                    oscillator1.type = 'sine';
+                    oscillator2.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    
+                    oscillator1.start(audioContext.currentTime);
+                    oscillator2.start(audioContext.currentTime);
+                    oscillator1.stop(audioContext.currentTime + 1.0);
+                    oscillator2.stop(audioContext.currentTime + 1.0);
+                    
+                    notificationAudio.push(oscillator1, oscillator2);
+                    
+                    setTimeout(playRing, 1500);
+                }
+                
+                playRing();
+                
+            } catch (error) {
+                console.log('Incoming call sound error:', error);
+                playFallbackNotificationSound();
+            }
+        }
 
-  <div id="callEnded" style="display: none;">
-    <h3>💳 Görüşme Sona Erdi</h3>
-    <p>Görüşme Süresi: <span id="endCallDuration">00:00</span></p>
-    <p>Kullanılan Kredi: <span id="creditsUsed">0 dakika</span></p>
-    <p>Kalan Krediniz: <span id="creditsRemaining">0 dakika</span></p>
-    <button onclick="closeCallEnded()">✔ Tamam</button>
-  </div>
+        function playFallbackNotificationSound() {
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU+ltryxnkpBSl+zPLaizsIGGS57uGQQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Fallback audio error:', e));
+            } catch (fallbackError) {
+                console.log('Fallback audio also failed:', fallbackError);
+            }
+        }
 
-  <script>
-    const ws = new WebSocket(`ws://${window.location.host}`);
-    ws.onopen = () => {
-      document.getElementById('connectionStatus').textContent = 'Bağlandı';
-    };
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'login-response' && data.success) {
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('call-management').style.display = 'block';
-        document.getElementById('userNameDisplay').textContent = data.user.name;
-        document.getElementById('userIdDisplay').textContent = data.user.id;
-        document.getElementById('creditBalance').textContent = data.credits;
-      }
-    };
+        function stopIncomingCallSound() {
+            if (notificationAudio) {
+                notificationAudio.forEach(node => {
+                    try { 
+                        if (node.stop) node.stop(); 
+                    } catch(e) {}
+                });
+                notificationAudio = [];
+            }
+        }
 
-    function acceptKvkk() {
-      ws.send(JSON.stringify({ type: 'kvkk-consent', consent: true }));
-      document.getElementById('kvkk').style.display = 'none';
-      document.getElementById('login').style.display = 'block';
-    }
+        // Uygulama başlatma
+        window.onload = function() {
+            init();
+        };
+        
+        function init() {
+            setupEventListeners();
+            loadSavedUserInfo();
+            connectToServer();
+            initializeAudio();
+            
+            const savedLang = localStorage.getItem('vipcep_language');
+            if (savedLang && (savedLang === 'tr' || savedLang === 'en')) {
+                currentLanguage = savedLang;
+            }
+            updateLanguage();
+        }
+        
+        function setupEventListeners() {
+            const kvkkCheckbox = document.getElementById('kvkkCheckbox');
+            const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
+            
+            if (kvkkCheckbox && kvkkAcceptBtn) {
+                kvkkCheckbox.addEventListener('change', (e) => {
+                    console.log('📋 KVKK Checkbox değişti:', e.target.checked);
+                    kvkkAcceptBtn.disabled = !e.target.checked;
+                    localStorage.setItem('vipcep_kvkk_checkbox', e.target.checked);
+                    
+                    if (e.target.checked) {
+                        kvkkAcceptBtn.removeAttribute('disabled');
+                        kvkkAcceptBtn.style.opacity = '1';
+                        kvkkAcceptBtn.style.pointerEvents = 'auto';
+                    } else {
+                        kvkkAcceptBtn.setAttribute('disabled', 'true');
+                        kvkkAcceptBtn.style.opacity = '0.5';
+                        kvkkAcceptBtn.style.pointerEvents = 'none';
+                    }
+                });
+                
+                setTimeout(() => {
+                    const isChecked = kvkkCheckbox.checked;
+                    kvkkAcceptBtn.disabled = !isChecked;
+                    console.log('📋 KVKK Initial state:', { isChecked, buttonDisabled: kvkkAcceptBtn.disabled });
+                }, 100);
+            }
 
-    function rejectKvkk() { window.location.href = '/'; }
+            document.getElementById('userIdInput').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            });
 
-    function login() {
-      const id = document.getElementById('userId').value;
-      const name = document.getElementById('userName').value;
-      const remember = document.getElementById('rememberMe').checked;
-      ws.send(JSON.stringify({ type: 'register', id, name, userType: 'customer' }));
-    }
+            document.getElementById('userNameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loginUser();
+                }
+            });
 
-    function startCall() { ws.send(JSON.stringify({ type: 'call-request' })); }
-    function cancelCall() { ws.send(JSON.stringify({ type: 'call-cancelled' })); }
-    function acceptCall() { ws.send(JSON.stringify({ type: 'accept-call' })); }
-    function rejectCall() { ws.send(JSON.stringify({ type: 'reject-call' })); }
-    function endCall() { ws.send(JSON.stringify({ type: 'end-call' })); }
-    function requestCredit() { window.open('https://wa.me/+905374792403'); }
-    function logout() { window.location.href = '/logout'; }
-    function closeCallEnded() { document.getElementById('callEnded').style.display = 'none'; }
-  </script>
+            document.getElementById('userIdInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('userNameInput').focus();
+                }
+            });
+        }
+        
+        function connectToServer() {
+            console.log('🔗 Sunucuya bağlanıyor...');
+            updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...');
+            
+            try {
+                socket = new WebSocket(serverUrl);
+                
+                socket.onopen = function() {
+                    console.log('✅ WebSocket bağlantısı kuruldu');
+                    updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
+                    checkKVKKApproval();
+                    
+                    if (isLoggedIn) {
+                        registerUser();
+                    }
+                };
+                
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleServerMessage(message);
+                };
+                
+                socket.onclose = function() {
+                    console.log('❌ WebSocket bağlantısı kapandı');
+                    updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected');
+                    
+                    setTimeout(() => {
+                        if (!socket || socket.readyState === WebSocket.CLOSED) {
+                            connectToServer();
+                        }
+                    }, 3000);
+                };
+                
+                socket.onerror = function(error) {
+                    console.log('❌ WebSocket hatası:', error);
+                    updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı hatası' : 'Connection error');
+                };
+                
+            } catch (error) {
+                console.log('❌ WebSocket oluşturma hatası:', error);
+                updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı hatası' : 'Connection error');
+            }
+        }
+        
+        function updateConnectionStatus(connected, text) {
+            const dot = document.getElementById('connectionDot');
+            const statusText = document.getElementById('connectionText');
+            
+            if (connected) {
+                dot.className = 'status-dot status-connected';
+            } else {
+                dot.className = 'status-dot status-disconnected';
+            }
+            
+            statusText.textContent = text;
+        }
+        
+        function handleServerMessage(message) {
+            console.log('📨 Sunucudan mesaj:', message.type);
+            
+            switch (message.type) {
+                case 'kvkk-status':
+                    if (message.hasConsent) {
+                        kvkkApproved = true;
+                        localStorage.setItem('vipcep_kvkk_approved', 'true');
+                        checkKVKKApproval();
+                    }
+                    break;
+                
+                case 'kvkk-consent-response':
+                    if (message.success) {
+                        console.log('✅ KVKK onayı kaydedildi');
+                    }
+                    break;
+                
+                case 'login-response':
+                    handleLoginResponse(message);
+                    break;
+                
+                case 'call-queue-update':
+                    updateQueuePosition(message.queue);
+                    break;
+                
+                case 'admin-call-request':
+                    handleIncomingAdminCall(message);
+                    break;
+                
+                case 'call-accepted':
+                    console.log('✅ Arama kabul edildi (queue)');
+                    currentAdminId = message.acceptedAdminId;
+                    setState('connecting');
+                    setupPeerConnection();
+                    break;
+                
+                case 'call-rejected':
+                    console.log('❌ Arama reddedildi:', message.reason);
+                    setState('idle');
+                    showError(message.reason || (currentLanguage === 'tr' ? 'Arama reddedildi' : 'Call rejected'));
+                    break;
+                
+                case 'admin-call-cancelled':
+                    console.log('📞 Admin araması iptal edildi');
+                    stopIncomingCallSound();
+                    setState('idle');
+                    showMessage(currentLanguage === 'tr' ? 'Gelen arama iptal edildi' : 'Incoming call cancelled', 'warning');
+                    break;
+                
+                case 'call-ended':
+                    console.log('📞 Görüşme sonlandırıldı:', message.reason);
+                    handleCallEnd(message);
+                    break;
+                
+                case 'credit-update':
+                    console.log('💳 Kredi güncellendi:', message.credits);
+                    userInfo.credits = message.credits;
+                    updateUserDisplay();
+                    
+                    if (message.message) {
+                        showMessage(message.message, 'success');
+                    }
+                    break;
+                
+                case 'auto-credit-update':
+                    if (message.userId === userInfo.id) {
+                        userInfo.credits = message.newCredits;
+                        updateUserDisplay();
+                        console.log(`💗 Heartbeat kredi düşürüldü: ${message.creditsUsed} dk`);
+                    }
+                    break;
+                
+                case 'offer':
+                    console.log('📨 WebRTC Offer alındı');
+                    handleOffer(message);
+                    break;
+                
+                case 'answer':
+                    console.log('📨 WebRTC Answer alındı');
+                    handleAnswer(message);
+                    break;
+                
+                case 'ice-candidate':
+                    console.log('📨 ICE Candidate alındı');
+                    handleIceCandidate(message);
+                    break;
+                
+                default:
+                    console.log('❓ Bilinmeyen mesaj tipi:', message.type);
+            }
+        }
+        
+        function updateQueuePosition(queue) {
+            if (!queue || queue.length === 0) {
+                hideQueuePosition();
+                return;
+            }
+            
+            // Kullanıcının kuyrukta olup olmadığını kontrol et
+            const userPosition = queue.findIndex(call => call.userId === userInfo.id);
+            
+            if (userPosition === -1) {
+                hideQueuePosition();
+                return;
+            }
+            
+            queuePosition = userPosition + 1;
+            showQueuePosition();
+            
+            // Bekleme süresini tahmin et (ortalama 3-5 dakika per kişi)
+            const estimatedMinutes = queuePosition * 4;
+            const estimatedText = currentLanguage === 'tr' ? 
+                `Tahmini bekleme: ~${estimatedMinutes} dk` : 
+                `Estimated wait: ~${estimatedMinutes} min`;
+            
+            document.getElementById('estimatedWait').textContent = estimatedText;
+        }
+        
+        function showQueuePosition() {
+            if (callState === 'waiting') {
+                document.getElementById('queuePositionNumber').textContent = queuePosition;
+                document.getElementById('queuePosition').classList.remove('hidden');
+                document.getElementById('idleState').classList.add('hidden');
+                
+                // Bağlantı durumunu güncelle
+                updateConnectionStatus(true, currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue');
+                const dot = document.getElementById('connectionDot');
+                dot.className = 'status-dot status-waiting';
+            }
+        }
+        
+        function hideQueuePosition() {
+            document.getElementById('queuePosition').classList.add('hidden');
+            if (callState === 'waiting') {
+                setState('idle');
+            }
+        }
+        
+        function checkKVKKApproval() {
+            const hasApproval = localStorage.getItem('vipcep_kvkk_approved') === 'true';
+            
+            if (hasApproval) {
+                kvkkApproved = true;
+                document.getElementById('kvkkScreen').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'kvkk-consent',
+                        approved: true
+                    }));
+                }
+            } else {
+                const lastCheckboxState = localStorage.getItem('vipcep_kvkk_checkbox') === 'true';
+                
+                document.getElementById('kvkkScreen').classList.remove('hidden');
+                document.getElementById('loginScreen').classList.add('hidden');
+                
+                setTimeout(() => {
+                    const kvkkCheckbox = document.getElementById('kvkkCheckbox');
+                    const kvkkAcceptBtn = document.getElementById('kvkkAcceptBtn');
+                    
+                    if (kvkkCheckbox && kvkkAcceptBtn) {
+                        kvkkCheckbox.checked = lastCheckboxState;
+                        kvkkAcceptBtn.disabled = !lastCheckboxState;
+                        
+                        console.log('📋 KVKK Checkbox durumu ayarlandı:', { 
+                            checked: lastCheckboxState, 
+                            buttonDisabled: !lastCheckboxState 
+                        });
+                        
+                        if (lastCheckboxState) {
+                            kvkkAcceptBtn.removeAttribute('disabled');
+                            kvkkAcceptBtn.style.opacity = '1';
+                            kvkkAcceptBtn.style.pointerEvents = 'auto';
+                        } else {
+                            kvkkAcceptBtn.setAttribute('disabled', 'true');
+                            kvkkAcceptBtn.style.opacity = '0.5';
+                            kvkkAcceptBtn.style.pointerEvents = 'none';
+                        }
+                    }
+                }, 100);
+            }
+        }
+        
+        function acceptKVKK() {
+            const checkbox = document.getElementById('kvkkCheckbox');
+            if (!checkbox.checked) {
+                alert(currentLanguage === 'tr' ? 'Lütfen onay kutusunu işaretleyin!' : 'Please check the approval box!');
+                return;
+            }
+            
+            kvkkApproved = true;
+            localStorage.setItem('vipcep_kvkk_approved', 'true');
+            localStorage.setItem('vipcep_kvkk_checkbox', 'true');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'kvkk-consent',
+                    approved: true
+                }));
+            }
+            
+            document.getElementById('kvkkScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
+        
+        function declineKVKK() {
+            alert(currentLanguage === 'tr' ? 
+                'KVKK onayı olmadan sistemi kullanamazsınız.' : 
+                'You cannot use the system without GDPR approval.');
+            
+            window.close();
+        }
+        
+        function loginUser() {
+            const userId = document.getElementById('userIdInput').value.trim();
+            const userName = document.getElementById('userNameInput').value.trim();
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            if (!userId || !userName) {
+                showLoginError(currentLanguage === 'tr' ? 'Lütfen tüm alanları doldurun!' : 'Please fill in all fields!');
+                return;
+            }
+            
+            if (userId.length !== 4) {
+                showLoginError(currentLanguage === 'tr' ? 'ID kodu 4 haneli olmalıdır!' : 'ID code must be 4 digits!');
+                return;
+            }
+            
+            if (userName.length < 2) {
+                showLoginError(currentLanguage === 'tr' ? 'İsim en az 2 karakter olmalıdır!' : 'Name must be at least 2 characters!');
+                return;
+            }
+            
+            if (!rateLimitStatus.allowed) {
+                showRateLimitWarning();
+                return;
+            }
+            
+            const loginButton = document.getElementById('loginButton');
+            loginButton.disabled = true;
+            loginButton.innerHTML = `
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" class="animate-spin">
+                    <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                <span data-text-tr="Giriş yapılıyor..." data-text-en="Signing in...">${currentLanguage === 'tr' ? 'Giriş yapılıyor...' : 'Signing in...'}</span>
+            `;
+            
+            userInfo.id = userId;
+            userInfo.name = userName;
+            
+            if (rememberMe) {
+                localStorage.setItem('vipcep_user_id', userId);
+                localStorage.setItem('vipcep_user_name', userName);
+                localStorage.setItem('vipcep_remember_me', 'true');
+            } else {
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+                localStorage.removeItem('vipcep_remember_me');
+            }
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'login-request',
+                    userId: userId,
+                    userName: userName
+                }));
+            } else {
+                showLoginError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
+                loginButton.disabled = false;
+                updateLanguage();
+            }
+        }
+        
+        function handleLoginResponse(message) {
+            const loginButton = document.getElementById('loginButton');
+            
+            if (message.success) {
+                console.log('✅ Giriş başarılı:', userInfo.name);
+                userInfo.credits = message.credits;
+                
+                isLoggedIn = true;
+                showMessage(currentLanguage === 'tr' ? 'Giriş başarılı!' : 'Login successful!', 'success');
+                
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                
+                updateUserDisplay();
+                registerUser();
+                
+                rateLimitStatus = { allowed: true, attempts: 0, remaining: 5, resetTime: null };
+                hideRateLimitWarning();
+                
+            } else {
+                console.log('❌ Giriş başarısız:', message.reason);
+                
+                if (message.rateLimited) {
+                    rateLimitStatus = {
+                        allowed: false,
+                        attempts: message.attempts || 5,
+                        remaining: message.remaining || 0,
+                        resetTime: message.resetTime ? new Date(message.resetTime) : null
+                    };
+                    showRateLimitWarning();
+                } else {
+                    rateLimitStatus.remaining = message.remaining || 5;
+                    showLoginError(message.reason);
+                }
+            }
+            
+            loginButton.disabled = false;
+            updateLanguage();
+        }
+        
+        function registerUser() {
+            if (socket && socket.readyState === WebSocket.OPEN && isLoggedIn) {
+                socket.send(JSON.stringify({
+                    type: 'register',
+                    userId: userInfo.id,
+                    name: userInfo.name,
+                    userType: 'customer'
+                }));
+                console.log('📝 Kullanıcı kaydedildi:', userInfo.name);
+            }
+        }
+        
+        function updateUserDisplay() {
+            document.getElementById('displayUserName').textContent = userInfo.name || '-';
+            document.getElementById('displayUserId').textContent = userInfo.id || '-';
+            
+            const creditsElement = document.getElementById('displayUserCredits');
+            creditsElement.textContent = userInfo.credits + ' dk';
+            
+            if (userInfo.credits <= 0) {
+                creditsElement.className = 'info-value credits-zero';
+                // Arama butonunu deaktif et
+                const callButton = document.getElementById('callButton');
+                if (callButton) {
+                    callButton.className = 'btn btn-call-disabled';
+                    callButton.disabled = true;
+                }
+            } else {
+                creditsElement.className = 'info-value credits-value';
+                // Arama butonunu aktif et
+                const callButton = document.getElementById('callButton');
+                if (callButton && callState === 'idle') {
+                    callButton.className = 'btn btn-call';
+                    callButton.disabled = false;
+                }
+            }
+        }
+        
+        function loadSavedUserInfo() {
+            const rememberMe = localStorage.getItem('vipcep_remember_me') === 'true';
+            
+            if (rememberMe) {
+                const savedId = localStorage.getItem('vipcep_user_id');
+                const savedName = localStorage.getItem('vipcep_user_name');
+                
+                if (savedId && savedName) {
+                    document.getElementById('userIdInput').value = savedId;
+                    document.getElementById('userNameInput').value = savedName;
+                    document.getElementById('rememberMe').checked = true;
+                }
+            }
+        }
+        
+        function setState(newState) {
+            callState = newState;
+            
+            document.getElementById('idleState').classList.add('hidden');
+            document.getElementById('queuePosition').classList.add('hidden');
+            document.getElementById('connectingState').classList.add('hidden');
+            document.getElementById('connectedState').classList.add('hidden');
+            document.getElementById('incomingCallState').classList.add('hidden');
+            
+            switch (newState) {
+                case 'idle':
+                    document.getElementById('idleState').classList.remove('hidden');
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
+                    updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
+                    stopIncomingCallSound();
+                    break;
+                
+                case 'waiting':
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                    showQueuePosition();
+                    break;
+                
+                case 'incoming':
+                    document.getElementById('incomingCallState').classList.remove('hidden');
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
+                    playIncomingCallSound();
+                    break;
+                
+                case 'connecting':
+                    document.getElementById('connectingState').classList.remove('hidden');
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                    stopIncomingCallSound();
+                    break;
+                
+                case 'connected':
+                    document.getElementById('connectedState').classList.remove('hidden');
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In call';
+                    startCallTimer();
+                    stopIncomingCallSound();
+                    break;
+            }
+        }
+        
+        function startCall() {
+            if (!isLoggedIn) {
+                showError(currentLanguage === 'tr' ? 'Önce giriş yapın!' : 'Please login first!');
+                return;
+            }
+            
+            if (userInfo.credits <= 0) {
+                showError(currentLanguage === 'tr' ? 'Krediniz yetersiz! WhatsApp ile kredi talep edin.' : 'Insufficient credits! Request credits via WhatsApp.');
+                return;
+            }
+            
+            setState('waiting');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'call-request',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    credits: userInfo.credits
+                }));
+                console.log('📞 Arama talebi gönderildi');
+            } else {
+                showError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
+                setState('idle');
+            }
+        }
+        
+        function cancelCall() {
+            console.log('📞 Arama iptal ediliyor');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'call-cancelled',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    reason: currentLanguage === 'tr' ? 'Kullanıcı tarafından iptal edildi' : 'Cancelled by user'
+                }));
+            }
+            
+            setState('idle');
+        }
+        
+        function handleIncomingAdminCall(message) {
+            console.log('📞 Admin\'den gelen arama:', message.adminName);
+            
+            incomingCallInfo = {
+                adminId: message.adminId,
+                adminName: message.adminName || 'USTAM'
+            };
+            
+            setState('incoming');
+        }
+        
+        function acceptIncomingCall() {
+            if (!incomingCallInfo) {
+                console.log('❌ Gelen arama bilgisi bulunamadı');
+                return;
+            }
+            
+            console.log('✅ Gelen arama kabul edildi');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-accepted',
+                    userId: userInfo.id,
+                    adminId: incomingCallInfo.adminId
+                }));
+            }
+            
+            currentAdminId = incomingCallInfo.adminId;
+            setState('connecting');
+            setupPeerConnection();
+            incomingCallInfo = null;
+        }
+        
+        function rejectIncomingCall() {
+            if (!incomingCallInfo) {
+                console.log('❌ Gelen arama bilgisi bulunamadı');
+                return;
+            }
+            
+            console.log('❌ Gelen arama reddedildi');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-rejected',
+                    userId: userInfo.id,
+                    adminId: incomingCallInfo.adminId,
+                    reason: currentLanguage === 'tr' ? 'Kullanıcı tarafından reddedildi' : 'Rejected by user'
+                }));
+            }
+            
+            setState('idle');
+            incomingCallInfo = null;
+        }
+        
+        // WebRTC Fonksiyonları
+        async function setupPeerConnection() {
+            try {
+                console.log('🔗 WebRTC bağlantısı kuruluyor...');
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                        console.log('📨 ICE Candidate gönderiliyor');
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: currentAdminId
+                        }));
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('🎵 Remote stream alındı');
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    remoteAudio.srcObject = event.streams[0];
+                    setState('connected');
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection state:', peerConnection.connectionState);
+                    
+                    if (peerConnection.connectionState === 'connected') {
+                        setState('connected');
+                    } else if (peerConnection.connectionState === 'disconnected' || 
+                               peerConnection.connectionState === 'failed') {
+                        handleCallEnd({ reason: 'connection_lost', endedBy: 'system' });
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }, 
+                    video: false 
+                });
+                
+                console.log('🎤 Mikrofon izni alındı');
+                localStream = stream;
+                
+                const localAudio = document.getElementById('localAudio');
+                localAudio.srcObject = stream;
+                
+                stream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, stream);
+                });
+                
+                console.log('📨 WebRTC Offer oluşturuluyor');
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'offer',
+                        offer: offer,
+                        targetId: currentAdminId
+                    }));
+                    console.log('📨 WebRTC Offer gönderildi');
+                }
+                
+            } catch (error) {
+                console.log('❌ WebRTC kurulum hatası:', error);
+                showError(currentLanguage === 'tr' ? 'Mikrofon izni alınamadı!' : 'Microphone permission denied!');
+                setState('idle');
+            }
+        }
+        
+        async function handleOffer(message) {
+            try {
+                if (!peerConnection) {
+                    await setupPeerConnection();
+                }
+                
+                console.log('📨 WebRTC Offer işleniyor');
+                await peerConnection.setRemoteDescription(message.offer);
+                
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer,
+                        targetId: currentAdminId
+                    }));
+                    console.log('📨 WebRTC Answer gönderildi');
+                }
+                
+            } catch (error) {
+                console.log('❌ WebRTC Offer işleme hatası:', error);
+            }
+        }
+        
+        async function handleAnswer(message) {
+            try {
+                if (peerConnection) {
+                    console.log('📨 WebRTC Answer işleniyor');
+                    await peerConnection.setRemoteDescription(message.answer);
+                }
+            } catch (error) {
+                console.log('❌ WebRTC Answer işleme hatası:', error);
+            }
+        }
+        
+        async function handleIceCandidate(message) {
+            try {
+                if (peerConnection && message.candidate) {
+                    console.log('📨 ICE Candidate işleniyor');
+                    await peerConnection.addIceCandidate(message.candidate);
+                }
+            } catch (error) {
+                console.log('❌ ICE Candidate işleme hatası:', error);
+            }
+        }
+        
+        function endCall() {
+            console.log('📞 Görüşme sonlandırılıyor (kullanıcı tarafından)');
+            
+            const duration = callDuration;
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'end-call',
+                    targetId: currentAdminId || userInfo.adminId,
+                    duration: duration
+                }));
+            }
+            
+            cleanupCall();
+            setState('idle');
+            
+            if (duration > 0) {
+                showCreditModal(duration, Math.ceil(duration / 60), userInfo.credits);
+            }
+        }
+        
+        function handleCallEnd(message) {
+            console.log('📞 Görüşme sonlandırıldı:', message.reason);
+            
+            const duration = message.duration || callDuration;
+            const creditsUsed = message.creditsUsed || Math.ceil(duration / 60);
+            
+            cleanupCall();
+            setState('idle');
+            
+            if (duration > 0) {
+                showCreditModal(duration, creditsUsed, userInfo.credits);
+            }
+            
+            if (message.reason === 'no_credits') {
+                showError(currentLanguage === 'tr' ? 
+                    'Krediniz bitti! Görüşme sonlandırıldı.' : 
+                    'Credits exhausted! Call ended.');
+            } else if (message.reason === 'connection_lost') {
+                showError(currentLanguage === 'tr' ? 
+                    'Bağlantı sorunu nedeniyle görüşme sonlandırıldı.' : 
+                    'Call ended due to connection issues.');
+            }
+        }
+        
+        function cleanupCall() {
+            if (callTimer) {
+                clearInterval(callTimer);
+                callTimer = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            const localAudio = document.getElementById('localAudio');
+            const remoteAudio = document.getElementById('remoteAudio');
+            
+            if (localAudio) localAudio.srcObject = null;
+            if (remoteAudio) remoteAudio.srcObject = null;
+            
+            callDuration = 0;
+            callStartTime = null;
+            currentAdminId = null;
+            queuePosition = 0;
+            
+            console.log('🧹 Call cleanup tamamlandı');
+        }
+        
+        function startCallTimer() {
+            callStartTime = Date.now();
+            callDuration = 0;
+            
+            callTimer = setInterval(() => {
+                callDuration = Math.floor((Date.now() - callStartTime) / 1000);
+                updateCallTimerDisplay();
+            }, 1000);
+        }
+        
+        function updateCallTimerDisplay() {
+            const minutes = Math.floor(callDuration / 60);
+            const seconds = callDuration % 60;
+            const timerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const timerElement = document.getElementById('callTimer');
+            if (timerElement) {
+                timerElement.textContent = timerText;
+            }
+        }
+        
+        // Yardımcı fonksiyonlar
+        function showCreditModal(duration, creditsUsed, remainingCredits) {
+            const modal = document.getElementById('creditModalOverlay');
+            
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            const durationText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('modalDuration').textContent = durationText;
+            document.getElementById('modalCreditsUsed').textContent = 
+                `${creditsUsed} ${currentLanguage === 'tr' ? 'dakika' : 'minutes'}`;
+            document.getElementById('modalRemainingCredits').textContent = 
+                `${remainingCredits} ${currentLanguage === 'tr' ? 'dakika' : 'minutes'}`;
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function closeCreditModal() {
+            const modal = document.getElementById('creditModalOverlay');
+            modal.classList.add('hidden');
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.getElementById('errorMessage');
+            
+            switch (type) {
+                case 'success':
+                    messageDiv.className = 'success-message';
+                    break;
+                case 'warning':
+                    messageDiv.className = 'warning-message';
+                    break;
+                case 'error':
+                    messageDiv.className = 'error-message';
+                    break;
+                default:
+                    messageDiv.className = 'error-message';
+            }
+            
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function showLoginError(message) {
+            const errorDiv = document.getElementById('loginMessage');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function showRateLimitWarning() {
+            const warningDiv = document.getElementById('rateLimitWarning');
+            
+            let warningClass = 'rate-limit-warning';
+            let iconText = '⚠️';
+            let messageText = '';
+            
+            if (rateLimitStatus.remaining <= 0) {
+                warningClass += ' rate-limit-severe';
+                iconText = '🚫';
+                messageText = currentLanguage === 'tr' ? 
+                    `Çok fazla başarısız deneme!\n\n30 dakika bekleyin ve tekrar deneyin.` :
+                    `Too many failed attempts!\n\nWait 30 minutes and try again.`;
+            } else if (rateLimitStatus.remaining <= 2) {
+                iconText = '⚠️';
+                messageText = currentLanguage === 'tr' ? 
+                    `DİKKAT: ${rateLimitStatus.remaining} deneme hakkınız kaldı!\n\nYanlış bilgi girmeyin.` :
+                    `WARNING: ${rateLimitStatus.remaining} attempts remaining!\n\nDo not enter wrong information.`;
+            } else {
+                messageText = currentLanguage === 'tr' ? 
+                    `Kalan deneme hakkı: ${rateLimitStatus.remaining}` :
+                    `Remaining attempts: ${rateLimitStatus.remaining}`;
+            }
+            
+            warningDiv.className = warningClass;
+            warningDiv.innerHTML = `
+                <span class="rate-limit-icon">${iconText}</span>
+                <div>${messageText.replace(/\n/g, '<br>')}</div>
+            `;
+            
+            warningDiv.classList.remove('hidden');
+        }
+        
+        function hideRateLimitWarning() {
+            const warningDiv = document.getElementById('rateLimitWarning');
+            warningDiv.classList.add('hidden');
+        }
+        
+        function requestCreditWhatsApp() {
+            const phoneNumber = '+905374792403';
+            const message = currentLanguage === 'tr' ? 
+                `Merhaba! VIPCEP sistemi için kredi talep ediyorum.\n\nKullanıcı ID: ${userInfo.id || 'Henüz giriş yapmadım'}\nAd: ${userInfo.name || 'Henüz giriş yapmadım'}` :
+                `Hello! I am requesting credits for the VIPCEP system.\n\nUser ID: ${userInfo.id || 'Not logged in yet'}\nName: ${userInfo.name || 'Not logged in yet'}`;
+            
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        function logoutUser() {
+            console.log('👋 Kullanıcı çıkış yapıyor');
+            
+            if (callState !== 'idle') {
+                endCall();
+            }
+            
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            
+            isLoggedIn = false;
+            userInfo = { id: '', name: '', credits: 0, adminId: "ADMIN001" };
+            queuePosition = 0;
+            
+            if (!document.getElementById('rememberMe').checked) {
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+                localStorage.removeItem('vipcep_remember_me');
+            }
+            
+            document.getElementById('userIdInput').value = '';
+            document.getElementById('userNameInput').value = '';
+            
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            connectToServer();
+        }
+        
+        // Dil desteği
+        function toggleLanguage() {
+            currentLanguage = currentLanguage === 'tr' ? 'en' : 'tr';
+            localStorage.setItem('vipcep_language', currentLanguage);
+            updateLanguage();
+        }
+        
+        function updateLanguage() {
+            const flagElement = document.getElementById('currentFlag');
+            const langElement = document.getElementById('currentLang');
+            
+            if (currentLanguage === 'tr') {
+                flagElement.textContent = '🇹🇷';
+                langElement.textContent = 'TR';
+            } else {
+                flagElement.textContent = '🇺🇸';
+                langElement.textContent = 'EN';
+            }
+            
+            const elements = document.querySelectorAll('[data-text-tr]');
+            elements.forEach(element => {
+                const trText = element.getAttribute('data-text-tr');
+                const enText = element.getAttribute('data-text-en');
+                
+                if (currentLanguage === 'tr' && trText) {
+                    element.textContent = trText;
+                } else if (currentLanguage === 'en' && enText) {
+                    element.textContent = enText;
+                }
+            });
+            
+            const placeholderElements = document.querySelectorAll('[data-placeholder-tr]');
+            placeholderElements.forEach(element => {
+                const trPlaceholder = element.getAttribute('data-placeholder-tr');
+                const enPlaceholder = element.getAttribute('data-placeholder-en');
+                
+                if (currentLanguage === 'tr' && trPlaceholder) {
+                    element.placeholder = trPlaceholder;
+                } else if (currentLanguage === 'en' && enPlaceholder) {
+                    element.placeholder = enPlaceholder;
+                }
+            });
+            
+            const connectionText = document.getElementById('connectionText');
+            if (connectionText) {
+                const currentText = connectionText.textContent;
+                if (currentText.includes('Bağlan') || currentText.includes('Connect')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                } else if (currentText.includes('Bağlı') || currentText.includes('Connected')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlı' : 'Connected';
+                } else if (currentText.includes('Bağlantı') || currentText.includes('Disconnect')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected';
+                } else if (currentText.includes('Sırada') || currentText.includes('queue')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                }
+            }
+            
+            const userStatus = document.getElementById('displayUserStatus');
+            if (userStatus) {
+                const currentStatus = userStatus.textContent;
+                if (currentStatus.includes('Hazır') || currentStatus.includes('Ready')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
+                } else if (currentStatus.includes('Sırada') || currentStatus.includes('Waiting')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                } else if (currentStatus.includes('Gelen') || currentStatus.includes('Incoming')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
+                } else if (currentStatus.includes('Bağlanıyor') || currentStatus.includes('Connecting')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                } else if (currentStatus.includes('Görüşmede') || currentStatus.includes('In call')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In call';
+                }
+            }
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!document.getElementById('creditModalOverlay').classList.contains('hidden')) {
+                    closeCreditModal();
+                } else if (callState === 'waiting') {
+                    cancelCall();
+                } else if (callState === 'incoming') {
+                    rejectIncomingCall();
+                }
+            }
+            
+            if (e.key === 'Enter' && callState === 'incoming') {
+                acceptIncomingCall();
+            }
+            
+            if (e.key === ' ' && callState === 'idle' && isLoggedIn) {
+                e.preventDefault();
+                startCall();
+            }
+        });
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && callState === 'incoming') {
+                notificationAudio.forEach(node => {
+                    try {
+                        if (node.gain) {
+                            node.gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        }
+                    } catch(e) {}
+                });
+            }
+        });
+        
+        window.addEventListener('online', () => {
+            console.log('🌐 İnternet bağlantısı geri geldi');
+            if (!socket || socket.readyState === WebSocket.CLOSED) {
+                connectToServer();
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('🌐 İnternet bağlantısı kesildi');
+            updateConnectionStatus(false, currentLanguage === 'tr' ? 'Çevrimdışı' : 'Offline');
+        });
+        
+        window.addEventListener('beforeunload', (e) => {
+            if (callState !== 'idle') {
+                e.preventDefault();
+                e.returnValue = currentLanguage === 'tr' ? 
+                    'Aktif görüşmeniz var. Sayfayı kapatmak istediğinizden emin misiniz?' :
+                    'You have an active call. Are you sure you want to close the page?';
+                return e.returnValue;
+            }
+        });
+        
+        window.addEventListener('unload', () => {
+            if (callState !== 'idle') {
+                endCall();
+            }
+            
+            if (socket) {
+                socket.close();
+            }
+        });
+        
+        // Touch events için mobile optimizasyon
+        let touchStartY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            const touchEndY = e.touches[0].clientY;
+            const diffY = touchStartY - touchEndY;
+            
+            if (diffY < 0 && window.scrollY === 0) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Service Worker kaydı
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker kayıtlı:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker kayıt hatası:', error);
+                    });
+            });
+        }
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('📱 PWA install prompt hazır');
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('📱 PWA kuruldu');
+            deferredPrompt = null;
+        });
+        
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            if ('performance' in window) {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                console.log('⚡ Sayfa yüklenme süresi:', Math.round(perfData.loadEventEnd - perfData.fetchStart), 'ms');
+            }
+        });
+        
+        // Debug console (sadece development)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            window.vipcepDebug = {
+                getState: () => callState,
+                getUserInfo: () => userInfo,
+                getSocket: () => socket,
+                getPeerConnection: () => peerConnection,
+                forceReconnect: connectToServer,
+                testAudio: playTestSound,
+                playNotification: playIncomingCallSound,
+                stopNotification: stopIncomingCallSound,
+                getQueuePosition: () => queuePosition
+            };
+            console.log('🐛 Debug modunda - window.vipcepDebug kullanılabilir');
+        }
+        
+        console.log('🎯 VIPCEP Enhanced Customer App başlatıldı');
+        console.log('🔥 Gelişmiş kuyruk sistemi ile uyumlu');
+        console.log('🔊 İyileştirilmiş ses sistemi hazır');
+        console.log('🌐 WebRTC targeting düzeltmeleri uygulandı');
+        console.log('✅ Çoklu arama kuyruğu sistemi ile tam uyumlu');
+        console.log('📱 Mobil optimizasyonlar aktif');
+        console.log('🎨 Modern UI/UX iyileştirmeleri');
+    </script>
 </body>
 </html>
