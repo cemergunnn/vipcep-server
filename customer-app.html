@@ -110,6 +110,74 @@
         .app-subtitle {
             font-size: 13px;
             opacity: 0.9;
+            margin-bottom: 15px;
+        }
+        
+        /* Ses Kontrolleri */
+        .audio-controls {
+            background: rgba(255,255,255,0.15);
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.3);
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+        }
+
+        .audio-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .audio-toggle {
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 50px;
+        }
+
+        .audio-toggle.enabled {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .audio-toggle.disabled {
+            background: rgba(239, 68, 68, 0.3);
+            color: white;
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .audio-toggle:hover {
+            transform: translateY(-1px);
+            opacity: 0.9;
         }
         
         .app-content {
@@ -126,13 +194,6 @@
             text-align: center;
             animation: pulse 2s infinite;
             border: 2px solid #fbbf24;
-        }
-
-        .queue-position-number {
-            font-size: 32px;
-            font-weight: 800;
-            margin: 10px 0;
-            font-family: monospace;
         }
 
         .queue-estimated-wait {
@@ -705,9 +766,22 @@
             </div>
             <div class="app-title" data-text-tr="USTAMA SOR" data-text-en="ASK MY MASTER">USTAMA SOR</div>
             <div class="app-subtitle" data-text-tr="Teknik Servis Danışmanlığı" data-text-en="Technical Support Service">Teknik Servis Danışmanlığı</div>
+            
+            <!-- Ses Kontrolleri -->
+            <div class="audio-controls">
+                <div class="volume-control">
+                    <span style="font-size: 10px; color: rgba(255,255,255,0.8);">🔊 Ses:</span>
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                    <span style="font-size: 10px; color: rgba(255,255,255,0.8);" id="volumeValue">70%</span>
+                </div>
+                <div class="audio-buttons">
+                    <button class="audio-toggle enabled" id="micToggle" onclick="toggleMicrophone()">🎤</button>
+                    <button class="audio-toggle enabled" id="speakerToggle" onclick="toggleSpeaker()">🔊</button>
+                    <button class="audio-toggle disabled" id="noiseToggle" onclick="toggleNoiseSuppression()">🚫</button>
+                </div>
+            </div>
         </div>
-        
-        <!-- KVKK Onay Ekranı -->
+<!-- KVKK Onay Ekranı -->
         <div id="kvkkScreen" class="kvkk-screen">
             <div class="kvkk-title" data-text-tr="📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme" data-text-en="📋 Personal Data Protection Information">📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme</div>
             
@@ -828,13 +902,14 @@
 
                 <!-- Kuyruk Pozisyonu -->
                 <div id="queuePosition" class="queue-position hidden">
-                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px;" 
-                         data-text-tr="🎯 Belirtilen Sıradasınız." data-text-en="🎯 Waiting in Queue">
-                        🎯 Belirtilen Sıradasınız.
+                    <div style="font-size: 18px; font-weight: 700; margin-bottom: 15px;" 
+                         data-text-tr="🔧 Müsait Usta Bekleniyor" data-text-en="🔧 Waiting for Available Master">
+                        🔧 Müsait Usta Bekleniyor
                     </div>
-                    <div class="queue-position-number" id="queuePositionNumber">-</div>
-                    <div style="font-size: 14px; opacity: 0.9;" 
-                         data-text-tr="Sıranız" data-text-en="Your Position">Sıranız</div>
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;" 
+                         data-text-tr="Görüşme talebiniz alındı" data-text-en="Your call request has been received">
+                        Görüşme talebiniz alındı
+                    </div>
                     <div class="queue-estimated-wait" id="estimatedWait" 
                          data-text-tr="Tahmini bekleme: ~3-5 dk" data-text-en="Estimated wait: ~3-5 min">
                         Tahmini bekleme: ~3-5 dk
@@ -919,7 +994,7 @@
                 <div id="connectedState" class="hidden">
                     <div class="call-status">
                         <div style="color: #22c55e; font-weight: 700; font-size: 18px;" 
-                             data-text-tr="📊 Görüşme Aktif" data-text-en="📊 Call Active">📊 Görüşme Aktif</div>
+                             data-text-tr="🔊 Görüşme Aktif" data-text-en="🔊 Call Active">🔊 Görüşme Aktif</div>
                         <div class="call-timer" id="callTimer">00:00</div>
                     </div>
                     <button class="btn btn-end" onclick="endCall()">
@@ -962,7 +1037,7 @@
             </div>
             
             <button class="credit-modal-close" onclick="closeCreditModal()">
-                <span data-text-tr="✔ Tamam" data-text-en="✔ OK">✔ Tamam</span>
+                <span data-text-tr="✓ Tamam" data-text-en="✓ OK">✓ Tamam</span>
             </button>
         </div>
     </div>
@@ -970,7 +1045,6 @@
     <!-- Gizli ses elementleri -->
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
-    
     <script>
         // Global değişkenler
         let audioContext = null;
@@ -993,6 +1067,10 @@
         let currentAdminId = null;
         let queuePosition = 0;
         let queueUpdateInterval = null;
+        let callTimeout = null; // 5 dakika timeout için
+        
+        // Ses kontrol değişkenleri
+        let micEnabled = true, speakerEnabled = true, noiseSuppression = false;
         
         let userInfo = {
             id: '',
@@ -1122,7 +1200,7 @@
 
         function playFallbackNotificationSound() {
             try {
-                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU+ltryxnkpBSl+zPLaizsIGGS57uGQQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
                 audio.volume = 0.3;
                 audio.play().catch(e => console.log('Fallback audio error:', e));
             } catch (fallbackError) {
@@ -1140,6 +1218,65 @@
                 notificationAudio = [];
             }
         }
+
+        // Ses kontrolleri
+        function toggleMicrophone() {
+            micEnabled = !micEnabled;
+            const button = document.getElementById('micToggle');
+            
+            if (micEnabled) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '🎤';
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🎤';
+            }
+            
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) audioTrack.enabled = micEnabled;
+            }
+        }
+
+        function toggleSpeaker() {
+            speakerEnabled = !speakerEnabled;
+            const button = document.getElementById('speakerToggle');
+            const remoteAudio = document.getElementById('remoteAudio');
+            
+            if (speakerEnabled) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '🔊';
+                remoteAudio.volume = document.getElementById('volumeSlider').value / 100;
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🔊';
+                remoteAudio.volume = 0;
+            }
+        }
+
+        function toggleNoiseSuppression() {
+            noiseSuppression = !noiseSuppression;
+            const button = document.getElementById('noiseToggle');
+            
+            if (noiseSuppression) {
+                button.className = 'audio-toggle enabled';
+                button.textContent = '✅';
+            } else {
+                button.className = 'audio-toggle disabled';
+                button.textContent = '🚫';
+            }
+        }
+
+        // Volume Control
+        document.getElementById('volumeSlider').addEventListener('input', (e) => {
+            const volume = e.target.value;
+            document.getElementById('volumeValue').textContent = volume + '%';
+            
+            const remoteAudio = document.getElementById('remoteAudio');
+            if (speakerEnabled) {
+                remoteAudio.volume = volume / 100;
+            }
+        });
 
         // Uygulama başlatma
         window.onload = function() {
@@ -1294,12 +1431,26 @@
                 case 'call-accepted':
                     console.log('✅ Arama kabul edildi (queue)');
                     currentAdminId = message.acceptedAdminId;
+                    
+                    // Timeout'u temizle - arama kabul edildi
+                    if (callTimeout) {
+                        clearTimeout(callTimeout);
+                        callTimeout = null;
+                    }
+                    
                     setState('connecting');
                     setupPeerConnection();
                     break;
                 
                 case 'call-rejected':
                     console.log('❌ Arama reddedildi:', message.reason);
+                    
+                    // Timeout'u temizle
+                    if (callTimeout) {
+                        clearTimeout(callTimeout);
+                        callTimeout = null;
+                    }
+                    
                     setState('idle');
                     showError(message.reason || (currentLanguage === 'tr' ? 'Arama reddedildi' : 'Call rejected'));
                     break;
@@ -1372,7 +1523,7 @@
             showQueuePosition();
             
             // Bekleme süresini tahmin et (ortalama 3-5 dakika per kişi)
-            const estimatedMinutes = queuePosition * 4;
+            const estimatedMinutes = Math.max(3, queuePosition * 2);
             const estimatedText = currentLanguage === 'tr' ? 
                 `Tahmini bekleme: ~${estimatedMinutes} dk` : 
                 `Estimated wait: ~${estimatedMinutes} min`;
@@ -1382,12 +1533,11 @@
         
         function showQueuePosition() {
             if (callState === 'waiting') {
-                document.getElementById('queuePositionNumber').textContent = queuePosition;
                 document.getElementById('queuePosition').classList.remove('hidden');
                 document.getElementById('idleState').classList.add('hidden');
                 
                 // Bağlantı durumunu güncelle
-                updateConnectionStatus(true, currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue');
+                updateConnectionStatus(true, currentLanguage === 'tr' ? 'Müsait usta bekleniyor' : 'Waiting for available master');
                 const dot = document.getElementById('connectionDot');
                 dot.className = 'status-dot status-waiting';
             }
@@ -1648,7 +1798,7 @@
                     break;
                 
                 case 'waiting':
-                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                    document.getElementById('displayUserStatus').textContent = currentLanguage === 'tr' ? 'Usta bekliyor' : 'Waiting for master';
                     showQueuePosition();
                     break;
                 
@@ -1674,6 +1824,8 @@
         }
         
         function startCall() {
+            if (!isLog
+function startCall() {
             if (!isLoggedIn) {
                 showError(currentLanguage === 'tr' ? 'Önce giriş yapın!' : 'Please login first!');
                 return;
@@ -1686,6 +1838,26 @@
             
             setState('waiting');
             
+            // 5 dakika timeout başlat
+            callTimeout = setTimeout(() => {
+                if (callState === 'waiting') {
+                    // Aramayı iptal et
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'call-cancelled',
+                            userId: userInfo.id,
+                            userName: userInfo.name,
+                            reason: currentLanguage === 'tr' ? 'Timeout - 5 dakika bekleme süresi aşıldı' : 'Timeout - 5 minute wait time exceeded'
+                        }));
+                    }
+                    
+                    setState('idle');
+                    showError(currentLanguage === 'tr' ? 
+                        'Tüm adminler şuan görüşmede. Lütfen daha sonra tekrar deneyin.' : 
+                        'All admins are currently in calls. Please try again later.');
+                }
+            }, 5 * 60 * 1000); // 5 dakika
+            
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'call-request',
@@ -1697,11 +1869,21 @@
             } else {
                 showError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
                 setState('idle');
+                if (callTimeout) {
+                    clearTimeout(callTimeout);
+                    callTimeout = null;
+                }
             }
         }
         
         function cancelCall() {
             console.log('📞 Arama iptal ediliyor');
+            
+            // Timeout'u temizle
+            if (callTimeout) {
+                clearTimeout(callTimeout);
+                callTimeout = null;
+            }
             
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
@@ -1808,7 +1990,7 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
-                        noiseSuppression: true,
+                        noiseSuppression: noiseSuppression,
                         autoGainControl: true
                     }, 
                     video: false 
@@ -1816,6 +1998,12 @@
                 
                 console.log('🎤 Mikrofon izni alındı');
                 localStream = stream;
+                
+                // Ses ayarlarını uygula
+                const audioTrack = stream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = micEnabled;
+                }
                 
                 const localAudio = document.getElementById('localAudio');
                 localAudio.srcObject = stream;
@@ -1941,6 +2129,12 @@
             if (callTimer) {
                 clearInterval(callTimer);
                 callTimer = null;
+            }
+            
+            // Call timeout'u da temizle
+            if (callTimeout) {
+                clearTimeout(callTimeout);
+                callTimeout = null;
             }
             
             if (peerConnection) {
@@ -2189,8 +2383,10 @@
                     connectionText.textContent = currentLanguage === 'tr' ? 'Bağlı' : 'Connected';
                 } else if (currentText.includes('Bağlantı') || currentText.includes('Disconnect')) {
                     connectionText.textContent = currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected';
+                } else if (currentText.includes('Müsait') || currentText.includes('available')) {
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Müsait usta bekleniyor' : 'Waiting for available master';
                 } else if (currentText.includes('Sırada') || currentText.includes('queue')) {
-                    connectionText.textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                    connectionText.textContent = currentLanguage === 'tr' ? 'Müsait usta bekleniyor' : 'Waiting for available master';
                 }
             }
             
@@ -2199,8 +2395,10 @@
                 const currentStatus = userStatus.textContent;
                 if (currentStatus.includes('Hazır') || currentStatus.includes('Ready')) {
                     userStatus.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
+                } else if (currentStatus.includes('Usta') || currentStatus.includes('master')) {
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Usta bekliyor' : 'Waiting for master';
                 } else if (currentStatus.includes('Sırada') || currentStatus.includes('Waiting')) {
-                    userStatus.textContent = currentLanguage === 'tr' ? 'Sırada bekliyor' : 'Waiting in queue';
+                    userStatus.textContent = currentLanguage === 'tr' ? 'Usta bekliyor' : 'Waiting for master';
                 } else if (currentStatus.includes('Gelen') || currentStatus.includes('Incoming')) {
                     userStatus.textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
                 } else if (currentStatus.includes('Bağlanıyor') || currentStatus.includes('Connecting')) {
@@ -2341,7 +2539,7 @@
                 stopNotification: stopIncomingCallSound,
                 getQueuePosition: () => queuePosition
             };
-            console.log('🐛 Debug modunda - window.vipcepDebug kullanılabilir');
+            console.log('🛠 Debug modunda - window.vipcepDebug kullanılabilir');
         }
         
         console.log('🎯 VIPCEP Enhanced Customer App başlatıldı');
@@ -2351,8 +2549,8 @@
         console.log('✅ Çoklu arama kuyruğu sistemi ile tam uyumlu');
         console.log('📱 Mobil optimizasyonlar aktif');
         console.log('🎨 Modern UI/UX iyileştirmeleri');
+        console.log('🔧 5 dakika timeout sistemi aktif');
+        console.log('🎵 Ses kontrolleri eklendi');
     </script>
 </body>
 </html>
-
-
