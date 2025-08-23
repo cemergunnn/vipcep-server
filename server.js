@@ -120,31 +120,78 @@ function broadcastCallQueueToAdmins() {
     const message = JSON.stringify({
         type: 'call-queue-update',
         queue: queueArray,
-        queueSize: queueArray.length
+        queueSize: queueArray.length,
+        timestamp: Date.now()
     });
     
-    // Sadece aktif WebSocket bağlantısı olan ve görüşmede olmayan adminleri al
+    // Tüm aktif admin bağlantılarını al
     const allAdminClients = Array.from(clients.values()).filter(c => 
         c.userType === 'admin' && 
         c.ws.readyState === WebSocket.OPEN
     );
     
-    const availableAdmins = allAdminClients.filter(adminClient => {
+    // Müsait adminleri tespit et (görüşmede olmayan)
+    const availableAdmins = [];
+    const busyAdmins = [];
+    
+    allAdminClients.forEach(adminClient => {
         const adminKey = adminClient.uniqueId || adminClient.id;
-        return !activeCallAdmins.has(adminKey);
+        const isInCall = activeCallAdmins.has(adminKey);
+        
+        if (isInCall) {
+            busyAdmins.push({
+                id: adminKey,
+                name: adminClient.name,
+                customerId: activeCallAdmins.get(adminKey).customerId
+            });
+        } else {
+            availableAdmins.push(adminClient);
+        }
     });
     
-    console.log(`📡 Queue broadcast: ${queueArray.length} calls to ${availableAdmins.length}/${allAdminClients.length} admins`);
+    console.log(`📡 Queue broadcast: ${queueArray.length} calls`);
+    console.log(`   └── ${allAdminClients.length} total admins (${availableAdmins.length} available, ${busyAdmins.length} busy)`);
     
-    availableAdmins.forEach(adminClient => {
+    if (busyAdmins.length > 0) {
+        console.log(`   └── Busy admins: ${busyAdmins.map(a => `${a.name}→${a.customerId}`).join(', ')}`);
+    }
+    
+    // Sadece müsait adminlere gönder
+    availableAdmins.forEach((adminClient, index) => {
         try {
             if (adminClient.ws.readyState === WebSocket.OPEN) {
                 adminClient.ws.send(message);
+                console.log(`   ✅ Sent to available admin: ${adminClient.name} (${adminClient.uniqueId})`);
+            } else {
+                console.log(`   ⚠️ Admin ${adminClient.name} WebSocket not open`);
             }
         } catch (error) {
-            console.log(`Error broadcasting to admin ${adminClient.uniqueId}:`, error.message);
+            console.log(`   ❌ Error sending to admin ${adminClient.uniqueId}:`, error.message);
         }
     });
+    
+    // Eğer hiç müsait admin yoksa özel durum
+    if (availableAdmins.length === 0 && queueArray.length > 0) {
+        console.log(`   ⚠️ NO AVAILABLE ADMINS - ${queueArray.length} calls waiting!`);
+        
+        // Meşgul adminlere de bilgi ver (ama queue gösterme)
+        const busyNotification = JSON.stringify({
+            type: 'all-admins-busy',
+            waitingCalls: queueArray.length,
+            message: `${queueArray.length} arama bekliyor - tüm adminler meşgul`
+        });
+        
+        busyAdmins.forEach(busyAdmin => {
+            const busyClient = allAdminClients.find(c => c.uniqueId === busyAdmin.id);
+            if (busyClient && busyClient.ws.readyState === WebSocket.OPEN) {
+                try {
+                    busyClient.ws.send(busyNotification);
+                } catch (error) {
+                    console.log(`Error notifying busy admin ${busyAdmin.id}:`, error.message);
+                }
+            }
+        });
+    }
 }
 
 function removeUserCallFromQueue(userId, reason = 'user_cancelled') {
@@ -1387,13 +1434,46 @@ wss.on('connection', (ws, req) => {
 
                 case 'call-request':
                     console.log(`📞 Call request from ${message.userName} (${message.userId})`);
+                    
+                    // Önce kullanıcının zaten kuyrukta olup olmadığını kontrol et
+                    const existingCall = Array.from(incomingCallQueue.values()).find(call => call.userId === message.userId);
+                    if (existingCall) {
+                        console.log(`⚠️ User ${message.userId} already in queue, ignoring duplicate request`);
+                        ws.send(JSON.stringify({
+                            type: 'call-queue-update',
+                            queue: Array.from(incomingCallQueue.values()),
+                            message: 'Zaten kuyrukta bekliyorsunuz'
+                        }));
+                        break;
+                    }
+                    
                     const callEntry = addToCallQueue({
                         userId: message.userId,
                         userName: message.userName,
                         credits: message.credits
                     });
                     
+                    console.log(`📝 Call added to queue: ${callEntry.callId} (Position: ${incomingCallQueue.size})`);
+                    
+                    // Müsait admin sayısını kontrol et ve bildir
+                    const availableAdminCount = Array.from(clients.values()).filter(c => 
+                        c.userType === 'admin' && 
+                        c.ws.readyState === WebSocket.OPEN && 
+                        !activeCallAdmins.has(c.uniqueId || c.id)
+                    ).length;
+                    
+                    console.log(`📊 Queue stats: ${incomingCallQueue.size} calls, ${availableAdminCount} available admins`);
+                    
+                    // Adminlere broadcast yap
                     broadcastCallQueueToAdmins();
+                    
+                    // Customer'a queue pozisyonu bildir
+                    ws.send(JSON.stringify({
+                        type: 'call-queue-position',
+                        position: Array.from(incomingCallQueue.values()).findIndex(call => call.callId === callEntry.callId) + 1,
+                        queueSize: incomingCallQueue.size,
+                        estimatedWait: Math.max(1, availableAdminCount > 0 ? Math.ceil(incomingCallQueue.size / availableAdminCount) * 2 : 5)
+                    }));
                     break;
 
                 case 'accept-call-by-id':
@@ -1409,27 +1489,35 @@ wss.on('connection', (ws, req) => {
                     
                     if (activeCallAdmins.has(senderId)) {
                         console.log(`⚠️ Admin ${senderId} already in a call, rejecting new call`);
+                        // Çağrıyı geri kuyruğa koy
+                        addToCallQueue(acceptedCall);
                         ws.send(JSON.stringify({
                             type: 'call-accept-error',
                             error: 'Zaten bir aramada bulunuyorsunuz!'
                         }));
+                        broadcastCallQueueToAdmins();
                         break;
                     }
                     
+                    // Admin'i meşgul olarak işaretle
                     activeCallAdmins.set(senderId, {
                         customerId: acceptedCall.userId,
                         callStartTime: Date.now()
                     });
+                    
+                    console.log(`🔐 Admin ${senderId} now busy with customer ${acceptedCall.userId}`);
                     
                     const acceptedCustomer = clients.get(acceptedCall.userId);
                     if (acceptedCustomer && acceptedCustomer.ws.readyState === WebSocket.OPEN) {
                         acceptedCustomer.ws.send(JSON.stringify({
                             type: 'call-accepted',
                             acceptedAdminId: senderId,
-                            callId: message.callId
+                            callId: message.callId,
+                            adminName: senderInfo?.name || 'Admin'
                         }));
                     }
                     
+                    // Diğer adminlere bildir
                     const allAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin');
                     allAdmins.forEach(adminClient => {
                         if (adminClient.uniqueId !== senderId && adminClient.ws.readyState === WebSocket.OPEN) {
@@ -1438,15 +1526,22 @@ wss.on('connection', (ws, req) => {
                                 userId: acceptedCall.userId,
                                 userName: acceptedCall.userName,
                                 callId: message.callId,
-                                takenBy: senderId
+                                takenBy: senderId,
+                                takenByName: senderInfo?.name || 'Admin'
                             }));
                         }
                     });
                     
+                    // Heartbeat başlat
                     const acceptCallKey = `${acceptedCall.userId}-${senderId}`;
                     startHeartbeat(acceptedCall.userId, senderId, acceptCallKey);
                     
                     console.log(`💓 Heartbeat started for ${acceptCallKey}`);
+                    
+                    // Queue'yu tekrar broadcast et (bir admin artık meşgul)
+                    setTimeout(() => {
+                        broadcastCallQueueToAdmins();
+                    }, 500);
                     break;
 
                 case 'reject-call-by-id':
@@ -1494,10 +1589,16 @@ wss.on('connection', (ws, req) => {
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
                     
+                    let adminIdToRemove = null;
+                    
                     if (senderType === 'admin') {
+                        adminIdToRemove = senderId;
                         activeCallAdmins.delete(senderId);
+                        console.log(`🟢 Admin ${senderId} is now available`);
                     } else if (message.targetId) {
+                        adminIdToRemove = message.targetId;
                         activeCallAdmins.delete(message.targetId);
+                        console.log(`🟢 Admin ${message.targetId} is now available`);
                     }
                     
                     const endCallKey = senderType === 'admin' 
@@ -1538,7 +1639,9 @@ wss.on('connection', (ws, req) => {
                         }
                     }
                     
-                    if (senderType === 'admin') {
+                    // Admin artık müsait, queue'yu hemen broadcast et
+                    if (adminIdToRemove) {
+                        console.log(`📡 Broadcasting queue after admin ${adminIdToRemove} became available`);
                         setTimeout(() => {
                             broadcastCallQueueToAdmins();
                         }, 1000);
