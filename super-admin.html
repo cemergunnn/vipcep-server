@@ -3,434 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPCEP Super Admin Panel</title>
+    <title>VIPCEP Super Admin</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             min-height: 100vh;
-            color: #fff;
+            color: #f8fafc;
         }
         
-        .container {
+        .admin-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
         
-        .header {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
+        .admin-header {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
             color: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(220, 38, 38, 0.3);
         }
         
-        .header-left h1 {
+        .admin-title {
             font-size: 24px;
-            margin-bottom: 5px;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
         
-        .header-left p {
+        .admin-subtitle {
             opacity: 0.9;
             font-size: 14px;
         }
         
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .admin-info {
-            text-align: right;
-        }
-        
-        .admin-name {
-            font-weight: 700;
-            font-size: 16px;
-        }
-        
-        .admin-role {
-            font-size: 12px;
-            opacity: 0.8;
-            background: rgba(255,255,255,0.2);
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-top: 5px;
-        }
-        
-        .logout-btn {
-            background: rgba(239, 68, 68, 0.3);
-            color: white;
-            border: 1px solid rgba(239, 68, 68, 0.5);
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        
-        .logout-btn:hover {
-            background: rgba(239, 68, 68, 0.5);
-            transform: translateY(-1px);
-        }
-        
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 25px;
-            border-radius: 12px;
-            text-align: center;
-            border-left: 4px solid #dc2626;
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
         }
         
-        .stat-card:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateY(-2px);
-        }
-        
-        .stat-number {
+        .stat-value {
             font-size: 32px;
             font-weight: 800;
-            color: #fbbf24;
-            margin-bottom: 8px;
+            color: #22c55e;
+            margin: 10px 0;
         }
         
         .stat-label {
-            font-size: 13px;
-            color: #e2e8f0;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+            font-size: 14px;
+            opacity: 0.8;
         }
         
-        .main-content {
+        .admin-panels {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            gap: 20px;
+            margin-bottom: 20px;
         }
         
         .panel {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 20px;
         }
         
-        .panel h3 {
-            margin-bottom: 25px;
-            color: #fff;
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .form-section {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .form-section h4 {
-            margin-bottom: 20px;
-            color: #e2e8f0;
-            font-size: 16px;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 2fr 100px 120px;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .form-input {
-            padding: 12px 16px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        
-        .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #dc2626;
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-        }
-        
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
+        .panel-header {
+            font-size: 18px;
             font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            margin-bottom: 15px;
+            color: #22c55e;
         }
         
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #059669, #047857);
-            color: white;
-            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
-        }
-        
-        .btn-success:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(5, 150, 105, 0.4);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
-            color: white;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(135deg, #64748b, #475569);
-            color: white;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
-        }
-        
-        .search-container {
-            position: relative;
-            margin-bottom: 25px;
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 16px 50px 16px 20px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            font-size: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            transition: all 0.3s ease;
-        }
-        
-        .search-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .search-input:focus {
-            outline: none;
-            border-color: #dc2626;
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .search-icon {
-            position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .user-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        
-        .user-item {
+        .user-item, .admin-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 3px solid #22c55e;
         }
         
-        .user-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #dc2626;
-            transform: translateY(-2px);
+        .user-info, .admin-info {
+            display: flex;
+            flex-direction: column;
         }
         
-        .user-info {
-            flex: 1;
-        }
-        
-        .user-id {
-            font-weight: 700;
-            color: #fbbf24;
-            font-family: 'Courier New', monospace;
-            font-size: 18px;
-        }
-        
-        .user-name {
-            color: #e2e8f0;
-            font-size: 16px;
+        .user-name, .admin-name {
             font-weight: 600;
-            margin: 5px 0;
-        }
-        
-        .user-credits {
-            color: #22c55e;
             font-size: 14px;
+        }
+        
+        .user-details, .admin-details {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+        
+        .user-status, .admin-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
         
-        .user-meta {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 5px;
+        .status-online { background: #22c55e; color: white; }
+        .status-busy { background: #f59e0b; color: white; }
+        .status-offline { background: #64748b; color: white; }
+        
+
+        
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            animation: pulse 2s infinite;
         }
         
-        .user-actions {
+        .queue-position {
+            background: #f59e0b;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: 12px;
+            justify-content: center;
+            font-weight: 700;
         }
         
-        .credit-input {
-            width: 90px;
-            padding: 8px 12px;
-            border: 1px solid rgba(255,255,255,0.2);
+        .btn {
+            padding: 8px 16px;
+            border: none;
             border-radius: 6px;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            text-align: center;
             font-weight: 600;
-        }
-        
-        .credit-input:focus {
-            outline: none;
-            border-color: #dc2626;
-        }
-        
-        .quick-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .security-section {
-            grid-column: 1 / -1;
-        }
-        
-        .security-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-        
-        .security-card {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .security-number {
-            font-size: 24px;
-            font-weight: 800;
-            color: #fca5a5;
-            margin-bottom: 8px;
-        }
-        
-        .security-label {
             font-size: 12px;
-            color: #fecaca;
-            text-transform: uppercase;
-            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
         
-        .success-message, .error-message {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-weight: 600;
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            min-width: 300px;
-            animation: slideIn 0.3s ease-out;
+        .btn-primary { background: #22c55e; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        
+        .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+        
+        .activity-log {
+            max-height: 400px;
+            overflow-y: auto;
         }
         
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(100%); }
-            to { opacity: 1; transform: translateX(0); }
+        .log-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            font-size: 13px;
         }
         
-        .success-message {
-            background: rgba(34, 197, 94, 0.2);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-        
-        .error-message {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        
-        .loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .empty-state {
-            text-align: center;
-            color: #94a3b8;
-            padding: 40px;
-        }
-        
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+        .log-time {
+            color: #64748b;
+            font-size: 11px;
         }
         
         .modal-overlay {
@@ -439,770 +194,455 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            backdrop-filter: blur(5px);
         }
         
         .modal {
             background: #1e293b;
-            border-radius: 16px;
-            padding: 30px;
-            max-width: 600px;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
             width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255,255,255,0.2);
         }
         
-        .modal h3 {
-            color: #dc2626;
-            margin-bottom: 20px;
-            font-size: 20px;
+        .form-group {
+            margin-bottom: 15px;
         }
         
-        .modal-close {
-            float: right;
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 24px;
-            cursor: pointer;
-            margin-top: -10px;
-            margin-right: -10px;
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
         }
         
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #22c55e;
+        }
+        
+        .hidden { display: none !important; }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
         
         @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
+            .admin-panels { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <h1>🔴 SUPER ADMİN PANEL</h1>
-                <p>VIPCEP Sistem Yönetimi - 2FA Güvenlik Aktif</p>
+    <div class="admin-container">
+        <div class="admin-header">
+            <div class="admin-title">🚀 VIPCEP Super Admin</div>
+            <div class="admin-subtitle">Sistem Yönetimi ve İzleme Paneli</div>
+        </div>
+        
+        <div class="admin-panels">
+            <div class="panel">
+                <div class="panel-header">🟢 Aktif Kullanıcılar</div>
+                <div id="usersList"></div>
             </div>
-            <div class="header-right">
-                <div class="admin-info">
-                    <div class="admin-name" id="adminName">-</div>
-                    <div class="admin-role">🔐 Super Administrator</div>
-                </div>
-                <button class="logout-btn" onclick="logout()">
-                    🚪 Çıkış
-                </button>
+            
+            <div class="panel">
+                <div class="panel-header">📞 Arama Kuyruğu</div>
+                <div id="queueList"></div>
             </div>
         </div>
         
-        <!-- İstatistikler -->
+        <div class="panel">
+            <div class="panel-header">👨‍💼 Admin Durumu</div>
+            <div id="adminsList"></div>
+        </div>
+        
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-number" id="totalUsers">0</div>
                 <div class="stat-label">Toplam Kullanıcı</div>
+                <div class="stat-value" id="totalUsers">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="totalCredits">0</div>
-                <div class="stat-label">Toplam Kredi</div>
+                <div class="stat-label">Aktif Admin</div>
+                <div class="stat-value" id="activeAdmins">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="totalCalls">0</div>
-                <div class="stat-label">Toplam Arama</div>
+                <div class="stat-label">Kuyruk</div>
+                <div class="stat-value" id="queueCount">0</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="onlineUsers">0</div>
-                <div class="stat-label">Çevrimiçi</div>
+                <div class="stat-label">Günlük Görüşme</div>
+                <div class="stat-value" id="dailyCalls">0</div>
             </div>
         </div>
         
-        <div class="main-content">
-            <!-- Sol Panel - Kullanıcı ve Kredi Yönetimi -->
-            <div class="panel">
-                <h3>💳 Kullanıcı ve Kredi Yönetimi</h3>
-                
-                <!-- Yeni Kullanıcı Ekleme -->
-                <div class="form-section">
-                    <h4>➕ Yeni Kullanıcı Ekle</h4>
-                    <div class="form-row">
-                        <input type="text" id="newUserId" placeholder="4 haneli ID" maxlength="4" class="form-input">
-                        <input type="text" id="newUserName" placeholder="Ad Soyad" class="form-input">
-                        <input type="number" id="newUserCredits" placeholder="Kredi" min="0" class="form-input">
-                        <button class="btn btn-success" onclick="addUser()">➕ Ekle</button>
-                    </div>
+        <div class="panel">
+            <div class="panel-header">📋 Sistem Aktivitesi</div>
+            <div class="activity-log" id="activityLog"></div>
+        </div>
+    </div>
+    
+    <!-- Kullanıcı Düzenleme Modal -->
+    <div id="editUserModal" class="modal-overlay hidden">
+        <div class="modal">
+            <h3>Kullanıcı Düzenle</h3>
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label class="form-label">Kullanıcı ID</label>
+                    <input type="text" id="editUserId" class="form-input" readonly>
                 </div>
-
-                <!-- Arama Kutusu -->
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı ara..." oninput="searchUsers()">
-                    <div class="search-icon">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none"/>
-                        </svg>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">İsim</label>
+                    <input type="text" id="editUserName" class="form-input">
                 </div>
-                
-                <!-- Kullanıcı Listesi -->
-                <div class="user-list" id="userList">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">👥</div>
-                        <div>Kullanıcılar yükleniyor...</div>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Kredi (dakika)</label>
+                    <input type="number" id="editUserCredits" class="form-input">
                 </div>
-            </div>
-            
-            <!-- Sağ Panel - Sistem ve Güvenlik Yönetimi -->
-            <div class="panel">
-                <h3>🛡️ Sistem ve Güvenlik Yönetimi</h3>
-                
-                <!-- Admin Yönetimi -->
-                <div class="form-section">
-                    <h4>👨‍💼 Yeni Admin Ekle</h4>
-                    <div style="display: grid; gap: 15px;">
-                        <input type="text" id="newAdminUsername" placeholder="Kullanıcı adı" class="form-input">
-                        <input type="password" id="newAdminPassword" placeholder="Şifre (min 8 karakter)" class="form-input">
-                        <select id="newAdminRole" class="form-input">
-                            <option value="normal">Normal Admin</option>
-                            <option value="super">Super Admin (2FA)</option>
-                        </select>
-                        <button class="btn btn-secondary" onclick="addAdmin()">👨‍💼 Admin Ekle</button>
-                    </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">💾 Kaydet</button>
+                    <button type="button" class="btn btn-danger" onclick="closeEditModal()">❌ İptal</button>
                 </div>
-                
-                <!-- Hızlı İşlemler -->
-                <div class="quick-actions">
-                    <button class="btn btn-secondary" onclick="exportData()">
-                        📊 Veri Dışa Aktar
-                    </button>
-                    <button class="btn btn-secondary" onclick="viewCallHistory()">
-                        📞 Arama Geçmişi
-                    </button>
-                    <button class="btn btn-secondary" onclick="refreshData()">
-                        🔄 Verileri Yenile
-                    </button>
-                    <button class="btn btn-danger" onclick="clearFailedLogins()">
-                        🧹 Rate Limit Temizle
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Güvenlik ve KVKK Yönetimi -->
-            <div class="panel security-section">
-                <h3>🔐 Güvenlik ve KVKK Yönetimi</h3>
-                
-                <div class="security-stats">
-                    <div class="security-card">
-                        <div class="security-number" id="kvkkConsents">0</div>
-                        <div class="security-label">KVKK Onayı</div>
-                    </div>
-                    <div class="security-card">
-                        <div class="security-number" id="failedLogins">0</div>
-                        <div class="security-label">Başarısız Giriş</div>
-                    </div>
-                    <div class="security-card">
-                        <div class="security-number" id="activeAdmins">0</div>
-                        <div class="security-label">Aktif Admin</div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <button class="btn btn-secondary" onclick="viewKVKKConsents()">
-                        📋 KVKK Onayları
-                    </button>
-                    <button class="btn btn-secondary" onclick="viewFailedLogins()">
-                        🛡️ Güvenlik Logları
-                    </button>
-                </div>
-            </div>
+            </form>
         </div>
     </div>
     
     <script>
-        // Global değişkenler
-        let isLoggedIn = false;
-        let currentAdmin = null;
-        let users = [];
-        let filteredUsers = [];
         let socket = null;
-        let adminUniqueId = null;
-        
-        // Sayfa yüklendiğinde
-        window.onload = function() {
-            checkAuthStatus();
-            setupEventListeners();
+        let isConnected = false;
+        let systemStats = {
+            totalUsers: 0,
+            activeAdmins: 0,
+            queueCount: 0,
+            dailyCalls: 0
         };
+        let users = new Map();
+        let admins = new Map();
+        let callQueue = [];
+        let activityLog = [];
         
-        function setupEventListeners() {
-            // ID input sadece sayı
-            document.getElementById('newUserId').addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+        const serverUrl = window.location.hostname === 'localhost' ? 
+            'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
+        
+        function init() {
+            connectToServer();
+            setupEventListeners();
+            updateDisplay();
+        }
+        
+        function connectToServer() {
+            try {
+                socket = new WebSocket(serverUrl);
+                
+                socket.onopen = () => {
+                    console.log('✅ WebSocket bağlantısı kuruldu');
+                    isConnected = true;
+                    registerSuperAdmin();
+                };
+                
+                socket.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    handleServerMessage(message);
+                };
+                
+                socket.onclose = () => {
+                    console.log('❌ WebSocket bağlantısı kapandı');
+                    isConnected = false;
+                    setTimeout(connectToServer, 3000);
+                };
+                
+                socket.onerror = (error) => {
+                    console.log('❌ WebSocket hatası:', error);
+                };
+                
+            } catch (error) {
+                console.log('❌ WebSocket oluşturma hatası:', error);
+                setTimeout(connectToServer, 3000);
+            }
+        }
+        
+        function registerSuperAdmin() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'register',
+                    userId: 'SUPER_ADMIN',
+                    name: 'Super Admin',
+                    userType: 'super_admin'
+                }));
+                
+                socket.send(JSON.stringify({
+                    type: 'request-system-status'
+                }));
+            }
+        }
+        
+        function handleServerMessage(message) {
+            console.log('📨 Mesaj:', message.type);
+            
+            switch (message.type) {
+                case 'system-status':
+                    updateSystemStatus(message.data);
+                    break;
+                case 'user-connected':
+                case 'user-disconnected':
+                case 'user-updated':
+                    updateUserData(message);
+                    break;
+                case 'admin-status-changed':
+                    updateAdminData(message);
+                    break;
+                case 'call-queue-update':
+                    updateCallQueue(message.queue);
+                    break;
+                case 'activity-log':
+                    addActivity(message.activity);
+                    break;
+            }
+            
+            updateDisplay();
+        }
+        
+        function updateSystemStatus(data) {
+            systemStats = data;
+            users.clear();
+            admins.clear();
+            
+            data.users?.forEach(user => {
+                users.set(user.id, user);
+            });
+            
+            data.admins?.forEach(admin => {
+                admins.set(admin.id, admin);
+            });
+            
+            callQueue = data.callQueue || [];
+        }
+        
+        function updateUserData(message) {
+            if (message.type === 'user-connected' || message.type === 'user-updated') {
+                users.set(message.userId, {
+                    id: message.userId,
+                    name: message.userName || message.name,
+                    credits: message.credits || 0,
+                    status: message.status || 'online',
+                    lastSeen: new Date()
+                });
+            } else if (message.type === 'user-disconnected') {
+                users.delete(message.userId);
+            }
+        }
+        
+        function updateAdminData(message) {
+            admins.set(message.adminId, {
+                id: message.adminId,
+                name: message.adminName || message.name,
+                status: message.status,
+                currentCall: message.currentCall,
+                lastSeen: new Date()
             });
         }
         
-        // Auth durumu kontrol et
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch('/auth/check-session', {
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.authenticated && data.role === 'super') {
-                        loginSuccess(data);
-                    } else {
-                        redirectToLogin();
-                    }
-                } else {
-                    redirectToLogin();
-                }
-            } catch (error) {
-                console.error('Auth check error:', error);
-                redirectToLogin();
-            }
+        function updateCallQueue(queue) {
+            callQueue = queue || [];
         }
         
-        function redirectToLogin() {
-            window.location.href = '/';
-        }
-        
-        function loginSuccess(adminData) {
-            isLoggedIn = true;
-            currentAdmin = adminData;
+        function addActivity(activity) {
+            activityLog.unshift({
+                ...activity,
+                timestamp: new Date()
+            });
             
-            document.getElementById('adminName').textContent = adminData.username || 'Super Admin';
-            
-            loadData();
-        }
-        
-        async function loadData() {
-            try {
-                // İstatistikleri yükle
-                const statsResponse = await fetch('/api/stats');
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
-                    document.getElementById('totalCredits').textContent = stats.totalCredits || 0;
-                    document.getElementById('totalCalls').textContent = stats.totalCalls || 0;
-                    document.getElementById('onlineUsers').textContent = stats.onlineUsers || 0;
-                }
-                
-                // Kullanıcıları yükle
-                const usersResponse = await fetch('/api/approved-users');
-                if (usersResponse.ok) {
-                    users = await usersResponse.json();
-                    filteredUsers = [...users];
-                    renderUsers();
-                }
-                
-                // Güvenlik istatistikleri yükle
-                loadSecurityStats();
-                
-            } catch (error) {
-                console.error('Veri yükleme hatası:', error);
-                showMessage('Veri yükleme hatası: ' + error.message, 'error');
+            if (activityLog.length > 100) {
+                activityLog = activityLog.slice(0, 100);
             }
         }
         
-        async function loadSecurityStats() {
-            try {
-                // KVKK onayları
-                const kvkkResponse = await fetch('/api/kvkk-consents');
-                if (kvkkResponse.ok) {
-                    const kvkkData = await kvkkResponse.json();
-                    document.getElementById('kvkkConsents').textContent = kvkkData.length || 0;
-                }
-                
-                // Admin sayısı
-                const adminsResponse = await fetch('/api/admins');
-                if (adminsResponse.ok) {
-                    const adminsData = await adminsResponse.json();
-                    document.getElementById('activeAdmins').textContent = adminsData.filter(a => a.is_active).length || 0;
-                }
-                
-                // Başarısız girişler
-                const failedResponse = await fetch('/api/failed-logins');
-                if (failedResponse.ok) {
-                    const failedData = await failedResponse.json();
-                    document.getElementById('failedLogins').textContent = failedData.length || 0;
-                }
-                
-            } catch (error) {
-                console.error('Güvenlik istatistik hatası:', error);
-            }
-        }
-        
-        function searchUsers() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            
-            if (searchTerm === '') {
-                filteredUsers = [...users];
-            } else {
-                filteredUsers = users.filter(user => {
-                    const nameMatch = user.name.toLowerCase().includes(searchTerm);
-                    const idMatch = user.id.includes(searchTerm);
-                    return nameMatch || idMatch;
-                });
-            }
-            
-            renderUsers();
-        }
-        
-        function renderUsers() {
-            const container = document.getElementById('userList');
-            
-            if (filteredUsers.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔍</div>
-                        <div>Kullanıcı bulunamadı</div>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = filteredUsers.map(user => `
-                <div class="user-item">
-                    <div class="user-info">
-                        <div class="user-id">#${user.id}</div>
-                        <div class="user-name">${user.name}</div>
-                        <div class="user-credits">${user.credits} dk kredi</div>
-                        <div class="user-meta">
-                            📅 ${new Date(user.created_at).toLocaleDateString('tr-TR')}
-                            ${user.last_call ? ` • 📞 ${new Date(user.last_call).toLocaleDateString('tr-TR')}` : ''}
-                        </div>
-                    </div>
-                    <div class="user-actions">
-                        <input type="number" value="${user.credits}" min="0" 
-                               class="credit-input" 
-                               onchange="updateUserCredits('${user.id}', this.value)">
-                        <button class="btn btn-danger" onclick="deleteUser('${user.id}')" 
-                                style="padding: 8px 12px; font-size: 12px;">🗑️</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        async function addUser() {
-            const id = document.getElementById('newUserId').value.trim();
-            const name = document.getElementById('newUserName').value.trim();
-            const credits = parseInt(document.getElementById('newUserCredits').value) || 0;
-            
-            if (!id || id.length !== 4 || !/^\d{4}$/.test(id)) {
-                showMessage('Lütfen 4 haneli sayısal ID girin!', 'error');
-                return;
-            }
-            
-            if (!name || name.length < 2) {
-                showMessage('Lütfen en az 2 karakter ad girin!', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/approved-users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, name, credits })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    users.push(result.user);
-                    filteredUsers = [...users];
-                    renderUsers();
-                    updateStats();
-                    
-                    // Form temizle
-                    document.getElementById('newUserId').value = '';
-                    document.getElementById('newUserName').value = '';
-                    document.getElementById('newUserCredits').value = '';
-                    
-                    showMessage(`Kullanıcı başarıyla eklendi: ${name} (${id})`, 'success');
-                } else {
-                    showMessage(result.error || 'Kullanıcı eklenemedi!', 'error');
-                }
-            } catch (error) {
-                showMessage('Kullanıcı ekleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function updateUserCredits(userId, newCredits) {
-            try {
-                const response = await fetch(`/api/approved-users/${userId}/credits`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        credits: parseInt(newCredits) || 0,
-                        reason: 'Super admin tarafından güncellendi'
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    const user = users.find(u => u.id === userId);
-                    if (user) {
-                        user.credits = result.credits;
-                        renderUsers();
-                        updateStats();
-                    }
-                    showMessage(`Kredi başarıyla güncellendi: ${userId} -> ${result.credits} dk`, 'success');
-                } else {
-                    showMessage(result.error || 'Kredi güncellenemedi!', 'error');
-                }
-            } catch (error) {
-                showMessage('Kredi güncelleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function deleteUser(userId) {
-            if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/approved-users/${userId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    users = users.filter(u => u.id !== userId);
-                    filteredUsers = filteredUsers.filter(u => u.id !== userId);
-                    renderUsers();
-                    updateStats();
-                    showMessage(`Kullanıcı silindi: ${userId}`, 'success');
-                } else {
-                    showMessage(result.error || 'Kullanıcı silinemedi!', 'error');
-                }
-            } catch (error) {
-                showMessage('Kullanıcı silme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function addAdmin() {
-            const username = document.getElementById('newAdminUsername').value.trim();
-            const password = document.getElementById('newAdminPassword').value.trim();
-            const role = document.getElementById('newAdminRole').value;
-            
-            if (!username || !password) {
-                showMessage('Kullanıcı adı ve şifre gerekli!', 'error');
-                return;
-            }
-            
-            if (password.length < 8) {
-                showMessage('Şifre en az 8 karakter olmalı!', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/admins', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, role })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Form temizle
-                    document.getElementById('newAdminUsername').value = '';
-                    document.getElementById('newAdminPassword').value = '';
-                    document.getElementById('newAdminRole').value = 'normal';
-                    
-                    showMessage(`Admin başarıyla eklendi: ${username} (${role})`, 'success');
-                    loadSecurityStats(); // Admin sayısını güncelle
-                } else {
-                    showMessage(result.error || 'Admin eklenemedi!', 'error');
-                }
-            } catch (error) {
-                showMessage('Admin ekleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function exportData() {
-            try {
-                const [usersRes, callsRes, statsRes] = await Promise.all([
-                    fetch('/api/approved-users'),
-                    fetch('/api/calls'),
-                    fetch('/api/stats')
-                ]);
-                
-                const [users, calls, stats] = await Promise.all([
-                    usersRes.json(),
-                    callsRes.json(),
-                    statsRes.json()
-                ]);
-                
-                const exportData = {
-                    exportDate: new Date().toISOString(),
-                    exportedBy: currentAdmin.username,
-                    statistics: stats,
-                    users: users,
-                    recentCalls: calls,
-                    systemInfo: {
-                        totalHeartbeats: stats.activeHeartbeats,
-                        onlineUsers: stats.onlineUsers,
-                        multiAdminSystem: 'Active'
-                    }
-                };
-                
-                const dataStr = JSON.stringify(exportData, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(dataBlob);
-                link.download = `vipcep_export_${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                
-                showMessage('Veriler başarıyla dışa aktarıldı!', 'success');
-            } catch (error) {
-                showMessage('Veri dışa aktarma hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function viewCallHistory() {
-            try {
-                const response = await fetch('/api/calls');
-                const calls = await response.json();
-                
-                let historyHtml = '<h3>📞 Son 100 Arama Geçmişi</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
-                if (calls.length === 0) {
-                    historyHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Henüz arama kaydı yok.</p>';
-                } else {
-                    calls.forEach(call => {
-                        const duration = Math.floor(call.duration / 60) + ':' + (call.duration % 60).toString().padStart(2, '0');
-                        const date = new Date(call.call_time).toLocaleString('tr-TR');
-                        
-                        historyHtml += `
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #22c55e;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: #fbbf24;">${call.user_name || call.user_id}</strong> 
-                                        <span style="color: #94a3b8;">(#${call.user_id})</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 12px; color: #94a3b8;">
-                                        ${date}
-                                    </div>
-                                </div>
-                                <div style="margin-top: 8px; font-size: 14px;">
-                                    ⏱️ Süre: <span style="color: #22c55e;">${duration}</span> • 
-                                    💳 Kredi: <span style="color: #ef4444;">${call.credits_used} dk</span> • 
-                                    📊 Durum: <span style="color: #06b6d4;">${call.end_reason || 'normal'}</span>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-                
-                historyHtml += '</div>';
-                showModal(historyHtml);
-                
-            } catch (error) {
-                showMessage('Arama geçmişi yükleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function refreshData() {
-            showMessage('Veriler yenileniyor...', 'success');
-            await loadData();
-            showMessage('Veriler başarıyla yenilendi!', 'success');
-        }
-        
-        async function clearFailedLogins() {
-            if (!confirm('Tüm başarısız giriş kayıtlarını temizlemek istediğinizden emin misiniz?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/clear-failed-logins', {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    showMessage('Başarısız giriş kayıtları temizlendi!', 'success');
-                    loadSecurityStats();
-                } else {
-                    showMessage('Temizleme işlemi başarısız!', 'error');
-                }
-            } catch (error) {
-                showMessage('Rate limit temizleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function viewKVKKConsents() {
-            try {
-                const response = await fetch('/api/kvkk-consents');
-                const consents = await response.json();
-                
-                let consentHtml = '<h3>📋 KVKK Onayları</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
-                if (consents.length === 0) {
-                    consentHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Henüz KVKK onayı yok.</p>';
-                } else {
-                    consents.forEach(consent => {
-                        const date = new Date(consent.consent_date).toLocaleString('tr-TR');
-                        
-                        consentHtml += `
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #059669;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <div>
-                                        <strong style="color: #22c55e;">IP:</strong> ${consent.ip_address}<br>
-                                        <strong style="color: #22c55e;">Tarih:</strong> ${date}
-                                    </div>
-                                    <div>
-                                        <strong style="color: #22c55e;">Versiyon:</strong> ${consent.version}<br>
-                                        <small style="color: #94a3b8;">Hash: ${consent.consent_hash.substring(0, 16)}...</small>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-                
-                consentHtml += '</div>';
-                showModal(consentHtml);
-                
-            } catch (error) {
-                showMessage('KVKK onayları yükleme hatası: ' + error.message, 'error');
-            }
-        }
-        
-        async function viewFailedLogins() {
-            try {
-                const response = await fetch('/api/failed-logins');
-                const failedLogins = await response.json();
-                
-                let loginHtml = '<h3>🛡️ Başarısız Giriş Denemeleri</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
-                if (failedLogins.length === 0) {
-                    loginHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Başarısız giriş kaydı yok.</p>';
-                } else {
-                    // IP'lere göre grupla
-                    const groupedByIP = {};
-                    failedLogins.forEach(login => {
-                        if (!groupedByIP[login.ip_address]) {
-                            groupedByIP[login.ip_address] = [];
-                        }
-                        groupedByIP[login.ip_address].push(login);
-                    });
-                    
-                    Object.entries(groupedByIP).forEach(([ip, attempts]) => {
-                        const lastAttempt = new Date(Math.max(...attempts.map(a => new Date(a.attempt_time)))).toLocaleString('tr-TR');
-                        const attemptCount = attempts.length;
-                        const userTypes = [...new Set(attempts.map(a => a.user_type))].join(', ');
-                        
-                        loginHtml += `
-                            <div style="background: rgba(239,68,68,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #ef4444;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: #fca5a5;">🚫 IP:</strong> ${ip}<br>
-                                        <strong style="color: #fca5a5;">Tip:</strong> ${userTypes}
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="color: #ef4444; font-weight: bold; font-size: 18px;">${attemptCount}</div>
-                                        <div style="color: #94a3b8; font-size: 12px;">deneme</div>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 8px; color: #94a3b8; font-size: 12px;">
-                                    Son deneme: ${lastAttempt}
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-                
-                loginHtml += '</div>';
-                showModal(loginHtml);
-                
-            } catch (error) {
-                showMessage('Güvenlik logları yükleme hatası: ' + error.message, 'error');
-            }
+        function updateDisplay() {
+            updateStats();
+            updateUsersList();
+            updateAdminsList();
+            updateQueueList();
+            updateActivityLog();
         }
         
         function updateStats() {
-            document.getElementById('totalUsers').textContent = users.length;
-            document.getElementById('totalCredits').textContent = users.reduce((sum, u) => sum + u.credits, 0);
+            document.getElementById('totalUsers').textContent = users.size;
+            document.getElementById('activeAdmins').textContent = admins.size;
+            document.getElementById('queueCount').textContent = callQueue.length;
+            document.getElementById('dailyCalls').textContent = systemStats.dailyCalls || 0;
         }
         
-        function showMessage(message, type) {
-            // Önceki mesajları temizle
-            const existingMessages = document.querySelectorAll('.success-message, .error-message');
-            existingMessages.forEach(msg => msg.remove());
+        function updateUsersList() {
+            const container = document.getElementById('usersList');
+            container.innerHTML = '';
             
-            const messageDiv = document.createElement('div');
-            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-            messageDiv.textContent = message;
-            
-            document.body.appendChild(messageDiv);
-            
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
-                }
-            }, 5000);
+            users.forEach(user => {
+                const userEl = document.createElement('div');
+                userEl.className = 'user-item';
+                userEl.innerHTML = `
+                    <div class="user-info">
+                        <div class="user-name">${user.name}</div>
+                        <div class="user-details">ID: ${user.id} • ${user.credits} dk</div>
+                    </div>
+                    <div>
+                        <span class="user-status status-${user.status}">${getStatusText(user.status)}</span>
+                        <button class="btn btn-primary" onclick="editUser('${user.id}')">✏️</button>
+                    </div>
+                `;
+                container.appendChild(userEl);
+            });
         }
         
-        function showModal(content) {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal">
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                    ${content}
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="margin-top: 20px;">
-                        Kapat
-                    </button>
-                </div>
-            `;
+        function updateAdminsList() {
+            const container = document.getElementById('adminsList');
+            container.innerHTML = '';
             
-            document.body.appendChild(modal);
+            admins.forEach(admin => {
+                const adminEl = document.createElement('div');
+                adminEl.className = 'admin-item';
+                adminEl.innerHTML = `
+                    <div class="admin-info">
+                        <div class="admin-name">${admin.name}</div>
+                        <div class="admin-details">ID: ${admin.id}</div>
+                    </div>
+                    <span class="admin-status status-${admin.status}">${getStatusText(admin.status)}</span>
+                `;
+                container.appendChild(adminEl);
+            });
         }
         
-        async function logout() {
-            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                try {
-                    await fetch('/auth/logout', { method: 'POST' });
-                    
-                    if (socket) {
-                        socket.close();
-                    }
-                    
-                    window.location.href = '/';
-                } catch (error) {
-                    window.location.href = '/';
-                }
+        function updateQueueList() {
+            const container = document.getElementById('queueList');
+            container.innerHTML = '';
+            
+            if (callQueue.length === 0) {
+                container.innerHTML = '<div style="text-align: center; opacity: 0.7;">Kuyruk boş</div>';
+                return;
+            }
+            
+            callQueue.forEach((call, index) => {
+                const queueEl = document.createElement('div');
+                queueEl.className = 'queue-item';
+                queueEl.innerHTML = `
+                    <div class="queue-position">${index + 1}</div>
+                    <div class="user-info">
+                        <div class="user-name">${call.userName}</div>
+                        <div class="user-details">ID: ${call.userId} • ${formatTime(call.waitTime)} bekleme</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeFromQueue('${call.userId}')">🗑️</button>
+                `;
+                container.appendChild(queueEl);
+            });
+        }
+        
+        function updateActivityLog() {
+            const container = document.getElementById('activityLog');
+            container.innerHTML = '';
+            
+            activityLog.forEach(activity => {
+                const logEl = document.createElement('div');
+                logEl.className = 'log-item';
+                logEl.innerHTML = `
+                    <div>${activity.message}</div>
+                    <div class="log-time">${formatTime(activity.timestamp)}</div>
+                `;
+                container.appendChild(logEl);
+            });
+        }
+        
+        function getStatusText(status) {
+            const statusMap = {
+                'online': 'Çevrimiçi',
+                'busy': 'Meşgul',
+                'offline': 'Çevrimdışı',
+                'in_call': 'Görüşmede'
+            };
+            return statusMap[status] || status;
+        }
+        
+        function formatTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('tr-TR');
+        }
+        
+        function editUser(userId) {
+            const user = users.get(userId);
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUserName').value = user.name;
+            document.getElementById('editUserCredits').value = user.credits;
+            document.getElementById('editUserModal').classList.remove('hidden');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editUserModal').classList.add('hidden');
+        }
+        
+        function removeFromQueue(userId) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-remove-from-queue',
+                    userId: userId,
+                    adminId: 'SUPER_ADMIN'
+                }));
             }
         }
+        
+        function setupEventListeners() {
+            document.getElementById('editUserForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const userId = document.getElementById('editUserId').value;
+                const userName = document.getElementById('editUserName').value;
+                const userCredits = parseInt(document.getElementById('editUserCredits').value);
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'admin-update-user',
+                        targetUserId: userId,
+                        updates: {
+                            name: userName,
+                            credits: userCredits
+                        },
+                        adminId: 'SUPER_ADMIN'
+                    }));
+                }
+                
+                closeEditModal();
+            });
+        }
+        
+        // Otomatik güncelleme
+        setInterval(() => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'request-system-status'
+                }));
+            }
+        }, 5000);
+        
+        // Sayfa yüklendiğinde başlat
+        window.onload = init;
+        
+        console.log('🚀 VIPCEP Super Admin Panel başlatıldı');
     </script>
 </body>
 </html>
