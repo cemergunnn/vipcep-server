@@ -849,6 +849,9 @@
 
     <script>
         // Global değişkenler
+        let audioContext = null;
+        let audioInitialized = false;
+        let notificationAudio = [];
         let currentLanguage = 'tr';
         let socket = null;
         let peerConnection = null;
@@ -878,7 +881,147 @@
         
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         
-        // Ses kontrolleri
+        // ===== SES SİSTEMİ FONKSİYONLARI (EKSİK OLAN) =====
+        
+        function initializeAudio() {
+            if (audioInitialized) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                const unlockAudio = () => {
+                    if (audioContext.state === 'suspended') {
+                        audioContext.resume().then(() => {
+                            console.log('🔊 Audio context unlocked');
+                            audioInitialized = true;
+                            playTestSound();
+                        });
+                    } else {
+                        audioInitialized = true;
+                        playTestSound();
+                    }
+                    
+                    document.removeEventListener('click', unlockAudio);
+                    document.removeEventListener('touchend', unlockAudio);
+                    document.removeEventListener('keydown', unlockAudio);
+                };
+                
+                document.addEventListener('click', unlockAudio);
+                document.addEventListener('touchend', unlockAudio);
+                document.addEventListener('keydown', unlockAudio);
+                
+            } catch (error) {
+                console.log('Audio initialization error:', error);
+                audioInitialized = false;
+            }
+        }
+
+        function playTestSound() {
+            if (!audioContext || !audioInitialized) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.001, audioContext.currentTime);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                
+                console.log('🔊 Audio system ready');
+            } catch (error) {
+                console.log('Test sound error:', error);
+            }
+        }
+
+        function playIncomingCallSound() {
+            if (!audioContext || !audioInitialized) {
+                console.log('⚠️ Audio not initialized, trying to initialize...');
+                initializeAudio();
+                
+                setTimeout(() => {
+                    if (audioInitialized) {
+                        playIncomingCallSoundInternal();
+                    } else {
+                        console.log('❌ Audio system not ready');
+                        playFallbackNotificationSound();
+                    }
+                }, 500);
+                return;
+            }
+            
+            playIncomingCallSoundInternal();
+        }
+
+        function playIncomingCallSoundInternal() {
+            try {
+                stopIncomingCallSound();
+                
+                function playRing() {
+                    if (callState !== 'incoming') return;
+                    
+                    const oscillator1 = audioContext.createOscillator();
+                    const oscillator2 = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator1.connect(gainNode);
+                    oscillator2.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator1.frequency.setValueAtTime(440, audioContext.currentTime);
+                    oscillator2.frequency.setValueAtTime(880, audioContext.currentTime);
+                    oscillator1.type = 'sine';
+                    oscillator2.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+                    gainNode.gain.linearRampToValueAtTime(0.0, audioContext.currentTime + 1.0);
+                    
+                    oscillator1.start(audioContext.currentTime);
+                    oscillator2.start(audioContext.currentTime);
+                    oscillator1.stop(audioContext.currentTime + 1.0);
+                    oscillator2.stop(audioContext.currentTime + 1.0);
+                    
+                    notificationAudio.push(oscillator1, oscillator2);
+                    
+                    setTimeout(playRing, 1500);
+                }
+                
+                playRing();
+                
+            } catch (error) {
+                console.log('Incoming call sound error:', error);
+                playFallbackNotificationSound();
+            }
+        }
+
+        function playFallbackNotificationSound() {
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU+ltryxnkpBSl+zPLaizsIGGS57uGQQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Fallback audio error:', e));
+            } catch (fallbackError) {
+                console.log('Fallback audio also failed:', fallbackError);
+            }
+        }
+
+        function stopIncomingCallSound() {
+            if (notificationAudio) {
+                notificationAudio.forEach(node => {
+                    try { 
+                        if (node.stop) node.stop(); 
+                    } catch(e) {}
+                });
+                notificationAudio = [];
+            }
+        }
+        
+        // ===== SES KONTROL FONKSİYONLARI =====
+        
         function toggleMicrophone() {
             micEnabled = !micEnabled;
             const button = document.getElementById('micToggle');
@@ -926,22 +1069,6 @@
             }
         }
 
-        // Volume Control
-        document.addEventListener('DOMContentLoaded', function() {
-            const volumeSlider = document.getElementById('volumeSlider');
-            if (volumeSlider) {
-                volumeSlider.addEventListener('input', (e) => {
-                    const volume = e.target.value;
-                    document.getElementById('volumeValue').textContent = volume + '%';
-                    
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (speakerEnabled) {
-                        remoteAudio.volume = volume / 100;
-                    }
-                });
-            }
-        });
-
         // Uygulama başlatma
         window.onload = function() {
             init();
@@ -951,6 +1078,7 @@
             setupEventListeners();
             loadSavedUserInfo();
             connectToServer();
+            initializeAudio(); // Audio sistem başlat
             
             const savedLang = localStorage.getItem('vipcep_language');
             if (savedLang && (savedLang === 'tr' || savedLang === 'en')) {
@@ -975,6 +1103,20 @@
                         kvkkAcceptBtn.disabled = false;
                     } else {
                         kvkkAcceptBtn.disabled = true;
+                    }
+                });
+            }
+
+            // Volume Control
+            const volumeSlider = document.getElementById('volumeSlider');
+            if (volumeSlider) {
+                volumeSlider.addEventListener('input', (e) => {
+                    const volume = e.target.value;
+                    document.getElementById('volumeValue').textContent = volume + '%';
+                    
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (speakerEnabled) {
+                        remoteAudio.volume = volume / 100;
                     }
                 });
             }
@@ -1062,6 +1204,8 @@
             }
         }
         
+        // ===== SUNUCU MESAJ İŞLEME (EKSİK OLAN CASE'LER EKLENDİ) =====
+        
         function handleServerMessage(message) {
             console.log('📨 Sunucudan mesaj:', message.type);
             
@@ -1072,6 +1216,17 @@
                 
                 case 'call-queue-update':
                     updateQueuePosition(message.queue);
+                    break;
+                
+                case 'admin-call-request': // EKSİK OLAN
+                    handleIncomingAdminCall(message);
+                    break;
+                
+                case 'admin-call-cancelled': // EKSİK OLAN
+                    console.log('📞 Admin araması iptal edildi');
+                    stopIncomingCallSound();
+                    setState('idle');
+                    showMessage(currentLanguage === 'tr' ? 'Gelen arama iptal edildi' : 'Incoming call cancelled', 'warning');
                     break;
                 
                 case 'call-accepted':
@@ -1134,6 +1289,72 @@
                     break;
             }
         }
+        
+        // ===== EKSİK OLAN FONKSİYONLAR =====
+        
+        function handleIncomingAdminCall(message) {
+            console.log('📞 Admin\'den gelen arama:', message.adminName);
+            
+            incomingCallInfo = {
+                adminId: message.adminId,
+                adminName: message.adminName || 'USTAM'
+            };
+            
+            setState('incoming');
+        }
+        
+        function acceptIncomingCall() {
+            if (!incomingCallInfo) {
+                console.log('❌ Gelen arama bilgisi bulunamadı');
+                return;
+            }
+            
+            console.log('✅ Gelen arama kabul edildi');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-accepted',
+                    userId: userInfo.id,
+                    adminId: incomingCallInfo.adminId
+                }));
+            }
+            
+            currentAdminId = incomingCallInfo.adminId;
+            setState('connecting');
+            setupPeerConnection();
+            incomingCallInfo = null;
+        }
+        
+        function rejectIncomingCall() {
+            if (!incomingCallInfo) {
+                console.log('❌ Gelen arama bilgisi bulunamadı');
+                return;
+            }
+            
+            console.log('❌ Gelen arama reddedildi');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-rejected',
+                    userId: userInfo.id,
+                    adminId: incomingCallInfo.adminId,
+                    reason: currentLanguage === 'tr' ? 'Kullanıcı tarafından reddedildi' : 'Rejected by user'
+                }));
+            }
+            
+            setState('idle');
+            incomingCallInfo = null;
+        }
+        
+        // ===== WebRTC TARGET BULMA (EKSİK OLAN) =====
+        
+        function findWebRTCTarget(targetId, sourceType) {
+            // Bu fonksiyon server tarafında da var ama client tarafında gerek yok
+            // Çünkü server zaten doğru targeti buluyor
+            return null;
+        }
+        
+        // ===== KUYRUK YÖNETİMİ =====
         
         function updateQueuePosition(queue) {
             if (!queue || queue.length === 0) {
@@ -1426,6 +1647,7 @@
                     if (idleState) idleState.classList.remove('hidden');
                     if (displayUserStatus) displayUserStatus.textContent = currentLanguage === 'tr' ? 'Hazır' : 'Ready';
                     updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
+                    stopIncomingCallSound(); // Ses durdur
                     break;
                 
                 case 'waiting':
@@ -1433,15 +1655,23 @@
                     showQueuePosition();
                     break;
                 
+                case 'incoming': // EKSİK OLAN DURUM
+                    if (incomingCallState) incomingCallState.classList.remove('hidden');
+                    if (displayUserStatus) displayUserStatus.textContent = currentLanguage === 'tr' ? 'Gelen arama' : 'Incoming call';
+                    playIncomingCallSound(); // Ses çal
+                    break;
+                
                 case 'connecting':
                     if (connectingState) connectingState.classList.remove('hidden');
                     if (displayUserStatus) displayUserStatus.textContent = currentLanguage === 'tr' ? 'Bağlanıyor...' : 'Connecting...';
+                    stopIncomingCallSound(); // Ses durdur
                     break;
                 
                 case 'connected':
                     if (connectedState) connectedState.classList.remove('hidden');
                     if (displayUserStatus) displayUserStatus.textContent = currentLanguage === 'tr' ? 'Görüşmede' : 'In call';
                     startCallTimer();
+                    stopIncomingCallSound(); // Ses durdur
                     break;
             }
         }
@@ -1520,7 +1750,7 @@
             
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
-                    type: 'call-ended',
+                    type: 'end-call',
                     userId: userInfo.id,
                     adminId: currentAdminId
                 }));
@@ -1538,8 +1768,7 @@
                     socket.send(JSON.stringify({
                         type: 'ice-candidate',
                         candidate: event.candidate,
-                        userId: userInfo.id,
-                        adminId: currentAdminId
+                        targetId: currentAdminId
                     }));
                 }
             };
@@ -1549,6 +1778,7 @@
                 const remoteAudio = document.getElementById('remoteAudio');
                 if (remoteAudio && event.streams[0]) {
                     remoteAudio.srcObject = event.streams[0];
+                    setState('connected'); // Bağlantı kurulduğunda durumu güncelle
                 }
             };
             
@@ -1562,12 +1792,27 @@
                 }
             };
             
-            navigator.mediaDevices.getUserMedia({ audio: true })
+            // Ses ayarlarını uygula
+            const audioConstraints = {
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: noiseSuppression,
+                    autoGainControl: true
+                }
+            };
+            
+            navigator.mediaDevices.getUserMedia(audioConstraints)
                 .then(stream => {
                     localStream = stream;
                     const localAudio = document.getElementById('localAudio');
                     if (localAudio) {
                         localAudio.srcObject = stream;
+                    }
+                    
+                    // Mikrofon durumunu uygula
+                    const audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        audioTrack.enabled = micEnabled;
                     }
                     
                     stream.getTracks().forEach(track => {
@@ -1585,8 +1830,7 @@
                         socket.send(JSON.stringify({
                             type: 'offer',
                             offer: peerConnection.localDescription,
-                            userId: userInfo.id,
-                            adminId: currentAdminId
+                            targetId: currentAdminId
                         }));
                     }
                 })
@@ -1604,13 +1848,26 @@
             
             peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer))
                 .then(() => {
-                    return navigator.mediaDevices.getUserMedia({ audio: true });
+                    const audioConstraints = {
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: noiseSuppression,
+                            autoGainControl: true
+                        }
+                    };
+                    return navigator.mediaDevices.getUserMedia(audioConstraints);
                 })
                 .then(stream => {
                     localStream = stream;
                     const localAudio = document.getElementById('localAudio');
                     if (localAudio) {
                         localAudio.srcObject = stream;
+                    }
+                    
+                    // Mikrofon durumunu uygula
+                    const audioTrack = stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        audioTrack.enabled = micEnabled;
                     }
                     
                     stream.getTracks().forEach(track => {
@@ -1627,8 +1884,7 @@
                         socket.send(JSON.stringify({
                             type: 'answer',
                             answer: peerConnection.localDescription,
-                            userId: userInfo.id,
-                            adminId: currentAdminId
+                            targetId: currentAdminId
                         }));
                     }
                 })
@@ -1701,33 +1957,6 @@
             if (message.reason) {
                 showMessage(message.reason, 'info');
             }
-        }
-        
-        function acceptIncomingCall() {
-            if (socket && socket.readyState === WebSocket.OPEN && incomingCallInfo) {
-                socket.send(JSON.stringify({
-                    type: 'call-accept',
-                    userId: userInfo.id,
-                    adminId: incomingCallInfo.adminId
-                }));
-                
-                currentAdminId = incomingCallInfo.adminId;
-                setState('connecting');
-                setupPeerConnection();
-            }
-        }
-        
-        function rejectIncomingCall() {
-            if (socket && socket.readyState === WebSocket.OPEN && incomingCallInfo) {
-                socket.send(JSON.stringify({
-                    type: 'call-reject',
-                    userId: userInfo.id,
-                    adminId: incomingCallInfo.adminId
-                }));
-            }
-            
-            setState('idle');
-            incomingCallInfo = null;
         }
         
         function requestCreditWhatsApp() {
@@ -1832,6 +2061,12 @@
                 currentLang.textContent = currentLanguage.toUpperCase();
             }
         }
+        
+        console.log('🎯 VIPCEP Fixed Customer App loaded successfully');
+        console.log('🔊 Audio system with incoming call sounds restored');
+        console.log('📞 Incoming call handling restored');
+        console.log('🎛️ Audio controls integrated');
+        console.log('✅ All missing functions added back');
     </script>
 </body>
 </html>
