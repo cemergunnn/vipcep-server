@@ -1400,7 +1400,6 @@
                 adminData.role === 'super' ? '🔴 Süper Admin' : '🟡 Normal Admin';
             
             connectToServer();
-            loadOnlineUsers();
             updateAdminStatus('available');
             console.log('Admin panel başlatıldı');
         }
@@ -1484,7 +1483,7 @@
                     
                 case 'user-list-update':
                     connectedUsers = message.users || [];
-                    renderOnlineUsers();
+                    loadOnlineUsers();
                     renderConnectedUsers();
                     break;
                     
@@ -1551,13 +1550,13 @@
 
         // Online User Management
         async function loadOnlineUsers() {
+            console.log('🔄 Loading online users, connectedUsers count:', connectedUsers.length);
+            console.log('📊 connectedUsers:', connectedUsers);
             onlineUsers = connectedUsers.filter(u => u.userType === 'customer');
+            console.log('👥 Found online users:', onlineUsers.length);
+            console.log('📋 onlineUsers:', onlineUsers);
             renderOnlineUsers();
         }
-
-        function renderOnlineUsers() {
-            const container = document.getElementById('onlineUsersList');
-            const users = filteredUsers.length > 0 ? filteredUsers : onlineUsers;
             
             if (users.length === 0) {
                 container.innerHTML = `
@@ -1745,3 +1744,4 @@
     </script>
 </body>
 </html>
+
