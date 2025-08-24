@@ -50,9 +50,11 @@ const activeCallAdmins = new Map();
 const activeCalls = new Map();
 const incomingCallQueue = new Map();
 const callTimeouts = new Map();
+let currentAnnouncement = null; // Aktif duyuru
 const MAX_QUEUE_SIZE = 5;
 const CALL_TIMEOUT_DURATION = 30000;
 const HEARTBEAT_INTERVAL = 60000;
+
 
 // ================== HELPER FUNCTIONS ==================
 
@@ -112,6 +114,13 @@ function removeFromCallQueue(callId, reason = 'manual') {
     broadcastCallQueueToAdmins();
     
     return callData;
+}
+function broadcastToCustomers(message) {
+    clients.forEach(client => {
+        if (client.userType === 'customer' && client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(JSON.stringify(message));
+        }
+    });
 }
 
 function broadcastCallQueueToAdmins() {
@@ -1270,6 +1279,59 @@ app.get('/api/approved-users', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+// ================== ANNOUNCEMENT API ROUTES ==================
+
+// Duyuru gönder
+app.post('/api/announcement', (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    const { text, type } = req.body;
+    
+    currentAnnouncement = {
+        text,
+        type,
+        createdAt: new Date(),
+        createdBy: req.session.superAdmin.username
+    };
+    
+    // Tüm müşterilere broadcast
+    broadcastToCustomers({
+        type: 'announcement-broadcast',
+        announcement: currentAnnouncement
+    });
+    
+    res.json({ success: true });
+});
+
+// Duyuru sil  
+app.delete('/api/announcement', (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    currentAnnouncement = null;
+    
+    // Tüm müşterilerden kaldır
+    broadcastToCustomers({
+        type: 'announcement-deleted'
+    });
+    
+    res.json({ success: true });
+});
+
+// Aktif duyuru getir
+app.get('/api/announcement', (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    res.json({ 
+        success: true, 
+        announcement: currentAnnouncement 
+    });
+});
 
 app.get('/api/stats', async (req, res) => {
     try {
@@ -1436,6 +1498,13 @@ wss.on('connection', (ws, req) => {
                         });
                         
                         console.log(`👤 Customer registered: ${message.name} (${message.userId})`);
+                        // Aktif duyuru varsa gönder
+                        if (currentAnnouncement) {
+                            ws.send(JSON.stringify({
+                                type: 'announcement-broadcast',
+                                announcement: currentAnnouncement
+                            }));
+                        }
                     }
                     
                     broadcastUserList();
@@ -1930,3 +1999,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
