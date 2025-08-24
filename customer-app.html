@@ -661,7 +661,123 @@
             color: white;
             animation: pulse 1.5s infinite;
         }
+/* Announcement System Styles */
+        .announcement-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999;
+            padding: 15px 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.5s ease-out;
+        }
 
+        .announcement-banner.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .announcement-banner.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .announcement-banner.important {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .announcement-banner.urgent {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            animation: slideDown 0.5s ease-out, urgentPulse 2s infinite;
+        }
+
+        .announcement-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .announcement-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: popIn 0.4s ease-out;
+        }
+
+        .announcement-content h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+            color: #1e293b;
+        }
+
+        .announcement-content p {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            word-wrap: break-word;
+        }
+
+        .announcement-content a {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
+        .announcement-close {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .announcement-close:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.8) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes urgentPulse {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(0) scale(1.02); }
+        }
+        
         /* Loading State */
         .loading {
             opacity: 0.7;
@@ -938,7 +1054,22 @@
             <div style="margin-top: 5px;" data-text-tr="Mobil Cihaz Teknik Danışmanlığı" data-text-en="Mobile Device Technical Consultancy">Mobil Cihaz Teknik Danışmanlığı</div>
         </div>
     </div>
+    <!-- Duyuru Banner (Üstte Sabit) -->
+    <div id="announcementBanner" class="announcement-banner hidden">
+        <span id="bannerContent"></span>
+    </div>
     
+    <!-- Duyuru Modal (Popup) -->
+    <div id="announcementModal" class="announcement-modal hidden">
+        <div class="announcement-content">
+            <h3 id="announcementTitle">📢 Duyuru</h3>
+            <p id="announcementText"></p>
+            <button class="announcement-close" onclick="closeAnnouncementModal()">
+                ✔️ Tamam
+            </button>
+        </div>
+    </div>
+
     <!-- Kredi Bildirimi Modal -->
     <div id="creditModalOverlay" class="credit-modal-overlay hidden">
         <div class="credit-modal">
@@ -977,6 +1108,7 @@
         let audioInitialized = false;
         let notificationAudio = [];
         let currentLanguage = 'tr';
+        let currentAnnouncementData = null;
         let socket = null;
         let peerConnection = null;
         let localStream = null;
@@ -1117,6 +1249,99 @@
             } catch (error) {
                 console.log('Incoming call sound error:', error);
                 playFallbackNotificationSound();
+            }
+        }
+ 
+// Announcement Functions
+        function showAnnouncement(announcement) {
+            currentAnnouncementData = announcement;
+            
+            // Ses çal
+            playAnnouncementSound();
+            
+            // Popup göster
+            showAnnouncementModal(announcement);
+            
+            // Banner göster
+            showAnnouncementBanner(announcement);
+            
+            console.log('📢 Duyuru gösterildi:', announcement.text);
+        }
+
+        function showAnnouncementModal(announcement) {
+            const modal = document.getElementById('announcementModal');
+            const title = document.getElementById('announcementTitle');
+            const text = document.getElementById('announcementText');
+            
+            // Tip'e göre title
+            const titles = {
+                info: '📋 Bilgilendirme',
+                warning: '⚠️ Uyarı',
+                important: '🔴 Önemli Duyuru',
+                urgent: '🚨 Acil Duyuru'
+            };
+            
+            title.textContent = titles[announcement.type] || '📢 Duyuru';
+            
+            // Link'leri işle
+            let processedText = announcement.text.replace(
+                /(https?:\/\/[^\s]+)/g, 
+                '<a href="$1" target="_blank">$1</a>'
+            );
+            processedText = processedText.replace(/\n/g, '<br>');
+            
+            text.innerHTML = processedText;
+            modal.classList.remove('hidden');
+        }
+
+        function showAnnouncementBanner(announcement) {
+            const banner = document.getElementById('announcementBanner');
+            const content = document.getElementById('bannerContent');
+            
+            // Tip'e göre stil
+            banner.className = `announcement-banner ${announcement.type}`;
+            
+            // Link'leri işle
+            let processedText = announcement.text.replace(
+                /(https?:\/\/[^\s]+)/g, 
+                '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>'
+            );
+            
+            content.innerHTML = processedText;
+            banner.classList.remove('hidden');
+            
+            // Body'e padding ekle (banner için yer aç)
+            document.body.style.paddingTop = '60px';
+        }
+
+        function closeAnnouncementModal() {
+            document.getElementById('announcementModal').classList.add('hidden');
+        }
+
+        function hideAnnouncement() {
+            // Banner gizle
+            document.getElementById('announcementBanner').classList.add('hidden');
+            
+            // Modal gizle
+            document.getElementById('announcementModal').classList.add('hidden');
+            
+            // Body padding'i kaldır
+            document.body.style.paddingTop = '0';
+            
+            currentAnnouncementData = null;
+            console.log('📢 Duyuru gizlendi');
+        }
+
+        function playAnnouncementSound() {
+            try {
+                // Daha dikkat çekici ses
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                audio.volume = 0.6;
+                audio.play().catch(e => {
+                    console.log('Duyuru sesi çalınamadı:', e);
+                });
+            } catch (e) {
+                console.log('Duyuru sesi hatası:', e);
             }
         }
 
@@ -1333,7 +1558,18 @@
                         console.log(`💗 Heartbeat kredi düşürüldü: ${message.creditsUsed} dk`);
                     }
                     break;
+                case 'announcement-broadcast':
+                    console.log('📢 Duyuru alındı:', message.announcement);
+                    if (message.announcement) {
+                        showAnnouncement(message.announcement);
+                    }
+                    break;
                 
+                case 'announcement-deleted':
+                    console.log('🗑️ Duyuru silindi');
+                    hideAnnouncement();
+                    break;
+
                 case 'offer':
                     console.log('📨 WebRTC Offer alındı');
                     handleOffer(message);
@@ -2354,3 +2590,4 @@
     </script>
 </body>
 </html>
+
