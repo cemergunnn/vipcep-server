@@ -1698,7 +1698,42 @@
             }
             console.log('Veriler yenilendi');
         }
-
+        function renderOnlineUsers() {
+            const container = document.getElementById('onlineUsersList');
+            const users = filteredUsers.length > 0 ? filteredUsers : onlineUsers;
+            
+            if (users.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #6b7280; padding: 30px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">👥</div>
+                        <div>Henüz online kullanıcı yok</div>
+                    </div>`;
+                return;
+            }
+        
+            container.innerHTML = users.map(user => {
+                const isOnline = connectedUsers.some(u => u.id === user.id && u.userType === 'customer');
+                const canCall = isOnline && !currentCall && !outgoingCallInfo;
+                
+                return `
+                    <div class="user-item ${isOnline ? 'online-user' : ''}">
+                        <div class="user-info">
+                            <div class="user-id">#${user.id}</div>
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-credits">${user.credits || 0} dakika kredi</div>
+                            <div class="user-status ${isOnline ? 'online' : ''}">
+                                ${isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı'}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-call" 
+                                ${canCall ? `onclick="callUser('${user.id}')"` : 'disabled'}>
+                                📞 Ara
+                            </button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
         // Keyboard Shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
@@ -1744,4 +1779,5 @@
     </script>
 </body>
 </html>
+
 
