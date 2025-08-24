@@ -1042,8 +1042,12 @@
             }
             
             stopNotificationSound();
+            const responseStart = Date.now();
             
             if (socket?.readyState === WebSocket.OPEN) {
+                // Admin'i hemen meşgul göster (sunucudan onay beklemeden)
+                updateAdminStatus('busy');
+                
                 socket.send(JSON.stringify({ 
                     type: 'accept-call-by-id', 
                     callId, 
@@ -1052,10 +1056,16 @@
                 }));
                 
                 setupCall(call);
-                console.log(`Arama kabul edildi: ${call.userName} (${call.userId})`);
+                
+                // Performance tracking
+                const responseTime = Date.now() - responseStart;
+                performanceMetrics.totalResponseTime += responseTime;
+                performanceMetrics.callsHandled++;
+                updatePerformanceMetrics();
+                
+                addLog(`Arama kabul edildi: ${call.userName} (${call.userId})`, 'success');
             }
         }
-
         function rejectCall(callId) {
             const call = currentCallQueue.find(c => c.callId === callId);
             if (socket?.readyState === WebSocket.OPEN) {
@@ -1133,17 +1143,21 @@
                 peerConnection.onconnectionstatechange = () => {
                     updateConnectionQuality(peerConnection.connectionState);
                     
-                    if (peerConnection.connectionState === 'connected') {
-                        currentCall = callInfo;
-                        document.getElementById('activeCaller').textContent = callInfo.userName;
-                        document.getElementById('activeCall').classList.remove('hidden');
-                        document.getElementById('callQueueContainer').style.display = 'none';
-                        startTimer();
-                        console.log(`Görüşme başladı: ${callInfo.userName}`);
-                    } else if (['failed', 'disconnected'].includes(peerConnection.connectionState)) {
-                        endCall();
-                        console.log('Bağlantı koptu');
-                    }
+            if (peerConnection.connectionState === 'connected') {
+                currentCall = callInfo;
+                document.getElementById('activeCaller').textContent = callInfo.userName;
+                document.getElementById('activeCall').classList.remove('hidden');
+                document.getElementById('callQueueContainer').style.display = 'none';
+                
+                // Admin meşgul durumda kalmalı
+                updateAdminStatus('busy');
+                
+                startTimer();
+                addLog(`Görüşme başladı: ${callInfo.userName}`, 'success');
+            } else if (['failed', 'disconnected'].includes(peerConnection.connectionState)) {
+                endCall();
+                addLog('Bağlantı koptu', 'error');
+            }
                 };
                 
             } catch (error) {
@@ -1740,3 +1754,4 @@
     </script>
 </body>
 </html>
+
