@@ -356,13 +356,6 @@
             color: white;
             flex: 1;
         }
-
-        /* Yeni buton stilleri */
-        .btn-callback {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            animation: pulse 2s infinite;
-        }
         
         .user-info {
             background: #f8fafc;
@@ -668,55 +661,7 @@
             color: white;
             animation: pulse 1.5s infinite;
         }
-
-        /* Usta Seçme Dropdown Stili */
-        .admin-select-container {
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .admin-select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 15px;
-            background: #f9fafb;
-            appearance: none;
-            cursor: pointer;
-        }
-
-        .admin-select:focus {
-            outline: none;
-            border-color: #22c55e;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-        }
-
-        .admin-option {
-            padding: 10px;
-            font-size: 14px;
-        }
-
-        .admin-available {
-            color: #16a34a;
-            font-weight: 600;
-        }
-
-        .admin-busy {
-            color: #dc2626;
-            opacity: 0.7;
-        }
-
-        .select-arrow {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
-        }
-
-        /* Announcement System Styles */
+/* Announcement System Styles */
         .announcement-banner {
             position: fixed;
             top: 0;
@@ -959,7 +904,7 @@
                     <div style="margin-top: 10px;">
                         <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
                             <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
                             </svg>
                             <span data-text-tr="WhatsApp ile Kredi Talep Et" data-text-en="Request Credit via WhatsApp">WhatsApp ile Kredi Talep Et</span>
                         </button>
@@ -995,15 +940,6 @@
                             <div class="info-value" id="displayUserStatus" data-text-tr="Hazır" data-text-en="Ready">Hazır</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Usta Seçme Dropdown -->
-                <div class="admin-select-container">
-                    <select class="admin-select" id="adminSelect" onchange="updateCallButton()">
-                        <option value="" selected disabled data-text-tr="👨‍🔧 Bir Usta Seçin..." data-text-en="👨‍🔧 Select a Master...">👨‍🔧 Bir Usta Seçin...</option>
-                        <!-- Admin listesi buraya JavaScript ile eklenecek -->
-                    </select>
-                    <div class="select-arrow">▼</div>
                 </div>
 
                 <!-- Kuyruk Pozisyonu -->
@@ -1055,7 +991,7 @@
                 
                 <!-- Boş Durum -->
                 <div id="idleState">
-                    <button class="btn btn-call-disabled" id="callButton" disabled>
+                    <button class="btn btn-call" id="callButton" onclick="startCall()">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
                         </svg>
@@ -1064,7 +1000,7 @@
                     
                     <button class="btn btn-whatsapp" onclick="requestCreditWhatsApp()">
                         <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.893 3.297"/>
                         </svg>
                         <span data-text-tr="WhatsApp Kredi Talebi" data-text-en="WhatsApp Credit Request">WhatsApp Kredi Talebi</span>
                     </button>
@@ -1189,8 +1125,6 @@
         let currentAdminId = null;
         let queuePosition = 0;
         let queueUpdateInterval = null;
-        let selectedAdminId = null;
-        let adminList = [];
         
         let userInfo = {
             id: '',
@@ -1318,7 +1252,7 @@
             }
         }
  
-        // Announcement Functions
+// Announcement Functions
         function showAnnouncement(announcement) {
             currentAnnouncementData = announcement;
             
@@ -1401,7 +1335,7 @@
         function playAnnouncementSound() {
             try {
                 // Daha dikkat çekici ses
-                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwcZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuG0fLVgDIGHm6++9uYSQwOUarm7a5jFgU=');
                 audio.volume = 0.6;
                 audio.play().catch(e => {
                     console.log('Duyuru sesi çalınamadı:', e);
@@ -1574,10 +1508,6 @@
                     handleLoginResponse(message);
                     break;
                 
-                case 'admin-list-update':
-                    updateAdminDropdown(message.admins);
-                    break;
-                
                 case 'call-queue-update':
                     updateQueuePosition(message.queue);
                     break;
@@ -1655,164 +1585,8 @@
                     handleIceCandidate(message);
                     break;
                 
-                case 'callback-success':
-                    console.log('✅ Callback isteği başarılı');
-                    showMessage(currentLanguage === 'tr' ? 'Çağrı isteğiniz alındı! Ustanız sizi arayacak.' : 'Your callback request has been received! Your master will call you.', 'success');
-                    break;
-                
-                case 'callback-failed':
-                    console.log('❌ Callback isteği başarısız:', message.reason);
-                    showError(message.reason || (currentLanguage === 'tr' ? 'Çağrı isteği gönderilemedi' : 'Callback request failed'));
-                    break;
-                
                 default:
                     console.log('❓ Bilinmeyen mesaj tipi:', message.type);
-            }
-        }
-        
-        function updateAdminDropdown(admins) {
-            adminList = admins || [];
-            const adminSelect = document.getElementById('adminSelect');
-            
-            // Mevcut seçimi sakla
-            const currentSelection = adminSelect.value;
-            
-            // Dropdown'u temizle
-            adminSelect.innerHTML = '';
-            
-            // Varsayılan seçenek
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.disabled = true;
-            defaultOption.selected = true;
-            defaultOption.textContent = currentLanguage === 'tr' ? '👨‍🔧 Bir Usta Seçin...' : '👨‍🔧 Select a Master...';
-            adminSelect.appendChild(defaultOption);
-            
-            // Müsait adminler (yeşil)
-            const availableAdmins = admins.filter(admin => admin.status === 'available');
-            availableAdmins.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.className = 'admin-option admin-available';
-                option.textContent = `✅ ${admin.name}`;
-                option.setAttribute('data-status', 'available');
-                adminSelect.appendChild(option);
-            });
-            
-            // Meşgul adminler (kırmızı)
-            const busyAdmins = admins.filter(admin => admin.status === 'busy');
-            busyAdmins.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.className = 'admin-option admin-busy';
-                option.textContent = `⛔ ${admin.name}`;
-                option.setAttribute('data-status', 'busy');
-                adminSelect.appendChild(option);
-            });
-            
-            // Önceki seçimi geri yükle
-            if (currentSelection) {
-                adminSelect.value = currentSelection;
-            }
-            
-            // Butonu güncelle
-            updateCallButton();
-        }
-        
-        function updateCallButton() {
-            const adminSelect = document.getElementById('adminSelect');
-            const callButton = document.getElementById('callButton');
-            const selectedAdminId = adminSelect.value;
-            const selectedOption = adminSelect.options[adminSelect.selectedIndex];
-            
-            if (!selectedAdminId) {
-                // Hiç usta seçilmemiş
-                callButton.disabled = true;
-                callButton.className = 'btn btn-call-disabled';
-                callButton.innerHTML = `
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                    </svg>
-                    <span data-text-tr="Ustamı Ara" data-text-en="Call Master">Ustamı Ara</span>
-                `;
-                return;
-            }
-            
-            const adminStatus = selectedOption.getAttribute('data-status');
-            
-            if (adminStatus === 'available') {
-                // Müsait usta - doğrudan arama
-                callButton.disabled = false;
-                callButton.className = 'btn btn-call';
-                callButton.onclick = () => startDirectCall(selectedAdminId);
-                callButton.innerHTML = `
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                    </svg>
-                    <span data-text-tr="Ustamı Ara" data-text-en="Call Master">Ustamı Ara</span>
-                `;
-            } else {
-                // Meşgul usta - callback
-                callButton.disabled = false;
-                callButton.className = 'btn btn-callback';
-                callButton.onclick = () => requestCallback(selectedAdminId);
-                callButton.innerHTML = `
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57-.35-.11-.74-.03-1.02.25l-2.2 2.2c-2.83-1.44-5.15-3.75-6.59-6.59l2.2-2.2c.28-.28.36-.67.25-1.02C8.7 6.45 8.5 5.25 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1zM12 3v10l3-3h6V3h-9z"/>
-                    </svg>
-                    <span data-text-tr="Çağrı Bırak" data-text-en="Request Callback">Çağrı Bırak</span>
-                `;
-            }
-            
-            // Dil güncellemesi
-            updateLanguage();
-        }
-        
-        function startDirectCall(adminId) {
-            if (!isLoggedIn) {
-                showError(currentLanguage === 'tr' ? 'Önce giriş yapın!' : 'Please login first!');
-                return;
-            }
-            
-            if (userInfo.credits <= 0) {
-                showError(currentLanguage === 'tr' ? 'Krediniz yetersiz! WhatsApp ile kredi talep edin.' : 'Insufficient credits! Request credits via WhatsApp.');
-                return;
-            }
-            
-            console.log(`📞 Doğrudan arama: ${adminId}`);
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'direct-call-request',
-                    userId: userInfo.id,
-                    userName: userInfo.name,
-                    targetAdminId: adminId,
-                    credits: userInfo.credits
-                }));
-                
-                setState('connecting');
-            } else {
-                showError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
-            }
-        }
-        
-        function requestCallback(adminId) {
-            if (!isLoggedIn) {
-                showError(currentLanguage === 'tr' ? 'Önce giriş yapın!' : 'Please login first!');
-                return;
-            }
-            
-            console.log(`📞 Callback isteği: ${adminId}`);
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'callback-request',
-                    userId: userInfo.id,
-                    userName: userInfo.name,
-                    targetAdminId: adminId
-                }));
-            } else {
-                showError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
             }
         }
         
@@ -2069,7 +1843,11 @@
             } else {
                 creditsElement.className = 'info-value credits-value';
                 // Arama butonunu aktif et
-                updateCallButton();
+                const callButton = document.getElementById('callButton');
+                if (callButton && callState === 'idle') {
+                    callButton.className = 'btn btn-call';
+                    callButton.disabled = false;
+                }
             }
         }
         
@@ -2132,9 +1910,30 @@
         }
         
         function startCall() {
-            // Eski fonksiyon - artık doğrudan arama için kullanılmıyor
-            // Yerine startDirectCall() kullanılıyor
-            showError(currentLanguage === 'tr' ? 'Lütfen bir usta seçin!' : 'Please select a master!');
+            if (!isLoggedIn) {
+                showError(currentLanguage === 'tr' ? 'Önce giriş yapın!' : 'Please login first!');
+                return;
+            }
+            
+            if (userInfo.credits <= 0) {
+                showError(currentLanguage === 'tr' ? 'Krediniz yetersiz! WhatsApp ile kredi talep edin.' : 'Insufficient credits! Request credits via WhatsApp.');
+                return;
+            }
+            
+            setState('waiting');
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'call-request',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    credits: userInfo.credits
+                }));
+                console.log('📞 Arama talebi gönderildi');
+            } else {
+                showError(currentLanguage === 'tr' ? 'Sunucu bağlantısı yok!' : 'No server connection!');
+                setState('idle');
+            }
         }
         
         function cancelCall() {
@@ -2663,6 +2462,11 @@
             if (e.key === 'Enter' && callState === 'incoming') {
                 acceptIncomingCall();
             }
+            
+            if (e.key === ' ' && callState === 'idle' && isLoggedIn) {
+                e.preventDefault();
+                startCall();
+            }
         });
         
         document.addEventListener('visibilitychange', () => {
@@ -2783,7 +2587,6 @@
         console.log('✅ Çoklu arama kuyruğu sistemi ile tam uyumlu');
         console.log('📱 Mobil optimizasyonlar aktif');
         console.log('🎨 Modern UI/UX iyileştirmeleri');
-        console.log('👨‍🔧 Yeni Usta Seçme sistemi eklendi');
     </script>
 </body>
 </html>
