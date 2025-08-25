@@ -1569,60 +1569,74 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-    ws.on('close', () => {
-        const client = findClientById(ws);
-        console.log(`👋 WebSocket closed: ${client?.name || 'Unknown'} (${client?.userType || 'unknown'})`);
+ws.on('close', () => {
+    const client = findClientById(ws);
+    console.log(`👋 WebSocket closed: ${client?.name || 'Unknown'} (${client?.userType || 'unknown'})`);
+    
+    if (client && client.userType === 'admin') {
+        const adminKey = client.uniqueId || client.id;
+        console.log(`🔴 Admin ${adminKey} WebSocket closed`);
         
-        if (client && client.userType === 'admin') {
-            const adminKey = client.uniqueId || client.id;
-            console.log(`🔴 Admin ${adminKey} WebSocket closed`);
-            
-            const adminCallInfo = activeCallAdmins.get(adminKey);
-            
-            if (adminCallInfo) {
-                console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
-                
-                setTimeout(() => {
-                    const currentClient = Array.from(clients.values()).find(c => 
-                        c.uniqueId === adminKey && 
-                        c.ws && c.ws.readyState === WebSocket.OPEN
-                    );
-                    
-                    if (!currentClient) {
-                        console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
-                        const callKey = `${adminCallInfo.customerId}-${adminKey}`;
-                        stopHeartbeat(callKey, 'admin_permanently_disconnected');
-                        activeCallAdmins.delete(adminKey);
-                        // Admin müsait oldu, listesi güncelle  
-                        broadcastAdminListToCustomers();
-                        
-                        setTimeout(() => {
-                            broadcastAdminListToCustomers();
-                        }, 1000);
-                    } else {
-                        console.log(`✅ Admin ${adminKey} successfully maintained connection`);
-                    }
-                }, 15000);
-            }
-        }
+        const adminCallInfo = activeCallAdmins.get(adminKey);
         
-        for (const [key, clientData] of clients.entries()) {
-            if (clientData.ws === ws) {
-                if (clientData.userType === 'admin' && activeCallAdmins.has(key)) {
-                    console.log(`🔒 Preserving admin record ${key} for potential reconnection`);
+        if (adminCallInfo) {
+            console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
+            
+            // Admin'i clients'tan SILME, sadece ws'i null yap
+            for (const [key, clientData] of clients.entries()) {
+                if (clientData.ws === ws && clientData.userType === 'admin') {
                     clientData.ws = null;
                     clientData.online = false;
-                } else {
-                    clients.delete(key);
-                    console.log(`🗑️ Deleted client record: ${key}`);
+                    break;
                 }
+            }
+            
+            setTimeout(() => {
+                const currentClient = Array.from(clients.values()).find(c => 
+                    c.uniqueId === adminKey && c.userType === 'admin'
+                );
+                
+                // Admin hala var ama bağlantısı yok mu kontrol et
+                if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
+                    console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
+                    const callKey = `${adminCallInfo.customerId}-${adminKey}`;
+                    stopHeartbeat(callKey, 'admin_permanently_disconnected');
+                    activeCallAdmins.delete(adminKey);
+                    // Admin müsait oldu, listesi güncelle  
+                    broadcastAdminListToCustomers();
+                    
+                    // Admin'i tamamen temizle
+                    clients.delete(adminKey);
+                } else {
+                    console.log(`✅ Admin ${adminKey} successfully maintained connection`);
+                }
+            }, 15000);
+        } else {
+            // Call'da olmayan admin'i normal şekilde temizle
+            for (const [key, clientData] of clients.entries()) {
+                if (clientData.ws === ws) {
+                    clients.delete(key);
+                    console.log(`🗑️ Deleted admin client record: ${key}`);
+                    break;
+                }
+            }
+        }
+    } else {
+        // Customer cleanup - normal
+        for (const [key, clientData] of clients.entries()) {
+            if (clientData.ws === ws) {
+                clients.delete(key);
+                console.log(`🗑️ Deleted client record: ${key}`);
                 break;
             }
         }
-        
-        broadcastUserList();
+    }
+    
+    // Her durumda broadcast yap
+    setTimeout(() => {
         broadcastAdminListToCustomers();
-    });
+    }, 100);
+});
 
     ws.on('error', (error) => {
         console.log('WebSocket error:', error.message);
@@ -1766,6 +1780,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
