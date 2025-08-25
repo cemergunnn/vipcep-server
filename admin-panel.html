@@ -1465,8 +1465,9 @@
             };
             
             // Gelen arama ekranını göster
-            document.getElementById('incomingAdminName').textContent = message.userName;
-            setState('incoming');
+            document.getElementById('outgoingName').textContent = message.userName;
+            document.getElementById('outgoingId').textContent = message.userId;
+            document.getElementById('outgoingCall').classList.remove('hidden');
             // Zil sesi çal
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
             audio.loop = true;
@@ -1634,5 +1635,6 @@
     </script>
 </body>
 </html>
+
 
 
