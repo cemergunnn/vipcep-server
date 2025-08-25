@@ -71,7 +71,9 @@ function broadcastAdminListToCustomers() {
         .filter(c => c.userType === 'admin' && c.ws && c.ws.readyState === WebSocket.OPEN)
         .map(admin => {
             const adminKey = admin.uniqueId || admin.id;
-            const isInCall = activeCallAdmins.has(adminKey);
+            // FIX: activeCallAdmins key kontrolünü düzelt
+            const isInCall = activeCallAdmins.has(adminKey) || 
+                             Array.from(activeCallAdmins.keys()).some(key => key.includes(admin.id));
             
             return {
                 id: adminKey,
@@ -85,13 +87,20 @@ function broadcastAdminListToCustomers() {
         admins: adminList
     });
 
+    // FIX: Sadece customer'lara gönder ve bağlantı kontrolü yap
+    let sentCount = 0;
     clients.forEach(client => {
         if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
+            try {
+                client.ws.send(message);
+                sentCount++;
+            } catch (error) {
+                console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+            }
         }
     });
 
-    console.log(`📡 Admin list sent to customers: ${adminList.length} admins (${adminList.filter(a => a.status === 'available').length} available, ${adminList.filter(a => a.status === 'busy').length} busy)`);
+    console.log(`📡 Admin list sent to ${sentCount} customers: ${adminList.length} admins (${adminList.filter(a => a.status === 'available').length} available, ${adminList.filter(a => a.status === 'busy').length} busy)`);
 }
 
 function broadcastCallbacksToAdmin(adminId) {
@@ -1203,6 +1212,10 @@ wss.on('connection', (ws, req) => {
                         }
                         
                         broadcastCallbacksToAdmin(uniqueClientId);
+                                           // FIX: Admin listesini hemen broadcast et
+                        setTimeout(() => {
+                            broadcastAdminListToCustomers();
+                        }, 500);    
                         
                     } else {
                         const existingCustomer = clients.get(message.userId);
@@ -1744,3 +1757,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
