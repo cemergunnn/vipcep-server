@@ -718,9 +718,9 @@
                 gap: 10px;
             }
             .incoming-call { 
-                background: linear-gradient(135deg, #2563eb, #1d4ed8); 
-                color: white; 
-                animation: pulse 1.5s infinite; 
+                        background: linear-gradient(135deg, #2563eb, #1d4ed8); 
+                        color: white; 
+                        animation: pulse 1.5s infinite; 
             }
             .callback-actions {
                 width: 100%;
@@ -802,17 +802,17 @@
                 </div>
 
                 <div id="incomingCall" class="call-status-card incoming-call hidden">
-                    <div class="call-status-title">📞 GELEN ARAMA</div>
-                    <div class="call-status-details">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="incomingName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="incomingId">-</span></p>
-                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Müşteri sizi arıyor...</p>
-                    </div>
-                    <div class="call-buttons">
-                        <button class="btn btn-accept" onclick="acceptIncomingCall()">✅ Kabul Et</button>
-                        <button class="btn btn-reject" onclick="rejectIncomingCall()">❌ Reddet</button>
-                    </div>
-                </div>
+                                    <div class="call-status-title">📞 GELEN ARAMA</div>
+                                    <div class="call-status-details">
+                                        <p style="font-size: 18px; font-weight: 600;"><span id="incomingName">-</span></p>
+                                        <p style="opacity: 0.9;">ID: <span id="incomingId">-</span></p>
+                                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Müşteri sizi arıyor...</p>
+                                    </div>
+                                    <div class="call-buttons">
+                                        <button class="btn btn-accept" onclick="acceptIncomingCall()">✅ Kabul Et</button>
+                                        <button class="btn btn-reject" onclick="rejectIncomingCall()">❌ Reddet</button>
+                                    </div>
+                                </div>
 
                 <div id="callCancelled" class="call-status-card call-cancelled hidden">
                     <div class="call-status-title">❌ ARAMA İPTAL EDİLDİ</div>
@@ -901,17 +901,10 @@
         let myCallbacks = [];
         let micEnabled = true, speakerEnabled = true, noiseSuppression = false;
         let callStartTime = null;
-        let incomingCallInfo = null;
-        let ringtone = null;
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
-        const rtcConfig = { 
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ] 
-        };
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
         // Callback Management Functions
         function updateCallbacks(callbacks) {
@@ -965,40 +958,45 @@
             outgoingCallInfo = { userId: customerId, userName: customerName };
             document.getElementById('outgoingName').textContent = customerName;
             document.getElementById('outgoingId').textContent = customerId;
-            hideCallSections();
             document.getElementById('outgoingCall').classList.remove('hidden');
             
             updateAdminStatus('busy');
-            sendWebSocketMessage({
-                type: 'admin-call-customer',
-                targetCustomerId: customerId,
-                adminId: adminUniqueId || originalAdminId,
-                adminName: currentAdmin?.username || 'Admin',
-                callId: generateCallId()
-            });
+            
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-call-customer',
+                    targetCustomerId: customerId,
+                    adminName: currentAdmin.username || 'Admin'
+                }));
+            }
             
             console.log(`📞 Müşteri aranıyor: ${customerName} (${customerId})`);
         }
 
         function removeCallback(customerId) {
-            sendWebSocketMessage({
-                type: 'remove-callback',
-                customerId: customerId,
-                adminId: adminUniqueId || originalAdminId
-            });
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'remove-callback',
+                    customerId: customerId
+                }));
+            }
         }
 
         function cancelOutgoingCall() {
-            if (outgoingCallInfo) {
-                sendWebSocketMessage({
+            if (outgoingCallInfo && socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
                     type: 'admin-call-cancelled',
                     targetId: outgoingCallInfo.userId,
                     adminId: adminUniqueId || originalAdminId
-                });
-                cleanupCall();
+                }));
+            }
+            
+            document.getElementById('outgoingCall').classList.add('hidden');
+            
+            if (outgoingCallInfo) {
                 console.log(`Giden arama iptal edildi: ${outgoingCallInfo.userName}`);
             }
-            hideCallSections();
+            
             outgoingCallInfo = null;
             updateAdminStatus('available');
         }
@@ -1026,13 +1024,6 @@
                     text.textContent = 'Çevrimdışı';
                     mainStatusDot.className = 'status-dot disconnected';
                     break;
-            }
-            if (socket?.readyState === WebSocket.OPEN) {
-                sendWebSocketMessage({
-                    type: 'admin-status-update',
-                    adminId: adminUniqueId || originalAdminId,
-                    status: status
-                });
             }
         }
 
@@ -1104,7 +1095,6 @@
         // Call Management Functions
         async function setupCall(callInfo) {
             try {
-                hideCallSections();
                 updateAdminStatus('busy');
                 
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -1121,37 +1111,27 @@
                 const audioTrack = stream.getAudioTracks()[0];
                 if (audioTrack) {
                     audioTrack.enabled = micEnabled;
-                } else {
-                    throw new Error('Ses izi alınamadı');
                 }
                 
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
-                    console.log('Ses izi eklendi:', track);
                 });
                 
                 peerConnection.ontrack = e => { 
                     if (e.streams?.[0]) {
                         const remoteAudio = document.getElementById('remoteAudio');
                         remoteAudio.srcObject = e.streams[0];
-                        remoteAudio.volume = speakerEnabled ? document.getElementById('volumeSlider').value / 100 : 0;
-                        console.log('Uzak ses akışı bağlandı:', e.streams[0]);
-                    } else {
-                        console.error('Uzak ses akışı alınamadı');
-                        showNotification('Ses akışı bağlanamadı', 'error');
+                        remoteAudio.volume = document.getElementById('volumeSlider').value / 100;
                     }
                 };
                 
                 peerConnection.onicecandidate = e => { 
                     if (e.candidate && socket) {
-                        sendWebSocketMessage({ 
+                        socket.send(JSON.stringify({ 
                             type: 'ice-candidate', 
                             candidate: e.candidate, 
-                            targetId: callInfo.userId,
-                            userId: adminUniqueId || originalAdminId,
-                            callId: callInfo.callId
-                        });
-                        console.log('ICE adayı gönderildi:', e.candidate);
+                            targetId: callInfo.userId 
+                        }));
                     }
                 };
                 
@@ -1161,35 +1141,21 @@
                     if (peerConnection.connectionState === 'connected') {
                         currentCall = callInfo;
                         document.getElementById('activeCaller').textContent = callInfo.userName;
-                        hideCallSections();
                         document.getElementById('activeCall').classList.remove('hidden');
+                        document.getElementById('outgoingCall').classList.add('hidden');
+                        
                         updateAdminStatus('busy');
                         startTimer();
                         console.log(`Görüşme başladı: ${callInfo.userName}`);
                     } else if (['failed', 'disconnected'].includes(peerConnection.connectionState)) {
-                        showNotification('Bağlantı koptu', 'error');
                         endCall();
-                        console.log('Bağlantı koptu:', peerConnection.connectionState);
+                        console.log('Bağlantı koptu');
                     }
                 };
                 
-                if (!callInfo.isIncoming) {
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    sendWebSocketMessage({
-                        type: 'offer',
-                        offer: offer,
-                        targetId: callInfo.userId,
-                        userId: adminUniqueId || originalAdminId,
-                        callId: callInfo.callId || generateCallId()
-                    });
-                    console.log('Offer gönderildi:', callInfo.userId);
-                }
-                
             } catch (error) {
-                showNotification('Mikrofon erişimi veya ses bağlantısı başarısız!', 'error');
-                console.error('Ses bağlantı hatası:', error);
-                cleanupCall();
+                showNotification('Mikrofon erişimi gerekli!', 'error');
+                console.log('Mikrofon erişim hatası');
                 updateAdminStatus('available');
             }
         }
@@ -1200,27 +1166,6 @@
                 callTimer = null; 
             }
             
-            if (currentCall) {
-                sendWebSocketMessage({ 
-                    type: 'end-call', 
-                    userId: adminUniqueId || originalAdminId, 
-                    targetId: currentCall.userId, 
-                    duration: callDuration, 
-                    userType: 'admin', 
-                    endedBy: 'admin',
-                    callId: currentCall.callId
-                });
-                console.log(`Görüşme sonlandırıldı: ${currentCall.userName} (${formatTimer(callDuration * 1000)})`);
-            }
-            
-            cleanupCall();
-        }
-
-        function cleanupCall() {
-            if (ringtone) {
-                ringtone.pause();
-                ringtone = null;
-            }
             if (peerConnection) { 
                 peerConnection.close(); 
                 peerConnection = null; 
@@ -1231,15 +1176,28 @@
                 localStream = null; 
             }
             
-            const remoteAudio = document.getElementById('remoteAudio');
-            remoteAudio.srcObject = null;
+            if (currentCall && socket) {
+                const duration = callDuration;
+                
+                socket.send(JSON.stringify({ 
+                    type: 'end-call', 
+                    userId: adminUniqueId || originalAdminId, 
+                    targetId: currentCall.userId, 
+                    duration: duration, 
+                    userType: 'admin', 
+                    endedBy: 'admin' 
+                }));
+                
+                console.log(`Görüşme sonlandırıldı: ${currentCall.userName} (${formatTimer(duration * 1000)})`);
+            }
             
-            hideCallSections();
+            document.getElementById('activeCall').classList.add('hidden');
+            
             currentCall = null; 
             callDuration = 0;
             callStartTime = null;
             outgoingCallInfo = null;
-            incomingCallInfo = null;
+            
             updateAdminStatus('available');
             console.log('Admin müsait duruma geçti');
         }
@@ -1338,9 +1296,7 @@
                         return loginSuccess(data);
                     }
                 }
-            } catch (e) {
-                console.error('Auth check error:', e);
-            }
+            } catch (e) {}
             window.location.href = '/';
         }
 
@@ -1358,18 +1314,12 @@
 
         async function performLogout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                if (currentCall || outgoingCallInfo) cleanupCall();
+                if (currentCall) endCall();
                 
                 try { 
                     await fetch('/auth/logout', { method: 'POST', credentials: 'include' }); 
-                } catch (e) {
-                    console.error('Logout error:', e);
-                }
+                } catch (e) {}
                 
-                sendWebSocketMessage({
-                    type: 'admin-disconnect',
-                    adminId: adminUniqueId || originalAdminId
-                });
                 if (socket) socket.close();
                 console.log('Çıkış yapılıyor...');
                 window.location.href = '/';
@@ -1385,12 +1335,12 @@
                 
                 socket.onopen = () => {
                     updateConnectionStatus('connected');
-                    sendWebSocketMessage({ 
+                    socket.send(JSON.stringify({ 
                         type: 'register', 
                         userId: originalAdminId, 
                         name: currentAdmin.username || 'Admin', 
                         userType: 'admin' 
-                    });
+                    }));
                     console.log('Sunucuya bağlandı');
                 };
                 
@@ -1400,30 +1350,15 @@
                     if (isLoggedIn) setTimeout(connectToServer, 3000); 
                 };
                 
-                socket.onmessage = e => {
-                    try {
-                        handleMessage(JSON.parse(e.data));
-                    } catch (error) {
-                        console.error('WebSocket message parse error:', error);
-                    }
-                };
+                socket.onmessage = e => handleMessage(JSON.parse(e.data));
                 
                 socket.onerror = () => {
-                    updateConnectionStatus('disconnected');
-                    console.error('WebSocket bağlantı hatası');
+                    updateConnectionStatus('error');
+                    console.log('WebSocket bağlantı hatası');
                 };
             } catch (e) { 
-                updateConnectionStatus('disconnected'); 
-                console.error('Bağlantı başlatılamadı:', e);
-            }
-        }
-
-        function sendWebSocketMessage(message) {
-            if (socket?.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(message));
-            } else {
-                console.error('WebSocket bağlantısı açık değil');
-                showNotification('Sunucu bağlantısı kesildi', 'error');
+                updateConnectionStatus('error'); 
+                console.log('Bağlantı başlatılamadı');
             }
         }
 
@@ -1433,7 +1368,9 @@
             document.getElementById('statusText').textContent = 
                 status === 'connected' ? 'Bağlı' : 'Bağlantı Yok';
                 
-            if (status !== 'connected') {
+            if (status === 'connected') {
+                updateAdminStatus('available');
+            } else {
                 updateAdminStatus('offline');
             }
         }
@@ -1457,8 +1394,10 @@
                     loadOnlineUsers();
                     renderConnectedUsers();
                     break;
-                
                 case 'admin-call-request':
+                    console.log('📞 Admin call request alındı:', message.userName);
+                    handleIncomingCall(message);
+                    break;
                 case 'incoming-call':
                     handleIncomingCall(message);
                     break;
@@ -1472,12 +1411,10 @@
                     break;
                     
                 case 'call-ended':
-                    showNotification('Görüşme sonlandırıldı', 'info');
-                    cleanupCall();
-                    break;
-                    
-                case 'call-taken':
-                    handleCallTaken(message);
+                    if (currentCall) {
+                        showNotification('Görüşme sonlandırıldı', 'info');
+                        endCall();
+                    }
                     break;
                     
                 case 'offer':
@@ -1485,51 +1422,40 @@
                 case 'ice-candidate':
                     handleWebRTCMessage(message);
                     break;
-                    
-                case 'error':
-                    showNotification(message.message || 'Bir hata oluştu', 'error');
-                    cleanupCall();
-                    break;
             }
         }
 
         // WebRTC Message Handling
-        async function handleWebRTCMessage(message) {
-            if (!peerConnection) {
-                console.error('WebRTC mesajı alındı ancak peerConnection yok');
-                return;
-            }
+        function handleWebRTCMessage(message) {
+            if (!peerConnection) return;
             
             try {
                 switch (message.type) {
                     case 'offer':
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        sendWebSocketMessage({
-                            type: 'answer',
-                            answer: answer,
-                            targetId: message.userId,
-                            userId: adminUniqueId || originalAdminId,
-                            callId: message.callId
-                        });
-                        console.log('WebRTC answer gönderildi:', message.userId);
+                        peerConnection.setRemoteDescription(message.offer)
+                            .then(() => peerConnection.createAnswer())
+                            .then(answer => peerConnection.setLocalDescription(answer))
+                            .then(() => {
+                                if (socket?.readyState === WebSocket.OPEN) {
+                                    socket.send(JSON.stringify({
+                                        type: 'answer',
+                                        answer: peerConnection.localDescription,
+                                        targetId: message.userId
+                                    }));
+                                }
+                            });
                         break;
                         
                     case 'answer':
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                        console.log('WebRTC answer alındı:', message.userId);
+                        peerConnection.setRemoteDescription(message.answer);
                         break;
                         
                     case 'ice-candidate':
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                        console.log('ICE adayı eklendi:', message.candidate);
+                        peerConnection.addIceCandidate(message.candidate);
                         break;
                 }
             } catch (error) {
-                console.error(`WebRTC hata: ${error.message}`);
-                showNotification('WebRTC bağlantı hatası: ' + error.message, 'error');
-                cleanupCall();
+                console.log(`WebRTC hata: ${error.message}`);
             }
         }
 
@@ -1537,107 +1463,52 @@
             console.log('📞 Gelen arama:', message.userName);
             
             if (currentCall || outgoingCallInfo) {
-                sendWebSocketMessage({
-                    type: 'reject-incoming-call',
-                    adminId: adminUniqueId || originalAdminId,
-                    userId: message.userId,
-                    callId: message.callId,
-                    reason: 'Admin meşgul'
-                });
+                // Meşgulsek reddet
+                if (socket?.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'reject-incoming-call',
+                        adminId: adminUniqueId || originalAdminId,
+                        reason: 'Admin meşgul'
+                    }));
+                }
                 return;
             }
             
+            // UI göster
             incomingCallInfo = {
                 userId: message.userId,
                 userName: message.userName,
                 callId: message.callId
             };
             
-            hideCallSections();
+            // Gelen arama ekranını göster
             document.getElementById('incomingName').textContent = message.userName;
             document.getElementById('incomingId').textContent = message.userId;
             document.getElementById('incomingCall').classList.remove('hidden');
-            
-            ringtone = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
-            ringtone.loop = true;
-            ringtone.play().catch(e => console.log('Zil sesi çalamadı:', e));
-        }
-
-        function acceptIncomingCall() {
-            if (!incomingCallInfo) {
-                console.error('Gelen arama bilgisi yok');
-                showNotification('Arama bilgisi bulunamadı', 'error');
-                return;
-            }
-            
-            sendWebSocketMessage({
-                type: 'accept-incoming-call',
-                userId: incomingCallInfo.userId,
-                adminId: adminUniqueId || originalAdminId,
-                adminName: currentAdmin?.username || 'Admin',
-                callId: incomingCallInfo.callId
-            });
-            
-            setupCall({
-                userId: incomingCallInfo.userId,
-                userName: incomingCallInfo.userName,
-                callId: incomingCallInfo.callId,
-                isIncoming: true
-            });
-            
-            console.log('Gelen arama kabul edildi:', incomingCallInfo.userName);
-            if (ringtone) {
-                ringtone.pause();
-                ringtone = null;
-            }
-            incomingCallInfo = null;
-        }
-
-        function rejectIncomingCall() {
-            if (incomingCallInfo) {
-                sendWebSocketMessage({
-                    type: 'reject-incoming-call',
-                    userId: incomingCallInfo.userId,
-                    adminId: adminUniqueId || originalAdminId,
-                    callId: incomingCallInfo.callId,
-                    reason: 'Admin tarafından reddedildi'
-                });
-                console.log('Gelen arama reddedildi:', incomingCallInfo.userName);
-                incomingCallInfo = null;
-            }
-            if (ringtone) {
-                ringtone.pause();
-                ringtone = null;
-            }
-            hideCallSections();
+            // Zil sesi çal
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
+            audio.loop = true;
+            audio.play().catch(e => console.log('Zil sesi çalamadı'));
         }
 
         function handleCallAccepted(message) {
             console.log('✅ Arama kabul edildi:', message.customerName);
-            hideCallSections();
-            document.getElementById('outgoingCall').classList.add('hidden');
-            outgoingCallInfo = null;
+            
+            setupCall({
+                userId: message.customerId,
+                userName: message.customerName,
+                callId: generateCallId()
+            });
         }
 
         function handleCallRejected(message) {
             console.log('❌ Arama reddedildi:', message.reason);
-            hideCallSections();
+            
+            document.getElementById('outgoingCall').classList.add('hidden');
             outgoingCallInfo = null;
             updateAdminStatus('available');
+            
             showNotification(message.reason || 'Arama reddedildi', 'warning');
-        }
-
-        function handleCallTaken(message) {
-            hideCallSections();
-            document.getElementById('callTaken').classList.remove('hidden');
-            document.getElementById('takenCallerName').textContent = message.userName;
-            document.getElementById('takenByAdmin').textContent = message.adminName;
-            showNotification(`Arama ${message.adminName} tarafından alındı`, 'info');
-            incomingCallInfo = null;
-            if (ringtone) {
-                ringtone.pause();
-                ringtone = null;
-            }
         }
 
         function generateCallId() {
@@ -1708,7 +1579,7 @@
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #1e293b;">${user.name || user.id}</div>
                         <div style="font-size: 12px; color: #64748b;">
-                            ID: ${user.id} | Bağlandı: ${new Date(user.registeredAt).toLocaleString('tr-TR') || 'Bilinmiyor'}
+                            ID: ${user.id} | Bağlandı: ${user.registeredAt || 'Bilinmiyor'}
                         </div>
                     </div>
                 </div>`).join('');
@@ -1727,21 +1598,19 @@
         }
 
         // Utility Functions
-        function hideCallSections() {
-            document.querySelectorAll('.call-status-card').forEach(card => card.classList.add('hidden'));
-        }
-
         function dismissCancelledCall() { 
-            hideCallSections();
+            document.getElementById('callCancelled').classList.add('hidden'); 
         }
         
         function dismissTakenCall() { 
-            hideCallSections();
+            document.getElementById('callTaken').classList.add('hidden'); 
         }
         
         function refreshData() { 
             loadOnlineUsers(); 
-            sendWebSocketMessage({ type: 'refresh-data' });
+            if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'refresh-data' }));
+            }
             console.log('Veriler yenilendi');
         }
 
@@ -1771,19 +1640,8 @@
                     if (confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) {
                         endCall();
                     }
-                } else if (incomingCallInfo) {
-                    rejectIncomingCall();
                 }
             }
-        });
-
-        // Window Events
-        window.addEventListener('beforeunload', () => {
-            sendWebSocketMessage({
-                type: 'admin-disconnect',
-                adminId: adminUniqueId || originalAdminId
-            });
-            cleanupCall();
         });
 
         console.log('🎯 VIPCEP Enhanced Admin Panel başlatıldı');
@@ -1794,3 +1652,7 @@
     </script>
 </body>
 </html>
+
+
+
+
