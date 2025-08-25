@@ -1238,6 +1238,14 @@
             availableAdmins = admins || [];
             const dropdown = document.getElementById('adminDropdown');
             
+            if (!dropdown) {
+                console.log('⚠️ Admin dropdown bulunamadı');
+                return;
+            }
+            
+            // Mevcut seçimi koru
+            const currentSelection = dropdown.value;
+            
             // Clear dropdown
             dropdown.innerHTML = '<option value="">-- Bir usta seçin --</option>';
             
@@ -1262,9 +1270,20 @@
                 dropdown.appendChild(option);
             });
             
+            // Seçimi geri yükle (eğer admin hala listede varsa)
+            if (currentSelection && availableAdmins.find(a => a.id === currentSelection)) {
+                dropdown.value = currentSelection;
+                selectedAdminId = currentSelection;
+                // Buton durumunu güncelle
+                setTimeout(() => onAdminSelect(), 100);
+            } else if (currentSelection && !availableAdmins.find(a => a.id === currentSelection)) {
+                // Seçili admin artık yok, temizle
+                selectedAdminId = null;
+                updateCallButtonState();
+            }
+            
             console.log(`📊 Admin listesi güncellendi: ${availableAdminsList.length} müsait, ${busyAdminsList.length} meşgul`);
         }
-        
         function onAdminSelect() {
             const dropdown = document.getElementById('adminDropdown');
             const callButton = document.getElementById('callButton');
@@ -1939,5 +1958,6 @@
     </script>
 </body>
 </html>
+
 
 
