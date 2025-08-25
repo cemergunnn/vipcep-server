@@ -67,39 +67,55 @@ function broadcastToCustomers(message) {
 }
 
 function broadcastAdminListToCustomers() {
-   const adminList = Array.from(clients.values())
-       .filter(c => c.userType === 'admin' && c.ws && c.ws.readyState === WebSocket.OPEN)
-       .map(admin => {
-           const adminKey = admin.uniqueId || admin.id;
-           // FIX: Sadece exact match kontrolü
-           const isInCall = activeCallAdmins.has(adminKey);
-           
-           return {
-               id: adminKey,
-               name: admin.name,
-               status: isInCall ? 'busy' : 'available'
-           };
-       });
+    // DÜZELTME: Admin filtrelemesini iyileştir
+    const adminList = Array.from(clients.values())
+        .filter(c => {
+            return c.userType === 'admin' && 
+                   c.ws && 
+                   c.ws.readyState === WebSocket.OPEN &&
+                   c.online !== false; // Offline admin'leri dahil etme
+        })
+        .map(admin => {
+            const adminKey = admin.uniqueId || admin.id;
+            const isInCall = activeCallAdmins.has(adminKey);
+            
+            return {
+                id: adminKey,
+                name: admin.name,
+                status: isInCall ? 'busy' : 'available'
+            };
+        });
 
-   const message = JSON.stringify({
-       type: 'admin-list-update',
-       admins: adminList
-   });
+    // DÜZELTME: Duplicate admin'leri temizle
+    const uniqueAdmins = [];
+    const seenAdmins = new Set();
+    
+    adminList.forEach(admin => {
+        const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
+        if (!seenAdmins.has(baseId)) {
+            seenAdmins.add(baseId);
+            uniqueAdmins.push(admin);
+        }
+    });
 
-   // FIX: Sadece customer'lara gönder ve bağlantı kontrolü yap
-   let sentCount = 0;
-   clients.forEach(client => {
-       if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
-           try {
-               client.ws.send(message);
-               sentCount++;
-           } catch (error) {
-               console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);
-           }
-       }
-   });
+    const message = JSON.stringify({
+        type: 'admin-list-update',
+        admins: uniqueAdmins // Unique admin listesi gönder
+    });
 
-   console.log(`📡 Admin list sent to ${sentCount} customers: ${adminList.length} admins (${adminList.filter(a => a.status === 'available').length} available, ${adminList.filter(a => a.status === 'busy').length} busy)`);
+    let sentCount = 0;
+    clients.forEach(client => {
+        if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
+            try {
+                client.ws.send(message);
+                sentCount++;
+            } catch (error) {
+                console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+            }
+        }
+    });
+
+    console.log(`📡 Admin list sent to ${sentCount} customers: ${uniqueAdmins.length} unique admins`);
 }
 function broadcastCallbacksToAdmin(adminId) {
     const adminClient = Array.from(clients.values()).find(c => 
@@ -1796,6 +1812,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
