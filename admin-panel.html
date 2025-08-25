@@ -902,6 +902,7 @@
         let micEnabled = true, speakerEnabled = true, noiseSuppression = false;
         let callStartTime = null;
         let incomingCallInfo = null;
+        let ringtone = null;
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -969,7 +970,6 @@
                 adminId: adminUniqueId || originalAdminId,
                 adminName: currentAdmin?.username || 'Admin'
             });
-            setupCall({ userId: customerId, userName: customerName });
             
             console.log(`📞 Müşteri aranıyor: ${customerName} (${customerId})`);
         }
@@ -1158,6 +1158,21 @@
                     }
                 };
                 
+                if (callInfo.isIncoming) {
+                    // Gelen arama için offer bekleniyor, setupCall burada sadece stream ve peer hazırlar
+                    console.log('Gelen arama için WebRTC hazırlandı');
+                } else {
+                    // Giden arama için offer oluştur
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    sendWebSocketMessage({
+                        type: 'offer',
+                        offer: offer,
+                        targetId: callInfo.userId,
+                        userId: adminUniqueId || originalAdminId
+                    });
+                }
+                
             } catch (error) {
                 showNotification('Mikrofon erişimi gerekli!', 'error');
                 console.error('Mikrofon erişim hatası:', error);
@@ -1188,6 +1203,10 @@
         }
 
         function cleanupCall() {
+            if (ringtone) {
+                ringtone.pause();
+                ringtone = null;
+            }
             if (peerConnection) { 
                 peerConnection.close(); 
                 peerConnection = null; 
@@ -1457,47 +1476,39 @@
         }
 
         // WebRTC Message Handling
-        function handleWebRTCMessage(message) {
+        async function handleWebRTCMessage(message) {
             if (!peerConnection) return;
             
             try {
                 switch (message.type) {
                     case 'offer':
-                        peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer))
-                            .then(() => peerConnection.createAnswer())
-                            .then(answer => {
-                                peerConnection.setLocalDescription(answer);
-                                sendWebSocketMessage({
-                                    type: 'answer',
-                                    answer: answer,
-                                    targetId: message.userId,
-                                    userId: adminUniqueId || originalAdminId
-                                });
-                            })
-                            .catch(error => {
-                                console.error('WebRTC offer error:', error);
-                                showNotification('Bağlantı hatası', 'error');
-                                cleanupCall();
-                            });
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        sendWebSocketMessage({
+                            type: 'answer',
+                            answer: answer,
+                            targetId: message.userId,
+                            userId: adminUniqueId || originalAdminId,
+                            callId: incomingCallInfo?.callId
+                        });
+                        console.log('WebRTC answer gönderildi');
                         break;
                         
                     case 'answer':
-                        peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer))
-                            .catch(error => {
-                                console.error('WebRTC answer error:', error);
-                                showNotification('Bağlantı hatası', 'error');
-                                cleanupCall();
-                            });
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                        console.log('WebRTC answer alındı');
                         break;
                         
                     case 'ice-candidate':
-                        peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate))
-                            .catch(error => console.error('ICE candidate error:', error));
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        console.log('ICE candidate eklendi');
                         break;
                 }
             } catch (error) {
                 console.error(`WebRTC hata: ${error.message}`);
                 showNotification('WebRTC bağlantı hatası', 'error');
+                cleanupCall();
             }
         }
 
@@ -1509,6 +1520,7 @@
                     type: 'reject-incoming-call',
                     adminId: adminUniqueId || originalAdminId,
                     userId: message.userId,
+                    callId: message.callId,
                     reason: 'Admin meşgul'
                 });
                 return;
@@ -1525,9 +1537,9 @@
             document.getElementById('incomingId').textContent = message.userId;
             document.getElementById('incomingCall').classList.remove('hidden');
             
-            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
-            audio.loop = true;
-            audio.play().catch(e => console.log('Zil sesi çalamadı:', e));
+            ringtone = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
+            ringtone.loop = true;
+            ringtone.play().catch(e => console.log('Zil sesi çalamadı:', e));
         }
 
         function acceptIncomingCall() {
@@ -1541,9 +1553,15 @@
                 });
                 setupCall({
                     userId: incomingCallInfo.userId,
-                    userName: incomingCallInfo.userName
+                    userName: incomingCallInfo.userName,
+                    isIncoming: true
                 });
+                console.log('Gelen arama kabul edildi:', incomingCallInfo.userName);
                 incomingCallInfo = null;
+                if (ringtone) {
+                    ringtone.pause();
+                    ringtone = null;
+                }
             }
         }
 
@@ -1553,9 +1571,15 @@
                     type: 'reject-incoming-call',
                     userId: incomingCallInfo.userId,
                     adminId: adminUniqueId || originalAdminId,
+                    callId: incomingCallInfo.callId,
                     reason: 'Admin tarafından reddedildi'
                 });
+                console.log('Gelen arama reddedildi:', incomingCallInfo.userName);
                 incomingCallInfo = null;
+            }
+            if (ringtone) {
+                ringtone.pause();
+                ringtone = null;
             }
             hideCallSections();
         }
@@ -1563,10 +1587,8 @@
         function handleCallAccepted(message) {
             console.log('✅ Arama kabul edildi:', message.customerName);
             hideCallSections();
-            setupCall({
-                userId: message.customerId,
-                userName: message.customerName
-            });
+            document.getElementById('outgoingCall').classList.add('hidden');
+            outgoingCallInfo = null;
         }
 
         function handleCallRejected(message) {
@@ -1584,6 +1606,10 @@
             document.getElementById('takenByAdmin').textContent = message.adminName;
             showNotification(`Arama ${message.adminName} tarafından alındı`, 'info');
             incomingCallInfo = null;
+            if (ringtone) {
+                ringtone.pause();
+                ringtone = null;
+            }
         }
 
         function generateCallId() {
