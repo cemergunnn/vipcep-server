@@ -126,7 +126,8 @@
         
         .main-content { 
             display: grid; 
-            grid-template-columns: 1fr 1fr 300px; 
+            grid-template-columns: 1fr 1fr; 
+            grid-template-rows: auto auto; 
             gap: 20px; 
         }
         
@@ -146,6 +147,30 @@
             align-items: center; 
             gap: 8px; 
         }
+
+        /* Arama Yönetimi Paneli - Sol üst */
+        .call-management-panel {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        /* Online Kullanıcılar - Sağ üst */
+        .users-panel {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        /* Geri Dönüş Bekleyenler - Sağ alt */
+        .callback-panel {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        /* Aktif Bağlantılar - Sol alt */
+        .connections-panel {
+            grid-column: 1;
+            grid-row: 2;
+        }
         
         /* Geri Dönüş Bekleyenler Paneli */
         .callback-container { 
@@ -154,7 +179,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
             border: 1px solid rgba(245, 158, 11, 0.3); 
             overflow: hidden; 
-            margin-bottom: 20px; 
         }
         
         .callback-header { 
@@ -183,7 +207,7 @@
         }
         
         .callback-list { 
-            max-height: 300px; 
+            max-height: 250px; 
             overflow-y: auto; 
         }
         
@@ -465,7 +489,7 @@
         }
         
         .user-list { 
-            max-height: 450px; 
+            max-height: 400px; 
             overflow-y: auto; 
         }
         
@@ -654,8 +678,16 @@
         @media (max-width: 1200px) { 
             .main-content { 
                 grid-template-columns: 1fr; 
+                grid-template-rows: auto auto auto auto;
                 gap: 20px; 
-            } 
+            }
+            
+            .call-management-panel,
+            .users-panel,
+            .callback-panel,
+            .connections-panel {
+                grid-column: 1;
+            }
         }
         
         .quick-actions { 
@@ -742,64 +774,6 @@
             </div>
             <div class="header-right">
                 <div class="status">
-                    <div class="status-dot disconnected" id="statusDot"></div>
-                    <span id="statusText">Bağlanıyor...</span>
-                </div>
-                <div class="admin-info">
-                    <div class="admin-name" id="adminName">-</div>
-                    <div class="admin-role" id="adminRole">🟡 Normal Admin</div>
-                    <div class="admin-status available" id="adminStatus">
-                        <div class="admin-status-dot"></div>
-                        <span>Müsait</span>
-                    </div>
-                </div>
-                <button class="logout-btn" onclick="performLogout()">🚪 Çıkış</button>
-            </div>
-        </div>
-        
-        <div class="main-content">
-            <div class="panel">
-                <h3>📞 Arama Yönetimi</h3>
-                
-                <!-- Audio Controls -->
-                <div class="audio-controls">
-                    <h4>🔊 Ses Kontrolleri</h4>
-                    <div class="volume-control">
-                        <span style="font-size: 12px; width: 80px;">Ses Seviyesi:</span>
-                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
-                        <span style="font-size: 12px; width: 30px;" id="volumeValue">70%</span>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="audio-toggle enabled" id="micToggle" onclick="toggleMicrophone()">🎤 Mikrofon</button>
-                        <button class="audio-toggle enabled" id="speakerToggle" onclick="toggleSpeaker()">🔊 Hoparlör</button>
-                        <button class="audio-toggle disabled" id="noiseToggle" onclick="toggleNoiseSuppression()">🚫 Gürültü</button>
-                    </div>
-                </div>
-                
-                <!-- Geri Dönüş Bekleyenler -->
-                <div class="callback-container" id="callbackContainer">
-                    <div class="callback-header">
-                        <div class="callback-title">
-                            <span>📝 Geri Dönüş Bekleyenler</span>
-                        </div>
-                        <div class="callback-counter" id="callbackCounter">0</div>
-                    </div>
-                    <div class="callback-list" id="callbackList">
-                        <div class="callback-empty">
-                            <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📝</div>
-                            <div>Henüz geri dönüş bekleyen yok</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Outgoing Call Status -->
-                <div id="outgoingCall" class="call-status-card outgoing-call hidden">
-                    <div class="call-status-title">📞 GİDEN ARAMA</div>
-                    <div class="call-status-details">
-                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
-                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
-                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Bağlantı kuruluyor...</p>
-                    </div>
                     <div class="call-buttons">
                         <button class="btn btn-end" onclick="endCall()">📞 Görüşmeyi Bitir</button>
                         <button class="btn btn-primary" onclick="muteCall()" id="muteButton">🔇 Sessize Al</button>
@@ -807,7 +781,8 @@
                 </div>
             </div>
             
-            <div class="panel">
+            <!-- Online Kullanıcılar - Sağ üst -->
+            <div class="panel users-panel">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
@@ -826,7 +801,8 @@
                 </div>
             </div>
             
-            <div class="panel">
+            <!-- Aktif Bağlantılar - Sol alt -->
+            <div class="panel connections-panel">
                 <h3>👥 Aktif Bağlantılar</h3>
                 <div id="userList" style="margin-top: 15px;">
                     <div style="text-align: center; color: #6b7280; padding: 30px;">
@@ -837,6 +813,24 @@
                 <div class="quick-actions">
                     <button class="btn btn-secondary" onclick="refreshData()">🔄 Verileri Yenile</button>
                     <button class="btn btn-primary" onclick="window.open('https://wa.me/905374792403', '_blank')">💬 WhatsApp Destek</button>
+                </div>
+            </div>
+
+            <!-- Geri Dönüş Bekleyenler - Sağ alt -->
+            <div class="callback-panel">
+                <div class="callback-container" id="callbackContainer">
+                    <div class="callback-header">
+                        <div class="callback-title">
+                            <span>📝 Geri Dönüş Bekleyenler</span>
+                        </div>
+                        <div class="callback-counter" id="callbackCounter">0</div>
+                    </div>
+                    <div class="callback-list" id="callbackList">
+                        <div class="callback-empty">
+                            <div style="font-size: 48px; margin-bottom: 10px; opacity: 0.5;">📝</div>
+                            <div>Henüz geri dönüş bekleyen yok</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1323,18 +1317,22 @@
                 socket.send(JSON.stringify({
                     type: 'accept-incoming-call',
                     adminId: adminUniqueId || originalAdminId,
-                    userId: currentAdmin.username || 'Admin'
+                    userId: incomingCallInfo.userId
                 }));
             }
             
+            // UI'yi temizle ve WebRTC kurmaya hazırlan
             document.getElementById('incomingCall').classList.add('hidden');
-            setupPeerConnection(incomingCallInfo);
             
+            // Call info'yu ayarla
             currentCall = incomingCallInfo;
             incomingCallInfo = null;
             callState = 'connected';
             
             updateAdminStatus('busy');
+            
+            // WebRTC'yi başlat
+            setupPeerConnection(currentCall);
         }
 
         function rejectIncomingCall() {
@@ -1369,10 +1367,12 @@
                     userName: outgoingCallInfo.userName
                 };
                 
-                setupPeerConnection(callInfo);
                 currentCall = callInfo;
                 outgoingCallInfo = null;
                 callState = 'connected';
+                
+                // WebRTC'yi başlat
+                setupPeerConnection(callInfo);
             }
         }
 
@@ -1507,6 +1507,7 @@
                         document.getElementById('activeCaller').textContent = callInfo.userName;
                         document.getElementById('activeCall').classList.remove('hidden');
                         document.getElementById('outgoingCall').classList.add('hidden');
+                        document.getElementById('incomingCall').classList.add('hidden');
                         
                         startTimer();
                         console.log('✅ Görüşme başladı:', callInfo.userName);
@@ -1517,8 +1518,8 @@
                     }
                 };
                 
-                // Offer oluştur (eğer arama yapan tarafsa)
-                if (outgoingCallInfo) {
+                // Eğer gelen arama ise offer'ı bekle, giden arama ise offer oluştur
+                if (callState === 'connected' && outgoingCallInfo) {
                     console.log('📤 WebRTC offer oluşturuluyor...');
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -1545,10 +1546,16 @@
             
             if (!peerConnection) {
                 console.log('⚠️ PeerConnection yok, kurulacak...');
-                await setupPeerConnection({ 
-                    userId: message.userId, 
-                    userName: incomingCallInfo?.userName || 'Müşteri' 
-                });
+                
+                // İlk önce call info'yu ayarla
+                if (!currentCall) {
+                    currentCall = { 
+                        userId: message.userId, 
+                        userName: incomingCallInfo?.userName || 'Müşteri' 
+                    };
+                }
+                
+                await setupPeerConnection(currentCall);
             }
             
             try {
@@ -1958,11 +1965,42 @@
         console.log('🔧 Tüm sistemler operasyonel');
     </script>
 </body>
-</html> btn-reject" onclick="cancelOutgoingCall()">❌ İptal Et</button>
+</html> class="status-dot disconnected" id="statusDot"></div>
+                    <span id="statusText">Bağlanıyor...</span>
+                </div>
+                <div class="admin-info">
+                    <div class="admin-name" id="adminName">-</div>
+                    <div class="admin-role" id="adminRole">🟡 Normal Admin</div>
+                    <div class="admin-status available" id="adminStatus">
+                        <div class="admin-status-dot"></div>
+                        <span>Müsait</span>
+                    </div>
+                </div>
+                <button class="logout-btn" onclick="performLogout()">🚪 Çıkış</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Arama Yönetimi - Sol üst -->
+            <div class="panel call-management-panel">
+                <h3>📞 Arama Yönetimi</h3>
+                
+                <!-- Audio Controls -->
+                <div class="audio-controls">
+                    <h4>🔊 Ses Kontrolleri</h4>
+                    <div class="volume-control">
+                        <span style="font-size: 12px; width: 80px;">Ses Seviyesi:</span>
+                        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                        <span style="font-size: 12px; width: 30px;" id="volumeValue">70%</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="audio-toggle enabled" id="micToggle" onclick="toggleMicrophone()">🎤 Mikrofon</button>
+                        <button class="audio-toggle enabled" id="speakerToggle" onclick="toggleSpeaker()">🔊 Hoparlör</button>
+                        <button class="audio-toggle disabled" id="noiseToggle" onclick="toggleNoiseSuppression()">🚫 Gürültü</button>
                     </div>
                 </div>
 
-                <!-- Incoming Call Status -->
+                <!-- Gelen Arama Status - Arama Yönetimi paneli içinde -->
                 <div id="incomingCall" class="call-status-card incoming-call hidden">
                     <div class="call-status-title">📞 GELEN ARAMA</div>
                     <div class="call-status-details">
@@ -1973,6 +2011,19 @@
                     <div class="call-buttons">
                         <button class="btn btn-accept" onclick="acceptIncomingCall()">✅ Kabul Et</button>
                         <button class="btn btn-reject" onclick="rejectIncomingCall()">❌ Reddet</button>
+                    </div>
+                </div>
+
+                <!-- Outgoing Call Status -->
+                <div id="outgoingCall" class="call-status-card outgoing-call hidden">
+                    <div class="call-status-title">📞 GİDEN ARAMA</div>
+                    <div class="call-status-details">
+                        <p style="font-size: 18px; font-weight: 600;"><span id="outgoingName">-</span></p>
+                        <p style="opacity: 0.9;">ID: <span id="outgoingId">-</span></p>
+                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Bağlantı kuruluyor...</p>
+                    </div>
+                    <div class="call-buttons">
+                        <button class="btn btn-reject" onclick="cancelOutgoingCall()">❌ İptal Et</button>
                     </div>
                 </div>
 
@@ -2012,5 +2063,4 @@
                             </div>
                         </div>
                     </div>
-                    <div class="call-buttons">
-                        <button class="btn
+                    <div
