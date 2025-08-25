@@ -1457,20 +1457,20 @@
                 return;
             }
             
-            // Aramayı otomatik kabul et ve setup başlat
-            setupCall({
+            // UI göster
+            incomingCallInfo = {
                 userId: message.userId,
                 userName: message.userName,
                 callId: message.callId
-            });
+            };
             
-            // Müşteriye kabul mesajı gönder
-            if (socket?.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'accept-incoming-call',
-                    adminId: adminUniqueId || originalAdminId
-                }));
-            }
+            // Gelen arama ekranını göster
+            document.getElementById('incomingAdminName').textContent = message.userName;
+            setState('incoming');
+            // Zil sesi çal
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
+            audio.loop = true;
+            audio.play().catch(e => console.log('Zil sesi çalamadı'));
         }
 
         function handleCallAccepted(message) {
@@ -1634,4 +1634,5 @@
     </script>
 </body>
 </html>
+
 
