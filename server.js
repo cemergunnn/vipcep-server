@@ -448,7 +448,10 @@ function startHeartbeat(userId, adminId, callKey) {
     activeCallAdmins.set(adminId, {
         customerId: userId,
         callStartTime: Date.now()
+
     });
+        // Admin meşgul oldu, listesi güncelle
+        broadcastAdminListToCustomers();
 }
 
 function stopHeartbeat(callKey, reason = 'normal') {
@@ -462,6 +465,8 @@ function stopHeartbeat(callKey, reason = 'normal') {
         const [userId, adminId] = callKey.split('-');
         
         activeCallAdmins.delete(adminId);
+        // Admin müsait oldu, listesi güncelle  
+        broadcastAdminListToCustomers();
         
         for (const [id, call] of activeCalls.entries()) {
             if (call.adminId === adminId && call.customerId === userId) {
@@ -1504,10 +1509,14 @@ wss.on('connection', (ws, req) => {
                     if (senderType === 'admin') {
                         adminIdToRemove = senderId;
                         activeCallAdmins.delete(senderId);
+                        // Admin müsait oldu, listesi güncelle  
+                        broadcastAdminListToCustomers();
                         console.log(`🟢 Admin ${senderId} is now available`);
                     } else if (message.targetId) {
                         adminIdToRemove = message.targetId;
                         activeCallAdmins.delete(message.targetId);
+                        // Admin müsait oldu, listesi güncelle  
+                        broadcastAdminListToCustomers();
                         console.log(`🟢 Admin ${message.targetId} is now available`);
                     }
                     
@@ -1586,6 +1595,8 @@ wss.on('connection', (ws, req) => {
                         const callKey = `${adminCallInfo.customerId}-${adminKey}`;
                         stopHeartbeat(callKey, 'admin_permanently_disconnected');
                         activeCallAdmins.delete(adminKey);
+                        // Admin müsait oldu, listesi güncelle  
+                        broadcastAdminListToCustomers();
                         
                         setTimeout(() => {
                             broadcastAdminListToCustomers();
@@ -1757,4 +1768,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
