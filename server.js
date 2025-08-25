@@ -1163,64 +1163,67 @@ wss.on('connection', (ws, req) => {
                 case 'register':
                     console.log(`🔄 Registration request: ${message.name} (${message.userId}) as ${message.userType}`);
                     
-                    if (message.userType === 'admin') {
-                        const oldAdminEntries = Array.from(clients.entries()).filter(([clientId, clientData]) => 
-                            clientData.id === message.userId && 
-                            clientData.userType === 'admin' &&
-                            clientData.ws.readyState !== WebSocket.OPEN
-                        );
-                        
-                        oldAdminEntries.forEach(([oldClientId, oldClientData]) => {
-                            console.log(`🧹 Cleaning up dead admin connection: ${oldClientId}`);
-                            clients.delete(oldClientId);
-                        });
-                        
-                        let activeAdminEntry = null;
-                        for (const [adminId, callInfo] of activeCallAdmins.entries()) {
-                            if (adminId.startsWith(message.userId + '_')) {
-                                activeAdminEntry = [adminId, callInfo];
-                                break;
+                        if (message.userType === 'admin') {
+                            // Eski admin bağlantılarını temizle
+                            const oldAdminEntries = Array.from(clients.entries()).filter(([clientId, clientData]) => 
+                                clientData.id === message.userId && 
+                                clientData.userType === 'admin' &&
+                                (!clientData.ws || clientData.ws.readyState !== WebSocket.OPEN)
+                            );
+                            
+                            oldAdminEntries.forEach(([oldClientId, oldClientData]) => {
+                                console.log(`🧹 Cleaning up dead admin connection: ${oldClientId}`);
+                                clients.delete(oldClientId);
+                            });
+                            
+                            // Aktif call kontrol et - DÜZELTME: Base ID matching
+                            let activeAdminId = null;
+                            for (const [adminId, callInfo] of activeCallAdmins.entries()) {
+                                const baseAdminId = adminId.split('_')[0];
+                                if (baseAdminId === message.userId) {
+                                    activeAdminId = adminId;
+                                    console.log(`🔄 Admin ${message.userId} has active call, preserving ID: ${adminId}`);
+                                    break;
+                                }
                             }
-                        }
+                            
+                            let uniqueClientId;
+                            
+                            if (activeAdminId) {
+                                uniqueClientId = activeAdminId;
+                                console.log(`🔄 Admin ${message.userId} reconnecting with preserved call state: ${uniqueClientId}`);
+                            } else {
+                                uniqueClientId = `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                                console.log(`👤 New admin connection: ${message.name} as ${uniqueClientId}`);
+                            }
+                            
+                            clients.set(uniqueClientId, {
+                                ws: ws,
+                                id: message.userId,
+                                uniqueId: uniqueClientId,
+                                name: message.name,
+                                userType: 'admin',
+                                registeredAt: new Date().toLocaleTimeString(),
+                                online: true
+                            });
+                            
+                            ws.send(JSON.stringify({
+                                type: 'admin-registered',
+                                uniqueId: uniqueClientId,
+                                originalId: message.userId
+                            }));
+                            
+                            if (!adminCallbacks.has(uniqueClientId)) {
+                                adminCallbacks.set(uniqueClientId, []);
+                            }
+                            
+                            broadcastCallbacksToAdmin(uniqueClientId);
+                            
+                            setTimeout(() => {
+                                broadcastAdminListToCustomers();
+                            }, 500);
                         
-                        let uniqueClientId;
-                        
-                        if (activeAdminEntry) {
-                            const [existingAdminId, callInfo] = activeAdminEntry;
-                            uniqueClientId = existingAdminId;
-                            console.log(`🔄 Admin ${message.userId} reconnecting with preserved call state: ${uniqueClientId}`);
                         } else {
-                            uniqueClientId = `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                            console.log(`👤 New admin connection: ${message.name} as ${uniqueClientId}`);
-                        }
-                        
-                        clients.set(uniqueClientId, {
-                            ws: ws,
-                            id: message.userId,
-                            uniqueId: uniqueClientId,
-                            name: message.name,
-                            userType: 'admin',
-                            registeredAt: new Date().toLocaleTimeString(),
-                            online: true
-                        });
-                        
-                        ws.send(JSON.stringify({
-                            type: 'admin-registered',
-                            uniqueId: uniqueClientId,
-                            originalId: message.userId
-                        }));
-                        
-                        if (!adminCallbacks.has(uniqueClientId)) {
-                            adminCallbacks.set(uniqueClientId, []);
-                        }
-                        
-                        broadcastCallbacksToAdmin(uniqueClientId);
-                                           // FIX: Admin listesini hemen broadcast et
-                        setTimeout(() => {
-                            broadcastAdminListToCustomers();
-                        }, 500);    
-                        
-                    } else {
                         const existingCustomer = clients.get(message.userId);
                         if (existingCustomer && existingCustomer.ws.readyState !== WebSocket.OPEN) {
                             clients.delete(message.userId);
