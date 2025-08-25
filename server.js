@@ -560,7 +560,6 @@ app.get('/', (req, res) => {
             <div class="login-container">
                 <div class="title">🔐 VIPCEP</div>
                 
-                <!-- İlk Adım: Username/Password -->
                 <div id="step1">
                     <div class="form-group">
                         <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
@@ -573,7 +572,6 @@ app.get('/', (req, res) => {
                     <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
                 </div>
                 
-                <!-- İkinci Adım: 2FA -->
                 <div id="step2" class="twofa-section">
                     <div class="twofa-info">
                         🔐 İki faktörlü kimlik doğrulaması gerekli
@@ -729,7 +727,6 @@ app.get('/', (req, res) => {
                     setLoading(false);
                 }
                 
-                // Enter tuşu desteği
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         if (currentStep === 1) {
@@ -740,7 +737,6 @@ app.get('/', (req, res) => {
                     }
                 });
                 
-                // 2FA kod input sadece sayı kabul et
                 document.getElementById('totpCode').addEventListener('input', (e) => {
                     e.target.value = e.target.value.replace(/[^0-9]/g, '');
                 });
@@ -767,7 +763,6 @@ app.post('/auth/super-login', async (req, res) => {
             return res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
         }
         
-        // 2FA kontrolü
         if (admin.totp_secret) {
             if (step !== '2fa') {
                 req.session.tempSuperAdmin = { 
@@ -1203,12 +1198,10 @@ wss.on('connection', (ws, req) => {
                             originalId: message.userId
                         }));
                         
-                        // Initialize callback list for admin
                         if (!adminCallbacks.has(uniqueClientId)) {
                             adminCallbacks.set(uniqueClientId, []);
                         }
                         
-                        // Send callback list to admin
                         broadcastCallbacksToAdmin(uniqueClientId);
                         
                     } else {
@@ -1282,7 +1275,7 @@ wss.on('connection', (ws, req) => {
                 case 'direct-call-request':
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
                     
-                    if (userInfo.credits <= 0) {
+                    if (message.credits <= 0) {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Yetersiz kredi!'
@@ -1312,7 +1305,6 @@ wss.on('connection', (ws, req) => {
                         break;
                     }
                     
-                    // Admin'e gelen arama bildir
                     targetAdmin.ws.send(JSON.stringify({
                         type: 'admin-call-request',
                         userId: message.userId,
@@ -1346,7 +1338,6 @@ wss.on('connection', (ws, req) => {
                     
                     const adminCallbackList = adminCallbacks.get(callbackTargetAdmin.uniqueId) || [];
                     
-                    // Check if already exists
                     const existingCallback = adminCallbackList.find(cb => cb.customerId === message.userId);
                     if (existingCallback) {
                         ws.send(JSON.stringify({
@@ -1356,7 +1347,6 @@ wss.on('connection', (ws, req) => {
                         break;
                     }
                     
-                    // Add callback
                     adminCallbackList.push({
                         customerId: message.userId,
                         customerName: message.userName,
@@ -1370,7 +1360,6 @@ wss.on('connection', (ws, req) => {
                         adminName: callbackTargetAdmin.name
                     }));
                     
-                    // Notify admin if online
                     broadcastCallbacksToAdmin(callbackTargetAdmin.uniqueId);
                     
                     console.log(`📝 Callback added for admin ${callbackTargetAdmin.name}: ${message.userName}`);
@@ -1396,7 +1385,6 @@ wss.on('connection', (ws, req) => {
                         break;
                     }
                     
-                    // Customer'a gelen arama bildir
                     targetCustomer.ws.send(JSON.stringify({
                         type: 'admin-call-request',
                         adminId: senderId,
@@ -1433,13 +1421,11 @@ wss.on('connection', (ws, req) => {
                         customerName: senderInfo?.name || 'Müşteri'
                     }));
                     
-                    // Start heartbeat
                     const acceptCallKey = `${senderId}-${acceptingAdmin.uniqueId}`;
                     startHeartbeat(senderId, acceptingAdmin.uniqueId, acceptCallKey);
                     
                     console.log(`💓 Heartbeat started for call: ${acceptCallKey}`);
                     
-                    // Remove from callback if exists
                     const adminCallbacks2 = adminCallbacks.get(acceptingAdmin.uniqueId) || [];
                     const filteredCallbacks = adminCallbacks2.filter(cb => cb.customerId !== senderId);
                     adminCallbacks.set(acceptingAdmin.uniqueId, filteredCallbacks);
@@ -1451,6 +1437,10 @@ wss.on('connection', (ws, req) => {
                 case 'reject-incoming-call':
                     console.log(`❌ Customer ${senderId} rejecting call from admin ${message.adminId}`);
                     
+                    const rejectingAdmin = Array.from(clients.values()).find(c => 
+                        c.userType === 'admin' && 
+                        (c.uniqueId === message.adminId || c.id === message.adminId) &&
+                        c.ws && c.ws.readyState === WebSocket.OPEN
                     );
                     
                     if (rejectingAdmin && rejectingAdmin.ws.readyState === WebSocket.OPEN) {
