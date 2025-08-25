@@ -717,7 +717,11 @@
                 align-items: flex-start;
                 gap: 10px;
             }
-
+            .incoming-call { 
+                        background: linear-gradient(135deg, #2563eb, #1d4ed8); 
+                        color: white; 
+                        animation: pulse 1.5s infinite; 
+            }
             .callback-actions {
                 width: 100%;
                 justify-content: flex-end;
@@ -796,6 +800,19 @@
                         <button class="btn btn-reject" onclick="cancelOutgoingCall()">❌ İptal Et</button>
                     </div>
                 </div>
+
+                <div id="incomingCall" class="call-status-card incoming-call hidden">
+                                    <div class="call-status-title">📞 GELEN ARAMA</div>
+                                    <div class="call-status-details">
+                                        <p style="font-size: 18px; font-weight: 600;"><span id="incomingName">-</span></p>
+                                        <p style="opacity: 0.9;">ID: <span id="incomingId">-</span></p>
+                                        <p style="opacity: 0.8; font-size: 12px; margin-top: 5px;">Müşteri sizi arıyor...</p>
+                                    </div>
+                                    <div class="call-buttons">
+                                        <button class="btn btn-accept" onclick="acceptIncomingCall()">✅ Kabul Et</button>
+                                        <button class="btn btn-reject" onclick="rejectIncomingCall()">❌ Reddet</button>
+                                    </div>
+                                </div>
 
                 <div id="callCancelled" class="call-status-card call-cancelled hidden">
                     <div class="call-status-title">❌ ARAMA İPTAL EDİLDİ</div>
@@ -1465,9 +1482,9 @@
             };
             
             // Gelen arama ekranını göster
-            document.getElementById('outgoingName').textContent = message.userName;
-            document.getElementById('outgoingId').textContent = message.userId;
-            document.getElementById('outgoingCall').classList.remove('hidden');
+            document.getElementById('incomingName').textContent = message.userName;
+            document.getElementById('incomingId').textContent = message.userId;
+            document.getElementById('incomingCall').classList.remove('hidden');
             // Zil sesi çal
             const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAR0AAACBOAQACABAAZGgAAAAAAABagAAABAAAAGZhdnAAAAAQAAAAAABJAAAAXQAAAAAAAAA=');
             audio.loop = true;
@@ -1635,6 +1652,7 @@
     </script>
 </body>
 </html>
+
 
 
 
