@@ -427,6 +427,23 @@
             color: #dc2626;
             font-weight: 600;
         }
+        .admin-dropdown {
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 10px;
+                    font-size: 15px;
+                    background: #f9fafb;
+                    cursor: pointer;
+                    appearance: none;
+                }
+        
+                .admin-dropdown:focus {
+                    outline: none;
+                    border-color: #22c55e;
+                    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+                    background-color: white;
+                }
 
         /* Callback Success Message */
         .callback-success {
@@ -872,6 +889,7 @@
         let currentAdminId = null;
         let selectedAdminId = null;
         let availableAdmins = [];
+        let selectedAdminId = null;
         
         let userInfo = {
             id: '',
@@ -1033,7 +1051,9 @@
                 case 'callback-failed':
                     showMessage(message.reason || 'Geri dönüş talebi başarısız!', 'error');
                     break;
-                
+                case 'admin-list-update':
+                    updateAdminList(message.admins || []);
+                    break;
                 case 'credit-update':
                     updateCredits(message.credits);
                     showMessage(`Kredi güncellendi: ${message.credits} dk`, 'success');
@@ -1314,13 +1334,8 @@
             }
             
             const admin = availableAdmins.find(a => a.id === selectedAdminId);
-            if (!admin) {
-                showError('Seçilen usta bulunamadı!');
-                return;
-            }
-            
-            if (admin.status !== 'available') {
-                showError('Bu usta şu anda müsait değil!');
+            if (!admin || admin.status !== 'available') {
+                showError('Seçilen usta müsait değil!');
                 return;
             }
             
@@ -1340,9 +1355,6 @@
                     credits: userInfo.credits
                 }));
                 console.log('📞 Direkt arama talebi gönderildi:', admin.name);
-            } else {
-                showError('Sunucu bağlantısı yok!');
-                setState('idle');
             }
         }
         
@@ -1812,6 +1824,75 @@
             localStorage.setItem('vipcep_language', currentLanguage);
             updateLanguage();
         }
+        function updateAdminList(admins) {
+            availableAdmins = admins || [];
+            const dropdown = document.getElementById('adminDropdown');
+            dropdown.innerHTML = '<option value="">-- Bir usta seçin --</option>';
+            
+            const availableList = admins.filter(a => a.status === 'available');
+            const busyList = admins.filter(a => a.status === 'busy');
+            
+            availableList.forEach(admin => {
+                const option = document.createElement('option');
+                option.value = admin.id;
+                option.textContent = `🟢 ${admin.name} (Müsait)`;
+                dropdown.appendChild(option);
+            });
+            
+            busyList.forEach(admin => {
+                const option = document.createElement('option');
+                option.value = admin.id;
+                option.textContent = `🔴 ${admin.name} (Meşgul)`;
+                dropdown.appendChild(option);
+            });
+            
+            console.log(`📊 Admin listesi güncellendi: ${availableList.length} müsait, ${busyList.length} meşgul`);
+        }
+
+        function onAdminSelect() {
+            const dropdown = document.getElementById('adminDropdown');
+            const callButton = document.getElementById('callButton');
+            selectedAdminId = dropdown.value;
+            
+            if (!selectedAdminId) {
+                callButton.disabled = true;
+                callButton.textContent = 'Ustamı Ara';
+                callButton.className = 'btn btn-call-disabled';
+                return;
+            }
+            
+            const selectedAdmin = availableAdmins.find(a => a.id === selectedAdminId);
+            if (selectedAdmin?.status === 'available') {
+                callButton.disabled = false;
+                callButton.textContent = '📞 Ustamı Ara';
+                callButton.className = 'btn btn-call';
+                callButton.onclick = makeCall;
+                callButton.classList.add('pulse');
+                setTimeout(() => callButton.classList.remove('pulse'), 600);
+            } else if (selectedAdmin?.status === 'busy') {
+                callButton.disabled = false;
+                callButton.textContent = '📝 Çağrı Bırak';
+                callButton.className = 'btn btn-callback';
+                callButton.onclick = makeCallbackRequest;
+            }
+        }
+
+        function makeCallbackRequest() {
+            if (!selectedAdminId) {
+                showError('Lütfen bir usta seçin!');
+                return;
+            }
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'callback-request',
+                    userId: userInfo.id,
+                    userName: userInfo.name,
+                    targetAdminId: selectedAdminId
+                }));
+                console.log('📝 Callback talebi gönderildi');
+            }
+        }
         
         function updateLanguage() {
             const flagElement = document.getElementById('currentFlag');
@@ -1858,3 +1939,4 @@
     </script>
 </body>
 </html>
+
