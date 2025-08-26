@@ -1047,7 +1047,29 @@
                         console.log('🔗 Admin kabul etti, mevcut WebRTC devam ediyor');
                     }
                     break;
-                
+
+                case 'admin-ready-for-webrtc':
+                    console.log('🔗 Admin WebRTC için hazır, tekrar offer gönderiliyor');
+                    
+                    if (peerConnection && currentAdminId) {
+                        try {
+                            console.log('📤 Admin hazır olduğu için yeni offer gönderiliyor');
+                            const offer = await peerConnection.createOffer();
+                            await peerConnection.setLocalDescription(offer);
+                            
+                            if (socket && socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({
+                                    type: 'offer',
+                                    offer: offer,
+                                    targetId: currentAdminId
+                                }));
+                                console.log('📤 Yeni offer gönderildi:', currentAdminId);
+                            }
+                        } catch (error) {
+                            console.error('❌ Yeni offer oluşturma hatası:', error);
+                        }
+                    }
+                    break;                
                 case 'call-rejected':
                     handleCallRejected(message);
                     break;
@@ -1995,6 +2017,7 @@
     </script>
 </body>
 </html>
+
 
 
 
