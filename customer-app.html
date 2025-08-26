@@ -1172,7 +1172,7 @@
                 localStorage.removeItem('vipcep_user_name');
                 localStorage.removeItem('vipcep_remember_me');
             }
-            
+            console.log('🎯 Arama yapılıyor - Admin ID:', selectedAdminId, 'Current Admin ID:', currentAdminId);
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'login-request',
@@ -1986,6 +1986,7 @@
     </script>
 </body>
 </html>
+
 
 
 
