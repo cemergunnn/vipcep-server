@@ -2126,30 +2126,40 @@
         function playClassicRing() {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
-            function ring() {
+            let ringCount = 0;
+            const maxRings = 10; // Maksimum çalma sayısı (sonsuz döngüyü önlemek için)
+        
+            function playRing() {
+                if (ringCount >= maxRings || callState !== 'connecting') return;
+                
                 const osc = audioContext.createOscillator();
                 const gain = audioContext.createGain();
                 
                 osc.connect(gain);
                 gain.connect(audioContext.destination);
                 
-                osc.frequency.setValueAtTime(440, audioContext.currentTime); // Classic phone frequency
-                gain.gain.setValueAtTime(0.2, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+                // Türkiye'deki standart çalma sesi
+                osc.frequency.setValueAtTime(425, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
                 
                 osc.start();
-                osc.stop(audioContext.currentTime + 1);
+                osc.stop(audioContext.currentTime + 0.5);
                 
-                // Her 2 saniyede tekrarla
+                ringCount++;
+                
+                // 1 saniye çal, 3 saniye bekle (standart telefon çalma patterni)
                 setTimeout(() => {
-                    if (callState === 'connecting') ring();
-                }, 2000);
+                    if (callState === 'connecting') playRing();
+                }, 3000);
             }
-            ring();
+            
+            playRing();
         }
     </script>
 </body>
 </html>
+
 
 
 
