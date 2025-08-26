@@ -2124,32 +2124,38 @@
             document.body.insertAdjacentHTML('beforeend', banner);
         }
         function playClassicRing() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            function ring() {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
-                
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
-                
-                osc.frequency.setValueAtTime(425, audioContext.currentTime); // Türkiye standardı
-                gain.gain.setValueAtTime(0.5, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
-                
-                osc.start();
-                osc.stop(audioContext.currentTime + 1);
-                
-                // 1 saniye çal, 2 saniye bekle
-                setTimeout(() => {
-                    if (callState === 'connecting') ring();
-                }, 3000);
-            }
-            ring();
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+          function ring() {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+        
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+        
+            osc.frequency.setValueAtTime(425, audioContext.currentTime); // 425 Hz sabit
+            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+        
+            // Cadence: 2 saniye çal → 5 saniye sus → döngü
+            gain.gain.setValueAtTime(0.5, audioContext.currentTime + 2);
+            gain.gain.setValueAtTime(0.0, audioContext.currentTime + 2.001);
+            gain.gain.setValueAtTime(0.0, audioContext.currentTime + 7);
+        
+            osc.start();
+            osc.stop(audioContext.currentTime + 2);
+        
+            // 7 saniyelik döngü (2s çal + 5s sus)
+            setTimeout(() => {
+              if (callState === 'connecting') ring();
+            }, 7000);
+          }
+        
+          ring();
         }
     </script>
 </body>
 </html>
+
 
 
 
