@@ -448,7 +448,7 @@ function startHeartbeat(userId, adminId, callKey) {
             await pool.query(`
                 INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                 VALUES ($1, $2, $3, $4, $5)
-            `, [userId, 'initial_call', -1, newCredits, `Arama başlangıç kredisi`]);
+            `, [userId, 'initial_call', -1, newCredits, `Arama başlangıc kredisi`]);
             
             // Customer'a kredi güncellemesi gönder
             const customerClient = clients.get(userId);
@@ -1976,6 +1976,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
