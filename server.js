@@ -1209,26 +1209,13 @@ wss.on('connection', (ws, req) => {
                             
                             let uniqueClientId;
                             
-                        if (activeAdminId) {
-                            // Call gerçekten aktif mi kontrol et
-                            const callKey = Object.keys(activeCalls).find(key => key.includes(activeAdminId)) || 
-                                            Array.from(activeHeartbeats.keys()).find(key => key.includes(activeAdminId));
+                            // RADIKAL DEĞİŞİKLİK: Admin ID'yi sabit tut
+                            uniqueClientId = message.userId; // Sadece ADMIN001, ADMIN002 vs.
                             
-                            if (callKey) {
-                                // Gerçek call var
-                                uniqueClientId = activeAdminId;
-                                console.log(`🔄 Admin ${message.userId} reconnecting with active call: ${uniqueClientId}`);
-                            } else {
-                                // Sahte call state, temizle
-                                console.log(`🧹 Cleaning fake call state for admin ${message.userId}`);
-                                activeCallAdmins.delete(activeAdminId);
-                                uniqueClientId = `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                                console.log(`👤 New clean admin connection: ${message.name} as ${uniqueClientId}`);
-                            }
-                        } else {
-                                uniqueClientId = `${message.userId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                                console.log(`👤 New admin connection: ${message.name} as ${uniqueClientId}`);
-                            }
+                            // Eski admin kayıtlarını temizle
+                            clients.delete(uniqueClientId);
+                            
+                            console.log(`👤 Admin connection: ${message.name} as ${uniqueClientId}`);
                             
                             clients.set(uniqueClientId, {
                                 ws: ws,
@@ -1816,6 +1803,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
