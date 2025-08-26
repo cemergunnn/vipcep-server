@@ -1486,8 +1486,8 @@ wss.on('connection', (ws, req) => {
                     broadcastCallbacksToAdmin(acceptingAdmin.uniqueId);
                     
                     broadcastAdminListToCustomers();
-                    // Customer'a call-accepted mesajı gönder
-                    const customerClient = clients.get(senderId);
+                    // Doğru customer ID'sini bul - incomingCallInfo'dan al
+                    const customerClient = clients.get(message.userId || message.customerId);
                     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                         customerClient.ws.send(JSON.stringify({
                             type: 'call-accepted',
@@ -1837,6 +1837,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
