@@ -1704,11 +1704,17 @@ function findClientById(ws) {
 }
 
 function findWebRTCTarget(targetId, sourceType) {
+    if (!targetId) {
+        console.log('⚠️ targetId is null or undefined');
+        return null;
+    }
+    
     let targetClient = clients.get(targetId);
     if (targetClient) {
         return targetClient;
     }
     
+    // uniqueId ile arama (ADMIN123_456_abc formatı)
     if (targetId.includes('_')) {
         const normalId = targetId.split('_')[0];
         for (const [clientId, clientData] of clients.entries()) {
@@ -1717,13 +1723,15 @@ function findWebRTCTarget(targetId, sourceType) {
             }
         }
     } else {
+        // Normal ID ile arama (ADMIN123 formatı)
         for (const [clientId, clientData] of clients.entries()) {
-            if (clientId.startsWith(targetId + '_') && clientData.userType === 'admin') {
+            if ((clientId.startsWith && clientId.startsWith(targetId + '_')) && clientData.userType === 'admin') {
                 return clientData;
             }
         }
     }
     
+    console.log(`⚠️ WebRTC target not found: ${targetId}`);
     return null;
 }
 
@@ -1829,6 +1837,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
