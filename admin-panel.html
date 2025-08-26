@@ -1140,9 +1140,45 @@
                     break;
                     
                 case 'admin-call-request':
-                    handleIncomingCall(message);
-                    break;
+                    console.log('📞 Gelen arama:', message.userName, '(' + message.userId + ')');
                     
+                    if (currentCall || outgoingCallInfo || callState !== 'idle') {
+                        console.log('⚠️ Meşgul durumda, arama reddediliyor');
+                        
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({
+                                type: 'reject-incoming-call',
+                                adminId: adminUniqueId || originalAdminId,
+                                reason: 'Admin meşgul'
+                            }));
+                        }
+                        return;
+                    }
+                    
+                    // Gelen arama bilgisini kaydet
+                    incomingCallInfo = {
+                        userId: message.userId,
+                        userName: message.userName
+                    };
+                    
+                    callState = 'incoming';
+                    
+                    // UI'yi göster - WebRTC kurma!
+                    const incomingNameEl = document.getElementById('incomingName');
+                    const incomingIdEl = document.getElementById('incomingId');
+                    const incomingCallEl = document.getElementById('incomingCall');
+                    
+                    if (incomingNameEl) incomingNameEl.textContent = message.userName;
+                    if (incomingIdEl) incomingIdEl.textContent = message.userId;
+                    if (incomingCallEl) incomingCallEl.classList.remove('hidden');
+                    
+                    updateAdminStatus('busy'); // Gelen arama sırasında meşgul göster
+                    
+                    // Zil sesi çal
+                    playRingTone();
+                    console.log('📱 Gelen arama UI gösterildi, kullanıcı kararını bekliyor');
+                    break;
+                                    
                 case 'call-connecting':
                     handleCallConnecting(message);
                     break;
@@ -1398,11 +1434,12 @@
             
             currentCall = incomingCallInfo;
             incomingCallInfo = null;
-            callState = 'connected';
+            callState = 'accepted'; // 'connected' değil, 'accepted'
             
             updateAdminStatus('busy');
             
-            // setupPeerConnection(currentCall); // Zaten accept mesajından sonra kurulacak
+            console.log('🔗 Admin kabul etti, WebRTC kurulması için offer bekleniyor...');
+            // setupPeerConnection artık offer gelince otomatik çalışacak
         }
 
         function rejectIncomingCall() {
@@ -1629,44 +1666,58 @@
         async function handleWebRTCMessage(message) {
             console.log('📨 WebRTC mesajı:', message.type, 'from', message.userId);
             
-            if (!peerConnection) {
-                console.log('⚠️ PeerConnection yok, kurulacak...');
-                
-                if (!currentCall) {
-                    currentCall = { 
-                        userId: message.userId, 
-                        userName: incomingCallInfo?.userName || 'Müşteri' 
-                    };
-                }
-                
-                await setupPeerConnection(currentCall);
-                
-                // Setup tamamlandıktan sonra mesajı tekrar işle
+        if (!peerConnection) {
+            console.log('⚠️ PeerConnection yok, kurulacak...');
+            
+            // Eğer incoming call state'indeyse setup yapma
+            if (callState === 'incoming') {
+                console.log('⚠️ Gelen arama bekliyor, WebRTC kurulmuyor');
+                return;
+            }
+            
+            if (!currentCall) {
+                currentCall = { 
+                    userId: message.userId, 
+                    userName: incomingCallInfo?.userName || 'Müşteri' 
+                };
+            }
+            
+            await setupPeerConnection(currentCall);
+            
+            // Setup sadece bir kez çalışsın - ICE candidate'ları tekrar işleme
+            if (message.type === 'ice-candidate') {
                 setTimeout(() => handleWebRTCMessage(message), 100);
                 return;
             }
+        }
         
             try {
                 switch (message.type) {
-                    case 'offer':
-                        console.log('📨 Offer alındı, answer gönderiliyor...');
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                        
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        
-                        if (socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({
-                                type: 'answer',
-                                answer: answer,
-                                targetId: message.userId
-                            }));
-                            console.log('📤 Answer gönderildi');
-                        }
-                        
-                        // Bekleyen ICE candidate'ları işle
-                        processPendingIceCandidates();
-                        break;
+            case 'offer':
+                // Gelen arama kabul edilmemişse offer'ı reddet
+                if (callState === 'incoming' && incomingCallInfo) {
+                    console.log('⚠️ Offer reddedildi - gelen arama henüz kabul edilmedi');
+                    return;
+                }
+                
+                console.log('📨 Offer alındı, answer gönderiliyor...');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'answer',
+                        answer: answer,
+                        targetId: message.userId
+                    }));
+                    console.log('📤 Answer gönderildi');
+                }
+                
+                // Bekleyen ICE candidate'ları işle
+                processPendingIceCandidates();
+                break;
                         
                     case 'answer':
                         console.log('📨 Answer alındı');
@@ -2045,7 +2096,32 @@
                 console.error('❌ Zil sesi çalınamadı:', error);
             }
         }
-
+        function playRingTone() {
+            try {
+                // Basit zil sesi oluştur
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+                
+                setTimeout(() => {
+                    if (incomingCallInfo && callState === 'incoming') {
+                        playRingTone(); // Tekrar çal
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Zil sesi çalınamadı:', error);
+            }
+        }
         function showNotification(message, type = 'info', duration = 5000) {
             const container = document.getElementById('creditNotifications');
             if (!container) return;
@@ -2113,6 +2189,7 @@
     </script>
 </body>
 </html>
+
 
 
 
