@@ -409,6 +409,44 @@ function startHeartbeat(userId, adminId, callKey) {
         clearInterval(activeHeartbeats.get(callKey));
         activeHeartbeats.delete(callKey);
     }
+// İlk dakika krediyi hemen düş (call başında)
+(async () => {
+    try {
+        console.log(`💳 Initial credit deduction for ${userId}`);
+        const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+        
+        if (userResult.rows.length > 0) {
+            const currentCredits = userResult.rows[0].credits;
+            
+            if (currentCredits <= 0) {
+                console.log(`⚠️ No credits available for ${userId}, ending call immediately`);
+                stopHeartbeat(callKey, 'no_credits');
+                return;
+            }
+            
+            const newCredits = Math.max(0, currentCredits - 1);
+            await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+            
+            await pool.query(`
+                INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                VALUES ($1, $2, $3, $4, $5)
+            `, [userId, 'initial_call', -1, newCredits, `Arama başlangıç kredisi`]);
+            
+            // Customer'a kredi güncellemesi gönder
+            const customerClient = clients.get(userId);
+            if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+                customerClient.ws.send(JSON.stringify({
+                    type: 'credit-update',
+                    credits: newCredits,
+                    creditsUsed: 1
+                }));
+            }
+            console.log(`💳 Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
+        }
+    } catch (error) {
+        console.log(`Initial credit deduction error ${callKey}:`, error.message);
+    }
+})();
     
     console.log(`💓 Starting heartbeat: ${callKey}`);
     
@@ -1861,6 +1899,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
