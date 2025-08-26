@@ -1009,7 +1009,7 @@
             statusText.textContent = text;
         }
         
-        function handleServerMessage(message) {
+        async function handleServerMessage(message) {
             console.log('📨 Sunucudan mesaj:', message.type);
             
             switch (message.type) {
@@ -2016,6 +2016,7 @@
     </script>
 </body>
 </html>
+
 
 
 
