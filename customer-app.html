@@ -1013,7 +1013,10 @@
             console.log('📨 Sunucudan mesaj:', message.type);
             
             switch (message.type) {
-                case 'login-response':
+                case 'announcement-broadcast':
+                    displayAnnouncement(message.announcement);
+                    break;
+                                case 'login-response':
                     handleLoginResponse(message);
                     break;
                 
@@ -2071,9 +2074,23 @@
         console.log('✅ Callback sistemi entegre edildi');
         console.log('✅ Buton animasyonları ve durumları hazır');
         console.log('✅ Direct call + callback hybrid sistem');
+        function displayAnnouncement(announcement) {
+            if (!announcement) return;
+            
+            const modal = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; max-width: 400px; text-align: center; color: #1e293b;">
+                        <h3 style="color: #dc2626; margin-bottom: 15px;">📢 Duyuru</h3>
+                        <div style="line-height: 1.5; margin-bottom: 20px;">${announcement.text.replace(/\n/g, '<br>')}</div>
+                        <button onclick="this.closest('div').remove()" style="padding: 10px 20px; background: #22c55e; color: white; border: none; border-radius: 8px;">Tamam</button>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modal);
+        }
     </script>
 </body>
 </html>
+
 
 
 
