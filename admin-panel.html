@@ -1600,8 +1600,8 @@
                     }
                 };
                 
-                // Eğer outgoing call ise offer oluştur
-                if (callState === 'connected' && outgoingCallInfo) {
+                // Admin her zaman offer oluşturur (outgoing veya incoming)
+                if (callState === 'connected') {
                     console.log('📤 WebRTC offer oluşturuluyor...');
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -2056,4 +2056,5 @@
     </script>
 </body>
 </html>
+
 
