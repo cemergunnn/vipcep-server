@@ -1434,13 +1434,20 @@
             
             currentCall = incomingCallInfo;
             incomingCallInfo = null;
-            callState = 'accepted'; // 'connected' değil, 'accepted'
+            callState = 'connecting'; // 'accepted' değil, 'connecting' olmalı
             
             updateAdminStatus('busy');
             
             console.log('🔗 Admin kabul etti, WebRTC kurulması için offer bekleniyor...');
-            // setupPeerConnection artık offer gelince otomatik çalışacak
-        }
+            
+            // Müşteriye admin'in hazır olduğunu bildir
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'admin-ready-for-webrtc',
+                    userId: currentCall.userId,
+                    adminId: adminUniqueId || originalAdminId
+                }));
+            }
 
         function rejectIncomingCall() {
             if (!incomingCallInfo) return;
@@ -1670,10 +1677,10 @@
         if (!peerConnection) {
             console.log('⚠️ PeerConnection yok, kurulacak...');
             
-            // Eğer incoming call state'indeyse setup yapma
-            if (callState === 'incoming') {
-                console.log('⚠️ Gelen arama bekliyor, WebRTC kurulmuyor');
-                return;
+            // Admin kabul ettiyse ama henüz connecting değilse, connecting yap
+            if (callState === 'accepted') {
+                callState = 'connecting';
+                console.log('✅ CallState accepted->connecting değiştirildi');
             }
             
             if (!currentCall) {
@@ -2190,6 +2197,7 @@
     </script>
 </body>
 </html>
+
 
 
 
