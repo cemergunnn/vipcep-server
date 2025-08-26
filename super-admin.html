@@ -838,6 +838,36 @@
             </div>
         </div>
     </div>
+     <!-- Admin Kazanç Yönetimi -->
+        <div class="panel" style="grid-column: 1 / -1; margin-top: 30px;">
+            <h3>💰 Admin Kazanç Yönetimi</h3>
+            
+            <div class="admin-earnings-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px;">
+                <div class="security-card" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3);">
+                    <div class="security-number" style="color: #22c55e;" id="totalEarnings">0</div>
+                    <div class="security-label" style="color: #86efac;">Toplam Kazanç</div>
+                </div>
+                <div class="security-card" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                    <div class="security-number" style="color: #3b82f6;" id="activeEarners">0</div>
+                    <div class="security-label" style="color: #93c5fd;">Kazanan Admin</div>
+                </div>
+                <div class="security-card" style="background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+                    <div class="security-number" style="color: #f59e0b;" id="averageEarning">0</div>
+                    <div class="security-label" style="color: #fbbf24;">Ortalama Kazanç</div>
+                </div>
+            </div>
+
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 25px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <h4 style="color: #e2e8f0; margin-bottom: 20px; font-size: 16px;">📊 Admin Kazanç Listesi</h4>
+                
+                <div class="admin-earnings-list" id="adminEarningsList" style="max-height: 400px; overflow-y: auto;">
+                    <div style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">💰</div>
+                        <div>Admin kazançları yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     
     <script>
         // Global değişkenler
@@ -1061,6 +1091,8 @@
                 
                 // Güvenlik istatistikleri yükle
                 loadSecurityStats();
+                loadAdminEarnings(); // Bu satırı ekle
+
                 
             } catch (error) {
                 console.error('Veri yükleme hatası:', error);
@@ -1549,7 +1581,95 @@
                 }
             }
         }
-
+        // ================== ADMIN EARNINGS FUNCTIONS ==================
+        
+        async function loadAdminEarnings() {
+            try {
+                const response = await fetch('/api/admin-earnings');
+                if (response.ok) {
+                    const earnings = await response.json();
+                    renderAdminEarnings(earnings);
+                    updateEarningsStats(earnings);
+                } else {
+                    console.error('Admin kazançları yüklenemedi');
+                }
+            } catch (error) {
+                console.error('Admin kazanç yükleme hatası:', error);
+            }
+        }
+        
+        function renderAdminEarnings(earnings) {
+            const container = document.getElementById('adminEarningsList');
+            
+            if (earnings.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #94a3b8; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">💰</div>
+                        <div>Henüz kazanç kaydı yok</div>
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = earnings.map(admin => {
+                const lastUpdated = new Date(admin.last_updated).toLocaleString('tr-TR');
+                
+                return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; margin-bottom: 15px; background: rgba(255,255,255,0.05); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 700; color: #fbbf24; font-size: 18px; margin-bottom: 5px;">
+                                👤 ${admin.username}
+                            </div>
+                            <div style="color: #94a3b8; font-size: 12px;">
+                                Son güncelleme: ${lastUpdated}
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-right: 20px;">
+                            <div style="font-size: 24px; font-weight: 800; color: #22c55e; margin-bottom: 5px;">
+                                ${admin.total_earned} dk
+                            </div>
+                            <div style="font-size: 12px; color: #86efac;">
+                                Toplam Kazanç
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-small" onclick="resetAdminEarnings('${admin.username}')" style="padding: 8px 16px; font-size: 12px;">
+                            💰 Sıfırla
+                        </button>
+                    </div>`;
+            }).join('');
+        }
+        
+        function updateEarningsStats(earnings) {
+            const totalEarnings = earnings.reduce((sum, admin) => sum + admin.total_earned, 0);
+            const activeEarners = earnings.filter(admin => admin.total_earned > 0).length;
+            const averageEarning = activeEarners > 0 ? Math.round(totalEarnings / activeEarners) : 0;
+            
+            document.getElementById('totalEarnings').textContent = totalEarnings;
+            document.getElementById('activeEarners').textContent = activeEarners;
+            document.getElementById('averageEarning').textContent = averageEarning;
+        }
+        
+        async function resetAdminEarnings(username) {
+            if (!confirm(`${username} admin'inin kazancını sıfırlamak istediğinizden emin misiniz?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/reset-admin-earnings/${username}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`${username} admin kazancı sıfırlandı!`, 'success');
+                    loadAdminEarnings(); // Listeyi yenile
+                } else {
+                    showMessage(result.error || 'Kazanç sıfırlanamadı!', 'error');
+                }
+            } catch (error) {
+                showMessage('Kazanç sıfırlama hatası: ' + error.message, 'error');
+            }
+        }
         console.log('🎯 VIPCEP Enhanced Super Admin Panel başlatıldı');
         console.log('📢 Duyuru yönetim sistemi aktif');
         console.log('🔐 2FA güvenlik sistemi hazır');
