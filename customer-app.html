@@ -1029,7 +1029,27 @@
                     break;
                 
                 case 'call-accepted':
-                    handleCallAccepted(message);
+                    console.log('✅ Call accepted, message:', message);
+                    
+                    // currentAdminId'yi set et
+                    if (outgoingCallInfo) {
+                        currentAdminId = selectedAdminId;
+                        
+                        const outgoingCallEl = document.getElementById('outgoingCall');
+                        if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
+                        
+                        const callInfo = {
+                            userId: outgoingCallInfo.userId,
+                            userName: outgoingCallInfo.userName
+                        };
+                        
+                        currentCall = callInfo;
+                        outgoingCallInfo = null;
+                        callState = 'connected';
+                        
+                        console.log('✅ currentAdminId set to:', currentAdminId);
+                        setupPeerConnection();
+                    }
                     break;
                 
                 case 'call-rejected':
@@ -1960,6 +1980,7 @@
     </script>
 </body>
 </html>
+
 
 
 
