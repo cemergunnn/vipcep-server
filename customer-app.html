@@ -1507,7 +1507,8 @@
             
             currentAdminId = incomingCallInfo.adminId;
             setState('connecting');
-            setupPeerConnection();
+                // WebRTC'yi başlat ama offer gönderme, admin gönderecek
+             setupPeerConnection(false); // false = offer gönderme
             incomingCallInfo = null;
         }
         
@@ -1562,7 +1563,7 @@
         }
         
         // WebRTC Functions
-        async function setupPeerConnection() {
+        async function setupPeerConnection(shouldCreateOffer = true) {
             try {
                 console.log('🔗 WebRTC bağlantısı kuruluyor...');
                 
@@ -1584,9 +1585,12 @@
                     remoteAudio.srcObject = event.streams[0];
                     setState('connected');
                     
-                    // Set admin name in call screen
-                    const adminName = availableAdmins.find(a => a.id === currentAdminId)?.name || 'Usta';
-                    document.getElementById('currentAdminName').textContent = adminName;
+                   // Admin name güncelleme - GÜVENLİ
+                    const adminName = availableAdmins.find(a => a.id === currentAdminId)?.name || incomingCallInfo?.adminName || 'Usta';
+                    const currentAdminNameEl = document.getElementById('currentAdminName');
+                    if (currentAdminNameEl) {
+                        currentAdminNameEl.textContent = adminName;
+                    }
                 };
                 
                 peerConnection.onconnectionstatechange = () => {
@@ -1619,7 +1623,10 @@
                 stream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, stream);
                 });
-                
+                if (!shouldCreateOffer) {
+                console.log('⏳ Admin\'den offer bekleniyor...');
+                return;
+            }
                 console.log('📨 WebRTC Offer oluşturuluyor');
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
@@ -1993,6 +2000,7 @@
     </script>
 </body>
 </html>
+
 
 
 
