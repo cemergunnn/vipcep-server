@@ -1481,10 +1481,17 @@
                 adminName: message.adminName || 'USTAM'
             };
             
-            document.getElementById('incomingAdminName').textContent = incomingCallInfo.adminName;
+            // Önce state'i değiştir, element görünür olsun
             setState('incoming');
+            
+            // Sonra elementi güncelle
+            setTimeout(() => {
+                const adminNameElement = document.getElementById('incomingAdminName');
+                if (adminNameElement) {
+                    adminNameElement.textContent = incomingCallInfo.adminName;
+                }
+            }, 50);
         }
-        
         function acceptIncomingCall() {
             if (!incomingCallInfo) return;
             
@@ -1986,6 +1993,7 @@
     </script>
 </body>
 </html>
+
 
 
 
