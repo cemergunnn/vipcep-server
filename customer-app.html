@@ -1405,6 +1405,15 @@
         
         // Call Functions
         function makeCall() {
+            // Ses context'i etkinleştir
+            if (!window.audioContext) {
+                window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Existing makeCall code...
+            
+            // Çeviri sesini başlat
+            playVIPCEPRingtone();
             if (!selectedAdminId) {
                 showError('Lütfen bir usta seçin!');
                 return;
@@ -2155,6 +2164,7 @@
     </script>
 </body>
 </html>
+
 
 
 
