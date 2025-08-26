@@ -20,9 +20,9 @@ const PORT = process.env.PORT || 8080;
 
 // Security configuration
 const SECURITY_CONFIG = {
-    SUPER_ADMIN_PATH: '/panel-' + crypto.randomBytes(8).toString('hex'),
-    NORMAL_ADMIN_PATH: '/desk-' + crypto.randomBytes(8).toString('hex'),
-    CUSTOMER_PATH: '/app-' + crypto.randomBytes(8).toString('hex'),
+    SUPER_ADMIN_PATH: '/panel-admin',
+    NORMAL_ADMIN_PATH: '/desk-admin', 
+    CUSTOMER_PATH: '/app-customer',
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
     TOTP_WINDOW: 2
@@ -1829,6 +1829,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
