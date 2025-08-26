@@ -50,7 +50,7 @@ const activeCallAdmins = new Map();
 const activeCalls = new Map();
 const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
 let currentAnnouncement = null;
-const HEARTBEAT_INTERVAL = 10000;
+const HEARTBEAT_INTERVAL = 60000;
 
 // ================== HELPER FUNCTIONS ==================
 
@@ -1854,6 +1854,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
