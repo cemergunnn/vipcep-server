@@ -1075,6 +1075,10 @@
                 
                 case 'call-failed':
                     handleCallFailed(message);
+                    // Görüşme sonu modalı göster
+                    showEndCallModal(message);
+                    // Ses çal
+                    playEndCallSound();
                     break;
                 
                 case 'call-ended':
@@ -1747,7 +1751,41 @@
             cleanupCall();
             setState('idle');
         }
+                function showEndCallModal(message) {
+            const duration = Math.floor(callDuration / 60) + 1; // Yukarı yuvarla
+            const modal = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
+                        <h3 style="color: #22c55e; margin-bottom: 15px;">✅ Görüşme Tamamlandı</h3>
+                        <p><strong>Süre:</strong> ${duration} dakika</p>
+                        <p><strong>Kullanılan Kredi:</strong> ${duration} dk</p>
+                        <p><strong>Kalan Kredi:</strong> ${userInfo.credits} dk</p>
+                        <button onclick="this.closest('div').remove()" style="margin-top: 15px; padding: 10px 20px; background: #22c55e; color: white; border: none; border-radius: 8px;">Tamam</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modal);
+        }
         
+        function playEndCallSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (error) {
+                console.log('Ses çalınamadı:', error);
+            }
+        }
         function cleanupCall() {
             if (callTimer) {
                 clearInterval(callTimer);
@@ -2016,6 +2054,7 @@
     </script>
 </body>
 </html>
+
 
 
 
