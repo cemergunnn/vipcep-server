@@ -1592,13 +1592,15 @@
                 await peerConnection.setLocalDescription(offer);
                 
                 if (socket && socket.readyState === WebSocket.OPEN) {
+                    console.log('📤 Offer gönderiliyor, targetId:', currentAdminId);
                     socket.send(JSON.stringify({
                         type: 'offer',
                         offer: offer,
                         targetId: currentAdminId
                     }));
+                    console.log('📤 Offer gönderildi!');
                 }
-                
+
             } catch (error) {
                 console.log('❌ WebRTC kurulum hatası:', error);
                 showError('Mikrofon izni alınamadı!');
@@ -1958,6 +1960,7 @@
     </script>
 </body>
 </html>
+
 
 
 
