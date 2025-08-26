@@ -1212,8 +1212,6 @@ app.get('/api/stats', async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
-        
-});
 
 // Admin kazanç API'ları
 app.get('/api/admin-earnings', async (req, res) => {
@@ -1976,6 +1974,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
