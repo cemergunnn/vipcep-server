@@ -1334,7 +1334,8 @@ wss.on('connection', (ws, req) => {
                         }));
                         break;
                     }
-                    
+                    console.log('🔍 Admin aranıyor:', message.targetAdminId);
+                    console.log('🔍 Mevcut adminler:', Array.from(clients.values()).filter(c => c.userType === 'admin').map(a => ({id: a.id, uniqueId: a.uniqueId, name: a.name})));
                     const targetAdmin = Array.from(clients.values()).find(c => 
                         c.userType === 'admin' && 
                         (c.uniqueId === message.targetAdminId || c.id === message.targetAdminId) &&
@@ -1837,6 +1838,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
