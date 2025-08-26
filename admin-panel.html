@@ -1402,8 +1402,7 @@
             
             updateAdminStatus('busy');
             
-            // WebRTC'yi başlat
-            setupPeerConnection(currentCall);
+            // setupPeerConnection(currentCall); // Zaten accept mesajından sonra kurulacak
         }
 
         function rejectIncomingCall() {
@@ -1513,6 +1512,10 @@
         // ================== WEBRTC HANDLING ==================
         
         async function setupPeerConnection(callInfo) {
+                if (peerConnection) {
+                console.log('⚠️ PeerConnection zaten var, yeniden oluşturulmayacak');
+                return;
+            }
             try {
                 console.log('🔗 WebRTC bağlantısı kuruluyor...', callInfo.userName);
                 
@@ -1637,8 +1640,13 @@
                 }
                 
                 await setupPeerConnection(currentCall);
+                
+                // Offer geldi ise answer gönder
+                if (message.type === 'offer') {
+                    return; // setupPeerConnection içinde handle edilecek
+                }
             }
-            
+
             try {
                 switch (message.type) {
                     case 'offer':
@@ -2056,5 +2064,6 @@
     </script>
 </body>
 </html>
+
 
 
