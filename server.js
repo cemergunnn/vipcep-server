@@ -1212,6 +1212,17 @@ wss.on('connection', (ws, req) => {
                             let uniqueClientId;
                             
                             // RADIKAL DEĞİŞİKLİK: Admin ID'yi sabit tut
+                            // Admin ID kontrol et - her admin kendi ID'sini kullansın
+                            console.log(`DEBUG: Admin registration - userId: ${message.userId}, name: ${message.name}`);
+                            
+                            // Mevcut clients'ta aynı isimde başka admin var mı?
+                            const sameNameAdmin = Array.from(clients.values()).find(c => 
+                                c.userType === 'admin' && c.name === message.name && c.id !== message.userId
+                            );
+                            
+                            if (sameNameAdmin) {
+                                console.log(`⚠️ SORUN: ${message.name} admin'i farklı ID ile kayıtlı: ${sameNameAdmin.id}`);
+                            }
                             uniqueClientId = message.userId; // Sadece ADMIN001, ADMIN002 vs.
                             
                             // Eski admin kayıtlarını temizle
@@ -1806,6 +1817,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
