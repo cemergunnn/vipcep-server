@@ -238,7 +238,14 @@ async function initDatabase() {
                 status VARCHAR(20) DEFAULT 'active'
             )
         `);
-
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_earnings (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                total_earned INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
         await pool.query(`
             CREATE TABLE IF NOT EXISTS call_history (
                 id SERIAL PRIMARY KEY,
@@ -426,7 +433,18 @@ function startHeartbeat(userId, adminId, callKey) {
             
             const newCredits = Math.max(0, currentCredits - 1);
             await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+         
+            // Admin kazancı artır
+            await pool.query(`
+                INSERT INTO admin_earnings (username, total_earned) 
+                VALUES ($1, 1)
+                ON CONFLICT (username) 
+                DO UPDATE SET 
+                    total_earned = admin_earnings.total_earned + 1,
+                    last_updated = CURRENT_TIMESTAMP
+            `, [adminId]);
             
+            console.log(`💰 Admin ${adminId} kazancı +1 kredi`);
             await pool.query(`
                 INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                 VALUES ($1, $2, $3, $4, $5)
@@ -1194,10 +1212,70 @@ app.get('/api/stats', async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
+        
+});
+
+// Admin kazanç API'ları
+app.get('/api/admin-earnings', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    try {
+        const result = await pool.query(`
+            SELECT username, total_earned, last_updated 
+            FROM admin_earnings 
+            ORDER BY total_earned DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+
+});
+
+
+app.get('/api/my-earnings', async (req, res) => {
+    if (!req.session || (!req.session.normalAdmin && !req.session.superAdmin)) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    const username = req.session.normalAdmin?.username || req.session.superAdmin?.username;
+    
+    try {
+        const result = await pool.query(
+            'SELECT total_earned FROM admin_earnings WHERE username = $1',
+            [username]
+        );
+        
+        const earnings = result.rows[0]?.total_earned || 0;
+        res.json({ earnings });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/reset-admin-earnings/:username', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    
+    const { username } = req.params;
+    
+    try {
+        await pool.query(
+            'UPDATE admin_earnings SET total_earned = 0, last_updated = CURRENT_TIMESTAMP WHERE username = $1',
+            [username]
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
     }
 });
 
 app.get('/health', (req, res) => {
+
     res.json({ 
         status: 'OK', 
         timestamp: new Date().toISOString(),
@@ -1899,6 +1977,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
