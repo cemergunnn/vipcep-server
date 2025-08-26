@@ -414,6 +414,8 @@ function startHeartbeat(userId, adminId, callKey) {
     
     const heartbeat = setInterval(async () => {
         console.log(`💓 Heartbeat tick for ${callKey}`);
+        console.log(`🔍 Checking credits for user: ${userId}`);
+
         try {
             // Admin hala aktif mi kontrol et
             const adminClient = Array.from(clients.values()).find(c => 
@@ -437,6 +439,7 @@ function startHeartbeat(userId, adminId, callKey) {
             }
             
             const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+            console.log(`📊 Query result:`, userResult.rows);
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
                 
@@ -1851,6 +1854,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
