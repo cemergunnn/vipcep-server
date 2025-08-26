@@ -86,17 +86,21 @@ function broadcastAdminListToCustomers() {
             };
         });
 
-    // DÜZELTME: Duplicate admin'leri temizle
-    const uniqueAdmins = [];
-    const seenAdmins = new Set();
+// DÜZELTME: En son aktif admin'i tut
+const uniqueAdmins = [];
+const adminMap = new Map();
+
+adminList.forEach(admin => {
+    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
     
-    adminList.forEach(admin => {
-        const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
-        if (!seenAdmins.has(baseId)) {
-            seenAdmins.add(baseId);
-            uniqueAdmins.push(admin);
-        }
-    });
+    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
+    if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
+        adminMap.set(baseId, admin);
+    }
+});
+
+// Map'den array'e çevir
+adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     const message = JSON.stringify({
         type: 'admin-list-update',
@@ -1812,6 +1816,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
