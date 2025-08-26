@@ -886,6 +886,7 @@
         let currentLanguage = 'tr';
         let kvkkApproved = false;
         let incomingCallInfo = null;
+        let outgoingCallInfo = null;
         let currentAdminId = null;
         let selectedAdminId = null;
         let availableAdmins = [];
@@ -1382,7 +1383,12 @@
                 showError('Yetersiz kredi! WhatsApp\'tan kredi talep edin.');
                 return;
             }
-            
+                        // Admin ID'yi kaydet - ÖNEMLİ!
+                currentAdminId = selectedAdminId;
+                outgoingCallInfo = {
+                    adminId: selectedAdminId,
+                    adminName: admin.name
+                };
             setState('connecting');
             
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1560,7 +1566,7 @@
                         socket.send(JSON.stringify({
                             type: 'ice-candidate',
                             candidate: event.candidate,
-                            targetId: currentAdminId
+                            targetId: currentAdminId || selectedAdminId
                         }));
                     }
                 };
@@ -1980,6 +1986,7 @@
     </script>
 </body>
 </html>
+
 
 
 
