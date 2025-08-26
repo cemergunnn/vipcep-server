@@ -478,6 +478,8 @@ function stopHeartbeat(callKey, reason = 'normal') {
         clearInterval(heartbeat);
         activeHeartbeats.delete(callKey);
         
+        activeCallAdmins.clear();
+
         console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
         
         const [userId, adminId] = callKey.split('-');
@@ -1525,6 +1527,7 @@ wss.on('connection', (ws, req) => {
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
                     
+                    activeCallAdmins.clear();
                     let adminIdToRemove = null;
                     
                     if (senderType === 'admin') {
@@ -1803,6 +1806,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
