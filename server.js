@@ -456,8 +456,15 @@ function startHeartbeat(userId, adminId, callKey) {
                     VALUES ($1, $2, $3, $4, $5)
                 `, [userId, 'heartbeat', -1, newCredits, `Arama dakikası`]);
                 
-                broadcastCreditUpdate(userId, newCredits, 1);
-                
+                                // Customer'a kredi güncellemesi gönder
+                const customerClient = clients.get(userId);
+                if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+                    customerClient.ws.send(JSON.stringify({
+                        type: 'credit-update',
+                        credits: newCredits,
+                        creditsUsed: 1
+                    }));
+                }
                 console.log(`💳 Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
             }
         } catch (error) {
@@ -1854,6 +1861,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
