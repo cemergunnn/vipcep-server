@@ -1476,7 +1476,7 @@ wss.on('connection', (ws, req) => {
                         customerName: senderInfo?.name || 'Müşteri'
                     }));
                     
-                    const acceptCallKey = `${senderId}-${acceptingAdmin.uniqueId}`;
+                    const acceptCallKey = `${message.userId || senderId}-${acceptingAdmin.uniqueId}`;
                     startHeartbeat(senderId, acceptingAdmin.uniqueId, acceptCallKey);
                     
                     console.log(`💓 Heartbeat started for call: ${acceptCallKey}`);
@@ -1592,11 +1592,10 @@ wss.on('connection', (ws, req) => {
                     
                     try {
                         await pool.query(`
-                            INSERT INTO call_history (user_id, user_name, admin_id, duration, credits_used, end_reason)
-                            VALUES ($1, $2, $3, $4, $5, $6)
+                            INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
+                            VALUES ($1, $2, $3, $4, $5)
                         `, [
                             senderType === 'customer' ? senderId : message.targetId,
-                            senderInfo?.name || 'Unknown',
                             senderType === 'admin' ? senderId : message.targetId,
                             duration,
                             creditsUsed,
@@ -1851,6 +1850,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
