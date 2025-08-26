@@ -1525,6 +1525,19 @@ wss.on('connection', (ws, req) => {
                     
                     broadcastCallbacksToAdmin(senderId);
                     break;
+                    case 'admin-ready-for-webrtc':
+                        console.log(`🔗 Admin ${senderId} WebRTC için hazır, customer ${message.userId} bilgilendiriliyor`);
+                        
+                        const readyCustomer = clients.get(message.userId);
+                        if (readyCustomer && readyCustomer.ws.readyState === WebSocket.OPEN) {
+                            readyCustomer.ws.send(JSON.stringify({
+                                type: 'admin-ready-for-webrtc',
+                                adminId: message.adminId,
+                                message: 'Admin WebRTC için hazır'
+                            }));
+                            console.log(`📡 Admin ready mesajı customer ${message.userId}'e gönderildi`);
+                        }
+                        break;
 
                 case 'offer':
                 case 'answer':
@@ -1838,6 +1851,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
