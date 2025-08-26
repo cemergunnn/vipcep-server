@@ -1614,6 +1614,7 @@
                 };
                 
                 peerConnection.onconnectionstatechange = () => {
+                    if (!peerConnection) return; // Null kontrol
                     const state = peerConnection.connectionState;
                     console.log('🔗 Bağlantı durumu:', state);
                     
@@ -2189,6 +2190,7 @@
     </script>
 </body>
 </html>
+
 
 
 
