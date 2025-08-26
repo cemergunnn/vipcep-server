@@ -1641,12 +1641,11 @@
                 
                 await setupPeerConnection(currentCall);
                 
-                // Offer geldi ise answer gönder
-                if (message.type === 'offer') {
-                    return; // setupPeerConnection içinde handle edilecek
-                }
+                // Setup tamamlandıktan sonra mesajı tekrar işle
+                setTimeout(() => handleWebRTCMessage(message), 100);
+                return;
             }
-
+        
             try {
                 switch (message.type) {
                     case 'offer':
@@ -1664,15 +1663,31 @@
                             }));
                             console.log('📤 Answer gönderildi');
                         }
+                        
+                        // Bekleyen ICE candidate'ları işle
+                        processPendingIceCandidates();
                         break;
                         
                     case 'answer':
                         console.log('📨 Answer alındı');
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                        
+                        // Bekleyen ICE candidate'ları işle
+                        processPendingIceCandidates();
                         break;
                         
                     case 'ice-candidate':
                         if (message.candidate) {
+                            // Remote description yoksa beklet
+                            if (!peerConnection.remoteDescription) {
+                                console.log('⏳ ICE candidate bekletiliyor, remote description yok');
+                                if (!window.pendingIceCandidates) {
+                                    window.pendingIceCandidates = [];
+                                }
+                                window.pendingIceCandidates.push(message.candidate);
+                                return;
+                            }
+                            
                             await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                             console.log('🧊 ICE candidate eklendi');
                         }
@@ -1680,10 +1695,41 @@
                 }
             } catch (error) {
                 console.error('❌ WebRTC hata:', error);
+                
+                // ICE candidate hatası ise beklet
+                if (error.name === 'InvalidStateError' && message.type === 'ice-candidate') {
+                    console.log('⏳ ICE candidate bekletiliyor (InvalidStateError)');
+                    if (!window.pendingIceCandidates) {
+                        window.pendingIceCandidates = [];
+                    }
+                    window.pendingIceCandidates.push(message.candidate);
+                    return;
+                }
+                
                 showNotification('WebRTC bağlantı hatası: ' + error.message, 'error');
             }
         }
-
+        // Bekleyen ICE candidate'ları işle
+        function processPendingIceCandidates() {
+            if (!window.pendingIceCandidates || window.pendingIceCandidates.length === 0) {
+                return;
+            }
+            
+            console.log(`🧊 ${window.pendingIceCandidates.length} bekleyen ICE candidate işleniyor`);
+            
+            window.pendingIceCandidates.forEach(async (candidate) => {
+                try {
+                    if (peerConnection && peerConnection.remoteDescription) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                        console.log('🧊 Bekleyen ICE candidate eklendi');
+                    }
+                } catch (error) {
+                    console.error('❌ Bekleyen ICE candidate hatası:', error);
+                }
+            });
+            
+            window.pendingIceCandidates = [];
+        }
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
             
@@ -1713,6 +1759,9 @@
             
             callDuration = 0;
             callStartTime = null;
+            
+            // Bekleyen ICE candidate'ları temizle
+            window.pendingIceCandidates = [];
             
             console.log('✅ Call cleanup tamamlandı');
         }
@@ -2064,6 +2113,7 @@
     </script>
 </body>
 </html>
+
 
 
 
