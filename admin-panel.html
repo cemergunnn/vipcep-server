@@ -886,7 +886,19 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         let adminUniqueId = null;
-        let originalAdminId = "ADMIN001";
+                // Dynamic admin ID - session bazlı
+        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100); // ADMIN123, ADMIN456 vs.
+        
+        // Veya localStorage'dan al
+        const savedAdminId = localStorage.getItem('vipcep_admin_id');
+        if (savedAdminId) {
+            originalAdminId = savedAdminId;
+        } else {
+            originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100);
+            localStorage.setItem('vipcep_admin_id', originalAdminId);
+        }
+        
+        console.log('👤 Admin ID:', originalAdminId);
         let myCallbacks = [];
         
         let micEnabled = true;
@@ -2044,3 +2056,4 @@
     </script>
 </body>
 </html>
+
