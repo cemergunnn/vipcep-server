@@ -1481,7 +1481,7 @@ wss.on('connection', (ws, req) => {
                     }));
                     
                     const acceptCallKey = `${message.userId || senderId}-${acceptingAdmin.uniqueId}`;
-                    startHeartbeat(senderId, acceptingAdmin.uniqueId, acceptCallKey);
+                    startHeartbeat(message.userId || senderId, acceptingAdmin.uniqueId, acceptCallKey);
                     
                     console.log(`💓 Heartbeat started for call: ${acceptCallKey}`);
                     
@@ -1854,6 +1854,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
