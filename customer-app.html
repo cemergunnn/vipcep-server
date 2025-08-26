@@ -1082,7 +1082,12 @@
                     break;
                 
                 case 'call-ended':
+                    console.log('📞 Call-ended mesajı alındı:', message);
                     handleCallEnded(message);
+                    console.log('📱 showEndCallModal çağrılıyor...');
+                    showEndCallModal(message);
+                    console.log('🔊 playEndCallSound çağrılıyor...');
+                    playEndCallSound();
                     break;
                 
                 case 'callback-success':
@@ -2055,6 +2060,7 @@
     </script>
 </body>
 </html>
+
 
 
 
