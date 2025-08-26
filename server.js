@@ -410,9 +410,13 @@ function startHeartbeat(userId, adminId, callKey) {
         activeHeartbeats.delete(callKey);
     }
     
-const heartbeat = setInterval(async () => {
-    console.log(`💓 Heartbeat tick for ${callKey}`);
-    try {
+    console.log(`💓 Starting heartbeat: ${callKey}`);
+    
+    const heartbeat = setInterval(async () => {
+        console.log(`💓 Heartbeat tick for ${callKey}`);
+        try {
+            // Admin hala aktif mi kontrol et
+            const adminClient = Array.from(clients.values()).find(c => 
                 c.uniqueId === adminId && 
                 c.userType === 'admin' && 
                 c.ws && c.ws.readyState === WebSocket.OPEN
@@ -463,10 +467,10 @@ const heartbeat = setInterval(async () => {
     activeCallAdmins.set(adminId, {
         customerId: userId,
         callStartTime: Date.now()
-
     });
-        // Admin meşgul oldu, listesi güncelle
-        broadcastAdminListToCustomers();
+    
+    // Admin meşgul oldu, listesi güncelle
+    broadcastAdminListToCustomers();
 }
 
 function stopHeartbeat(callKey, reason = 'normal') {
@@ -1847,6 +1851,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
