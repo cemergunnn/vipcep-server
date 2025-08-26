@@ -1254,7 +1254,6 @@ app.get('/api/my-earnings', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 app.post('/api/reset-admin-earnings/:username', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1977,6 +1976,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
