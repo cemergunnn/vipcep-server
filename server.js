@@ -1209,28 +1209,29 @@ app.get('/api/stats', async (req, res) => {
             onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
             activeHeartbeats: activeHeartbeats.size,
             activeCallAdmins: activeCallAdmins.size
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-
-// Admin kazanç API'ları
-app.get('/api/admin-earnings', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim' });
-    }
-    
-    try {
-        const result = await pool.query(`
-            SELECT username, total_earned, last_updated 
-            FROM admin_earnings 
-            ORDER BY total_earned DESC
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-
-});
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+            });
+            
+            // Admin kazanç API'ları
+            app.get('/api/admin-earnings', async (req, res) => {
+                if (!req.session || !req.session.superAdmin) {
+                    return res.status(401).json({ error: 'Yetkisiz erisim' });
+                }
+                
+                try {
+                    const result = await pool.query(`
+                        SELECT username, total_earned, last_updated 
+                        FROM admin_earnings 
+                        ORDER BY total_earned DESC
+                    `);
+                    res.json(result.rows);
+                } catch (error) {
+                    res.status(500).json({ error: error.message });
+                }
+            });
 
 
 app.get('/api/my-earnings', async (req, res) => {
@@ -1974,6 +1975,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
