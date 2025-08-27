@@ -1622,7 +1622,7 @@
             console.log('📞 Görüşme sonlandırıldı:', message.reason);
             
             // ÖNCE modal ve ses - sonra cleanup!
-            const duration = Math.max(1, Math.ceil(callDuration / 60)); // En az 1 dk
+           const callDuration2 = Math.max(1, Math.ceil(callDuration / 60)); // En az 1 dk
             showEndCallModal({ duration: duration, creditsUsed: duration });
             playEndCallSound();
             
@@ -2187,6 +2187,7 @@
     </script>
 </body>
 </html>
+
 
 
 
