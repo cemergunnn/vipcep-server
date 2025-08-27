@@ -2188,7 +2188,31 @@
                 showNotification('Promise hatası oluştu!', 'error');
             }
         });
-
+        // ================== ADMIN EARNINGS FUNCTION ==================
+        
+        async function loadMyEarnings() {
+            try {
+                const response = await fetch('/api/my-earnings', { 
+                    credentials: 'include' 
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateMyEarningsDisplay(result.earnings);
+                } else {
+                    console.error('Kazanç bilgisi yüklenemedi');
+                }
+            } catch (error) {
+                console.error('Kazanç yükleme hatası:', error);
+            }
+        }
+        
+        function updateMyEarningsDisplay(earnings) {
+            const earningsElement = document.getElementById('earningsAmount');
+            if (earningsElement) {
+                earningsElement.textContent = earnings || 0;
+            }
+        }
         // ================== FINAL INITIALIZATION ==================
         
         console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
@@ -2202,6 +2226,7 @@
     </script>
 </body>
 </html>
+
 
 
 
