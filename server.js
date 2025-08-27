@@ -411,6 +411,14 @@ async function isUserApproved(userId, userName) {
 // ================== HEARTBEAT FUNCTIONS ==================
 
 function startHeartbeat(userId, adminId, callKey) {
+        let adminUsername = adminId;
+        const adminClient = Array.from(clients.values()).find(c => 
+            c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
+        );
+        if (adminClient && adminClient.name) {
+            adminUsername = adminClient.name;
+        }
+
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
         clearInterval(activeHeartbeats.get(callKey));
@@ -442,7 +450,7 @@ function startHeartbeat(userId, adminId, callKey) {
                 DO UPDATE SET 
                     total_earned = admin_earnings.total_earned + 1,
                     last_updated = CURRENT_TIMESTAMP
-            `, [adminId]);
+            `, [adminUsername]);
             
             console.log(`💰 Admin ${adminId} kazanci +1 kredi`);
             await pool.query(`
@@ -1975,6 +1983,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
