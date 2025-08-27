@@ -1799,12 +1799,14 @@
             setState('idle');
         }
         function showEndCallModal(message) {
-            const duration = Math.floor(callDuration / 60) + 1; // Yukarı yuvarla
+            const actualMinutes = Math.floor(callDuration / 60);
+            const creditsUsed = actualMinutes + 1; // İlk dakika + heartbeat dakikaları
             const modal = `
                 <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
                     <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
                         <h3 style="color: #2563eb; margin-bottom: 15px;">✅ Görüşme Tamamlandı</h3>
-                        <p><strong>Süre:</strong> ${duration} dakika</p>
+                        <p><strong>Süre:</strong> ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}</p>
+                        <p><strong>Kullanılan Kredi:</strong> ${creditsUsed} dk</p>
                         <p><strong>Kullanılan Kredi:</strong> ${duration} dk</p>
                         <p><strong>Kalan Kredi:</strong> ${userInfo.credits} dk</p>
                         <button onclick="this.closest('div').remove()" style="margin-top: 15px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">Tamam</button>
@@ -2175,6 +2177,7 @@
     </script>
 </body>
 </html>
+
 
 
 
