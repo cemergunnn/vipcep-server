@@ -439,24 +439,26 @@ function startHeartbeat(userId, adminId, callKey) {
                 return;
             }
             
-            const newCredits = Math.max(0, currentCredits - 1);
-            await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-         
-            // Admin kazancı artır
-        try {
-            await pool.query(`
-                INSERT INTO admin_earnings (username, total_earned) 
-                VALUES ($1, 1)
-                ON CONFLICT (username) 
-                DO UPDATE SET 
-                    total_earned = admin_earnings.total_earned + 1,
-                    last_updated = CURRENT_TIMESTAMP
-            `, [adminUsername]);
-            console.log(`💰 Admin ${adminUsername} kazanci +1 kredi`);
-        } catch (error) {
-            console.log(`❌ Admin kazanc hatası: ${error.message}`);
-        }
-                INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+    const newCredits = Math.max(0, currentCredits - 1);
+    await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+    
+    // Admin kazancı artır
+    try {
+        await pool.query(`
+            INSERT INTO admin_earnings (username, total_earned) 
+            VALUES ($1, 1)
+            ON CONFLICT (username) 
+            DO UPDATE SET 
+                total_earned = admin_earnings.total_earned + 1,
+                last_updated = CURRENT_TIMESTAMP
+        `, [adminUsername]);
+        console.log(`💰 Admin ${adminUsername} kazanci +1 kredi`);
+    } catch (error) {
+        console.log(`❌ Admin kazanc hatası: ${error.message}`);
+    }
+    
+    await pool.query(`
+        INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                 VALUES ($1, $2, $3, $4, $5)
             `, [userId, 'initial_call', -1, newCredits, `Arama başlangıc kredisi`]);
             
@@ -1985,6 +1987,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
