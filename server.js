@@ -411,78 +411,83 @@ async function isUserApproved(userId, userName) {
 // ================== HEARTBEAT FUNCTIONS ==================
 
 function startHeartbeat(userId, adminId, callKey) {
-        let adminUsername = adminId;
-        const adminClient = Array.from(clients.values()).find(c => 
-            c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
-        );
-        if (adminClient && adminClient.name) {
-            adminUsername = adminClient.name;
-        }
-
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
         clearInterval(activeHeartbeats.get(callKey));
         activeHeartbeats.delete(callKey);
     }
-// İlk dakika krediyi hemen düş (call başında)
-(async () => {
-    try {
-        console.log(`💳 Initial credit deduction for ${userId}`);
-        const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
-        
-        if (userResult.rows.length > 0) {
-            const currentCredits = userResult.rows[0].credits;
-            
-            if (currentCredits <= 0) {
-                console.log(`⚠️ No credits available for ${userId}, ending call immediately`);
-                stopHeartbeat(callKey, 'no_credits');
-                return;
-            }
-            
-    const newCredits = Math.max(0, currentCredits - 1);
-    await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+
+    // Admin username'ini bul
+    let adminUsername = adminId;
     
-    // Admin kazancı artır
-    try {
-        await pool.query(`
-            INSERT INTO admin_earnings (username, total_earned) 
-            VALUES ($1, 1)
-            ON CONFLICT (username) 
-            DO UPDATE SET 
-                total_earned = admin_earnings.total_earned + 1,
-                last_updated = CURRENT_TIMESTAMP
-        `, [adminUsername]);
-        console.log(`💰 Admin ${adminUsername} kazanci +1 kredi`);
-    } catch (error) {
-        console.log(`❌ Admin kazanc hatası: ${error.message}`);
+    const adminClient = Array.from(clients.values()).find(c => 
+        c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
+    );
+    if (adminClient && adminClient.name) {
+        adminUsername = adminClient.name;
     }
     
-    await pool.query(`
-        INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-                VALUES ($1, $2, $3, $4, $5)
-            `, [userId, 'initial_call', -1, newCredits, `Arama başlangıc kredisi`]);
+    console.log(`Admin earnings icin username: ${adminUsername}`);
+
+    // İlk dakika krediyi hemen düş (call başında)
+    (async () => {
+        try {
+            console.log(`Initial credit deduction for ${userId}`);
+            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
             
-            // Customer'a kredi güncellemesi gönder
-            const customerClient = clients.get(userId);
-            if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                customerClient.ws.send(JSON.stringify({
-                    type: 'credit-update',
-                    credits: newCredits,
-                    creditsUsed: 1
-                }));
+            if (userResult.rows.length > 0) {
+                const currentCredits = userResult.rows[0].credits;
+                
+                if (currentCredits <= 0) {
+                    console.log(`No credits available for ${userId}, ending call immediately`);
+                    stopHeartbeat(callKey, 'no_credits');
+                    return;
+                }
+                
+                const newCredits = Math.max(0, currentCredits - 1);
+                await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+                
+                await pool.query(`
+                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                    VALUES ($1, $2, $3, $4, $5)
+                `, [userId, 'initial_call', -1, newCredits, `Arama baslangic kredisi`]);
+                
+                // Initial admin kazancı
+                try {
+                    await pool.query(`
+                        INSERT INTO admin_earnings (username, total_earned) 
+                        VALUES ($1, 1)
+                        ON CONFLICT (username) 
+                        DO UPDATE SET 
+                            total_earned = admin_earnings.total_earned + 1,
+                            last_updated = CURRENT_TIMESTAMP
+                    `, [adminUsername]);
+                    console.log(`Admin ${adminUsername} kazanci +1 kredi`);
+                } catch (error) {
+                    console.log(`Admin kazanc hatası: ${error.message}`);
+                }
+                
+                // Customer'a kredi güncellemesi gönder
+                const customerClient = clients.get(userId);
+                if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+                    customerClient.ws.send(JSON.stringify({
+                        type: 'credit-update',
+                        credits: newCredits,
+                        creditsUsed: 1
+                    }));
+                }
+                console.log(`Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
             }
-            console.log(`💳 Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
+        } catch (error) {
+            console.log(`Initial credit deduction error ${callKey}:`, error.message);
         }
-    } catch (error) {
-        console.log(`Initial credit deduction error ${callKey}:`, error.message);
-    }
-})();
+    })();
     
-    console.log(`💓 Starting heartbeat: ${callKey}`);
+    console.log(`Starting heartbeat: ${callKey}`);
     
     const heartbeat = setInterval(async () => {
-        console.log(`💓 Heartbeat tick for ${callKey}`);
-        console.log(`🔍 Checking credits for user: ${userId}`);
+        console.log(`Heartbeat tick for ${callKey}`);
+        console.log(`Checking credits for user: ${userId}`);
 
         try {
             // Admin hala aktif mi kontrol et
@@ -493,7 +498,7 @@ function startHeartbeat(userId, adminId, callKey) {
             );
             
             if (!adminClient) {
-                console.log(`⚠️ Admin ${adminId} disconnected, stopping heartbeat`);
+                console.log(`Admin ${adminId} disconnected, stopping heartbeat`);
                 stopHeartbeat(callKey, 'admin_disconnected');
                 return;
             }
@@ -501,13 +506,14 @@ function startHeartbeat(userId, adminId, callKey) {
             // Customer hala bağlı mı?
             const customerClient = clients.get(userId);
             if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
-                console.log(`⚠️ Customer ${userId} disconnected, stopping heartbeat`);
+                console.log(`Customer ${userId} disconnected, stopping heartbeat`);
                 stopHeartbeat(callKey, 'customer_disconnected');
                 return;
             }
             
             const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
-            console.log(`📊 Query result:`, userResult.rows);
+            console.log(`Query result:`, userResult.rows);
+            
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
                 
@@ -519,12 +525,27 @@ function startHeartbeat(userId, adminId, callKey) {
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
                 
+                // Admin kazancı artır
+                try {
+                    await pool.query(`
+                        INSERT INTO admin_earnings (username, total_earned) 
+                        VALUES ($1, 1)
+                        ON CONFLICT (username) 
+                        DO UPDATE SET 
+                            total_earned = admin_earnings.total_earned + 1,
+                            last_updated = CURRENT_TIMESTAMP
+                    `, [adminUsername]);
+                    console.log(`Admin ${adminUsername} kazanci +1 kredi`);
+                } catch (error) {
+                    console.log(`Admin kazanc hatası: ${error.message}`);
+                }
+                
                 await pool.query(`
                     INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                     VALUES ($1, $2, $3, $4, $5)
-                `, [userId, 'heartbeat', -1, newCredits, `Arama dakikası`]);
+                `, [userId, 'heartbeat', -1, newCredits, `Arama dakikasi`]);
                 
-                                // Customer'a kredi güncellemesi gönder
+                // Customer'a kredi güncellemesi gönder
                 const customerClient = clients.get(userId);
                 if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                     customerClient.ws.send(JSON.stringify({
@@ -533,7 +554,7 @@ function startHeartbeat(userId, adminId, callKey) {
                         creditsUsed: 1
                     }));
                 }
-                console.log(`💳 Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
+                console.log(`Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
             }
         } catch (error) {
             console.log(`Heartbeat error ${callKey}:`, error.message);
@@ -1987,6 +2008,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
