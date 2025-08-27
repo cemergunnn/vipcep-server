@@ -1621,7 +1621,12 @@
             console.log('📞 handleCallEnded çağrıldı, message:', message);
             console.log('📞 Görüşme sonlandırıldı:', message.reason);
             
-            cleanupCall();
+            // ÖNCE modal ve ses - sonra cleanup!
+            const duration = Math.max(1, Math.ceil(callDuration / 60)); // En az 1 dk
+            showEndCallModal({ duration: duration, creditsUsed: duration });
+            playEndCallSound();
+            
+            cleanupCall(); // Şimdi temizle
             setState('idle');
             
             if (message.creditsUsed) {
@@ -2177,6 +2182,7 @@
     </script>
 </body>
 </html>
+
 
 
 
