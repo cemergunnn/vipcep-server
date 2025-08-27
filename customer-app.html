@@ -1828,37 +1828,39 @@
             setState('idle');
         }
         function showEndCallModal(message) {
+            console.log('🎯 Modal açılıyor - Gelen veri:', message);
+            
+            // Süreyi doğru al
             const duration = message.duration || 0;
             const actualMinutes = Math.floor(duration / 60);
             const actualSeconds = duration % 60;
-            const creditsUsed = message.creditsUsed || Math.ceil(duration / 60) || 1;
+            const creditsUsed = message.creditsUsed || 1;
+            
+            console.log('🎯 Modal değerleri - Süre:', duration, 'Dakika:', actualMinutes, 'Saniye:', actualSeconds, 'Kredi:', creditsUsed);
             
             const modal = `
                 <div id="endCallModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px; animation: scaleIn 0.3s ease-out;">
-                        <h3 style="color: #2563eb; margin-bottom: 15px; font-size: 20px;">✅ Görüşme Tamamlandı</h3>
-                        <div style="margin: 15px 0; padding: 15px; background: #f0f9ff; border-radius: 10px;">
-                            <p style="margin: 8px 0; color: #1e293b; font-size: 14px;">
-                                <strong>⏱️ Görüşme Süresi:</strong> ${actualMinutes}:${actualSeconds.toString().padStart(2, '0')}
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
+                        <h3 style="color: #2563eb; margin-bottom: 20px;">✅ Görüşme Tamamlandı</h3>
+                        
+                        <div style="font-size: 36px; font-weight: bold; color: #1e293b; margin: 20px 0;">
+                            ${actualMinutes}:${actualSeconds.toString().padStart(2, '0')}
+                        </div>
+                        
+                        <div style="background: #f0f9ff; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                            <p style="color: #dc2626; font-size: 16px; margin: 5px 0;">
+                                Kullanılan: ${creditsUsed} dakika
                             </p>
-                            <p style="margin: 8px 0; color: #dc2626; font-size: 14px;">
-                                <strong>💳 Kullanılan Kredi:</strong> ${creditsUsed} dakika
-                            </p>
-                            <p style="margin: 8px 0; color: #059669; font-size: 16px; font-weight: bold;">
-                                <strong>✨ Kalan Kredi:</strong> ${userInfo.credits} dakika
+                            <p style="color: #059669; font-size: 18px; font-weight: bold; margin: 5px 0;">
+                                Kalan: ${userInfo.credits} dakika
                             </p>
                         </div>
-                        <button onclick="document.getElementById('endCallModal').remove()" style="margin-top: 15px; padding: 12px 24px; background: linear-gradient(135deg, #2563eb, #16a34a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        
+                        <button onclick="document.getElementById('endCallModal').remove()" style="padding: 12px 24px; background: linear-gradient(135deg, #2563eb, #16a34a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                             Tamam
                         </button>
                     </div>
-                </div>
-                <style>
-                    @keyframes scaleIn {
-                        from { transform: scale(0.8); opacity: 0; }
-                        to { transform: scale(1); opacity: 1; }
-                    }
-                </style>`;
+                </div>`;
             
             // Eski modal varsa kaldır
             const oldModal = document.getElementById('endCallModal');
@@ -1866,7 +1868,6 @@
             
             document.body.insertAdjacentHTML('beforeend', modal);
         }
-        
         function playEndCallSound() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -2228,6 +2229,7 @@
     </script>
 </body>
 </html>
+
 
 
 
