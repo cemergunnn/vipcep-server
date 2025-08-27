@@ -1790,29 +1790,36 @@
         function endCall() {
             console.log('📞 Görüşme sonlandırılıyor (kullanıcı tarafından)');
             
-        // Duration'ı ÖNCE kaydet
-        let savedDuration = callDuration;
-        let creditsUsed = Math.ceil(savedDuration / 60) || 1;
-        
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({
-                type: 'end-call',
-                targetId: currentAdminId,
-                duration: savedDuration,
-                userId: userInfo.id,
-                userType: 'customer',
-                endedBy: 'customer'
-            }));
+            // Timer hala çalışıyorsa güncel süreyi al
+            if (callStartTime) {
+                callDuration = Math.floor((Date.now() - callStartTime) / 1000);
+            }
+            
+            // Duration'ı KAYDET
+            const finalDuration = callDuration;
+            const finalCredits = Math.ceil(finalDuration / 60) || 1;
+            
+            console.log('🔴 GÖRÜŞME BİTTİ - Süre:', finalDuration, 'saniye, Kredi:', finalCredits);
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'end-call',
+                    targetId: currentAdminId,
+                    duration: finalDuration,
+                    userId: userInfo.id,
+                    userType: 'customer',
+                    endedBy: 'customer'
+                }));
+            }
+            
+            // Modal AÇIK SÜRE İLE göster
+            showEndCallModal({ duration: finalDuration, creditsUsed: finalCredits });
+            playEndCallSound();
+            
+            // SONRA temizle
+            cleanupCall();
+            setState('idle');
         }
-        
-        // Modal ve ses ÖNCE göster
-        showEndCallModal({ duration: savedDuration, creditsUsed: creditsUsed });
-        playEndCallSound();
-        
-        // SONRA temizle
-        cleanupCall();
-        setState('idle');
-    }
         function showEndCallModal(message) {
             const duration = message.duration || 0;
             const actualMinutes = Math.floor(duration / 60);
@@ -2214,6 +2221,7 @@
     </script>
 </body>
 </html>
+
 
 
 
