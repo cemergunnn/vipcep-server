@@ -1683,9 +1683,9 @@ wss.on('connection', (ws, req) => {
                     console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
                     
                     // Müşteriye bildir
-                    const customerClient = clients.get(message.customerId || 'unknown');
-                    if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                        customerClient.ws.send(JSON.stringify({
+                    const targetCustomer = clients.get(message.customerId || 'unknown');
+                    if (targetCustomer && targetCustomer.ws.readyState === WebSocket.OPEN) {
+                        targetCustomer.ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Admin aramanızı reddetti'
                         }));
@@ -2026,6 +2026,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
