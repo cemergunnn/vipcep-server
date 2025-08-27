@@ -579,15 +579,16 @@ function stopHeartbeat(callKey, reason = 'normal') {
         clearInterval(heartbeat);
         activeHeartbeats.delete(callKey);
         
-        activeCallAdmins.clear();
-
-        console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
-        
         const [userId, adminId] = callKey.split('-');
         
+        // Lock'u temizle
+        adminLocks.delete(adminId);
+        console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
+        
+        activeCallAdmins.clear();
         activeCallAdmins.delete(adminId);
-        // Admin müsait oldu, listesi güncelle  
-        broadcastAdminListToCustomers();
+
+        console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
         
         for (const [id, call] of activeCalls.entries()) {
             if (call.adminId === adminId && call.customerId === userId) {
@@ -597,6 +598,9 @@ function stopHeartbeat(callKey, reason = 'normal') {
         }
         
         broadcastCallEnd(userId, adminId, reason);
+        
+        // Admin listesini güncelle - ÖNEMLİ!
+        broadcastAdminListToCustomers();
         
         setTimeout(() => {
             broadcastAdminListToCustomers();
@@ -2026,6 +2030,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
