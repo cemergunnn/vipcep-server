@@ -1094,20 +1094,7 @@
                     break;
                     
                 case 'call-rejected':
-                    console.log('❌ Arama reddedildi:', message.reason);
-                    
-                    // Ses durdur
-                    if (window.audioContext) {
-                        window.audioContext.close();
-                        window.audioContext = null;
-                    }
-                    
-                    // Call cleanup
-                    cleanupCall();
-                    setState('idle');
-                    
-                    // Hata mesajı göster
-                    showError(message.reason || 'Arama reddedildi');
+                    handleCallRejected(message);
                     break;
 
                 
@@ -1613,6 +1600,21 @@
         function handleCallFailed(message) {
             showError(message.reason || 'Arama başarısız!');
             setState('idle');
+        }
+        function handleCallRejected(message) {
+            console.log('❌ Arama reddedildi:', message.reason);
+            
+            // Ses durdur
+            if (window.audioContext) {
+                window.audioContext.close();
+                window.audioContext = null;
+            }
+            
+            // Call cleanup
+            cleanupCall();
+            setState('idle');
+            
+            showError(message.reason || 'Arama reddedildi');
         }
         
         function handleCallEnded(message) {
@@ -2173,6 +2175,7 @@
     </script>
 </body>
 </html>
+
 
 
 
