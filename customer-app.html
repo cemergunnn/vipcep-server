@@ -1727,9 +1727,11 @@
             showEndCallModal({ duration: finalDuration, creditsUsed: finalCredits });
             playEndCallSound();
             
-            // SONRA temizle
-            cleanupCall();
-            setState('idle');
+            // Modal kapandıktan sonra temizle
+            setTimeout(() => {
+                cleanupCall();
+                setState('idle');
+            }, 100);
         }
         function showEndCallModal(message) {
             console.log('🎯 Modal açılıyor - Gelen veri:', message);
@@ -1759,7 +1761,6 @@
                                 Kalan: ${userInfo.credits} dakika
                             </p>
                         </div>
-                        
                         <button onclick="document.getElementById('endCallModal').remove()" style="padding: 12px 24px; background: linear-gradient(135deg, #2563eb, #16a34a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
                             Tamam
                         </button>
@@ -1771,6 +1772,11 @@
             if (oldModal) oldModal.remove();
             
             document.body.insertAdjacentHTML('beforeend', modal);
+        // 5 saniye sonra otomatik kapat
+        setTimeout(() => {
+            const modal = document.getElementById('endCallModal');
+            if (modal) modal.remove();
+        }, 5000);
         }
         function playEndCallSound() {
             try {
@@ -2133,6 +2139,7 @@
     </script>
 </body>
 </html>
+
 
 
 
