@@ -1787,7 +1787,7 @@
         function endCall() {
             console.log('📞 Görüşme sonlandırılıyor (kullanıcı tarafından)');
             
-            const duration = callDuration;
+            let duration = callDuration;
             
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
@@ -1799,7 +1799,7 @@
                     endedBy: 'customer'
                 }));
             }
-            const duration = Math.max(1, Math.ceil(callDuration / 60));
+            let duration = Math.max(1, Math.ceil(callDuration / 60));
             
             // Modal ve ses göster
            
@@ -2187,6 +2187,7 @@
     </script>
 </body>
 </html>
+
 
 
 
