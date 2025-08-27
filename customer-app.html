@@ -1618,118 +1618,22 @@
         }
         
         function handleCallEnded(message) {
-            console.log('📞 Görüşme sonlandırıldı:', message.reason);
+            console.log('📞 Görüşme sonlandırıldı:', message);
             
-            // Duration'ı kaydet
-            let savedDuration = callDuration || 0;
+            // callFinalDuration kullan
+            let savedDuration = message.callFinalDuration || callDuration || 0;
             let creditsUsed = message.creditsUsed || Math.ceil(savedDuration / 60) || 1;
             
-            // ÖNCE modal ve ses
+            console.log('📊 handleCallEnded - Duration:', savedDuration, 'Credits:', creditsUsed);
+            
+            // Modal ve ses
             showEndCallModal({ duration: savedDuration, creditsUsed: creditsUsed });
             playEndCallSound();
             
-            // SONRA temizle
+            // Temizle
             cleanupCall();
             setState('idle');
-            
-            if (message.creditsUsed) {
-                showMessage(`Görüşme sona erdi. Kullanılan kredi: ${creditsUsed} dk`, 'info');
-            }
         }
-        
-        // WebRTC Functions
-        async function setupPeerConnection(shouldCreateOffer = true) {
-            try {
-                console.log('🔗 WebRTC bağlantısı kuruluyor...');
-                
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'ice-candidate',
-                            candidate: event.candidate,
-                            targetId: currentAdminId || selectedAdminId
-                        }));
-                    }
-                };
-                
-                peerConnection.ontrack = (event) => {
-                    console.log('🎵 Remote stream alındı');
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    remoteAudio.srcObject = event.streams[0];
-                    setState('connected');
-                    
-                   // Admin name güncelleme - GÜVENLİ
-                    const adminName = availableAdmins.find(a => a.id === currentAdminId)?.name || incomingCallInfo?.adminName || 'Usta';
-                    const currentAdminNameEl = document.getElementById('currentAdminName');
-                    if (currentAdminNameEl) {
-                        currentAdminNameEl.textContent = adminName;
-                    }
-                };
-                
-                peerConnection.onconnectionstatechange = () => {
-                    console.log('🔗 Connection state:', peerConnection.connectionState);
-                    
-                    if (peerConnection.connectionState === 'connected') {
-                        setState('connected');
-                        
-                        // Timer başlat - SADECE BİR KERE
-                        if (!callStartTime) {
-                            callStartTime = Date.now();
-                            callDuration = 0;
-                            console.log('⏱️ Timer başlatıldı - callStartTime:', callStartTime);
-                            startCallTimer();
-                        }
-                    } else if (peerConnection.connectionState === 'disconnected' ||
-                               peerConnection.connectionState === 'failed') {
-                        handleCallEnded({ reason: 'connection_lost' });
-                    }
-                };
-                
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }, 
-                    video: false 
-                });
-                
-                console.log('🎤 Mikrofon izni alındı');
-                localStream = stream;
-                
-                const localAudio = document.getElementById('localAudio');
-                localAudio.srcObject = stream;
-                
-                stream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, stream);
-                });
-                if (!shouldCreateOffer) {
-                console.log('⏳ Admin\'den offer bekleniyor...');
-                return;
-            }
-                console.log('📨 WebRTC Offer oluşturuluyor');
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    console.log('📤 Offer gönderiliyor, targetId:', currentAdminId);
-                    socket.send(JSON.stringify({
-                        type: 'offer',
-                        offer: offer,
-                        targetId: currentAdminId
-                    }));
-                    console.log('📤 Offer gönderildi!');
-                }
-
-            } catch (error) {
-                console.log('❌ WebRTC kurulum hatası:', error);
-                showError('Mikrofon izni alınamadı!');
-                setState('idle');
-            }
-        }
-        
         function handleWebRTCMessage(message) {
             if (!peerConnection) return;
             
@@ -2229,6 +2133,7 @@
     </script>
 </body>
 </html>
+
 
 
 
