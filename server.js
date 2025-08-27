@@ -1772,6 +1772,18 @@ wss.on('connection', (ws, req) => {
                     
                     const duration = message.duration || 0;
                     const creditsUsed = Math.ceil(duration / 60);
+                    // Customer'a call-ended mesajı gönder
+                    if (senderType === 'admin' && message.targetId) {
+                        const customerClient = clients.get(message.targetId);
+                        if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+                            customerClient.ws.send(JSON.stringify({
+                                type: 'call-ended',
+                                reason: 'admin_ended',
+                                duration: duration,
+                                creditsUsed: creditsUsed
+                            }));
+                        }
+                    }
                     
                     try {
                         await pool.query(`
@@ -2033,6 +2045,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
