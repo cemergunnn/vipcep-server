@@ -1092,6 +1092,24 @@
                     // Ses çal
                     playEndCallSound();
                     break;
+                    
+                case 'call-rejected':
+                    console.log('❌ Arama reddedildi:', message.reason);
+                    
+                    // Ses durdur
+                    if (window.audioContext) {
+                        window.audioContext.close();
+                        window.audioContext = null;
+                    }
+                    
+                    // Call cleanup
+                    cleanupCall();
+                    setState('idle');
+                    
+                    // Hata mesajı göster
+                    showError(message.reason || 'Arama reddedildi');
+                    break;
+
                 
                 case 'call-ended':
                     console.log('📞 Call-ended mesajı alındı:', message);
@@ -2155,6 +2173,7 @@
     </script>
 </body>
 </html>
+
 
 
 
