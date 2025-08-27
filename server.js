@@ -1675,18 +1675,19 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'reject-incoming-call':
-                    console.log(`❌ Customer ${senderId} rejecting call from admin ${message.adminId}`);
+                    console.log(`❌ Admin tarafından arama reddedildi`);
                     
-                    const rejectingAdmin = Array.from(clients.values()).find(c => 
-                        c.userType === 'admin' && 
-                        (c.uniqueId === message.adminId || c.id === message.adminId) &&
-                        c.ws && c.ws.readyState === WebSocket.OPEN
-                    );
+                    // Admin reddederse kilidi kaldır
+                    adminLocks.delete(message.adminId);
+                    broadcastAdminListToCustomers();
+                    console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
                     
-                    if (rejectingAdmin && rejectingAdmin.ws.readyState === WebSocket.OPEN) {
-                        rejectingAdmin.ws.send(JSON.stringify({
+                    // Müşteriye bildir
+                    const customerClient = clients.get(message.customerId || 'unknown');
+                    if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+                        customerClient.ws.send(JSON.stringify({
                             type: 'call-rejected',
-                            reason: 'Müşteri aramayı reddetti'
+                            reason: 'Admin aramanızı reddetti'
                         }));
                     }
                     break;
@@ -2025,6 +2026,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
