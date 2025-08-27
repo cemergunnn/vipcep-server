@@ -1618,19 +1618,22 @@
         }
         
         function handleCallEnded(message) {
-            console.log('📞 handleCallEnded çağrıldı, message:', message);
             console.log('📞 Görüşme sonlandırıldı:', message.reason);
             
-            // ÖNCE modal ve ses - sonra cleanup!
-                    const callEndDuration = Math.max(1, Math.ceil(callDuration / 60));
-            showEndCallModal({ duration: callEndDuration, creditsUsed: callEndDuration });
+            // Duration'ı kaydet
+            let savedDuration = callDuration || 0;
+            let creditsUsed = message.creditsUsed || Math.ceil(savedDuration / 60) || 1;
+            
+            // ÖNCE modal ve ses
+            showEndCallModal({ duration: savedDuration, creditsUsed: creditsUsed });
             playEndCallSound();
             
-            cleanupCall(); // Şimdi temizle
+            // SONRA temizle
+            cleanupCall();
             setState('idle');
             
             if (message.creditsUsed) {
-                showMessage(`Görüşme sona erdi. Kullanılan kredi: ${message.creditsUsed} dk`, 'info');
+                showMessage(`Görüşme sona erdi. Kullanılan kredi: ${creditsUsed} dk`, 'info');
             }
         }
         
@@ -1787,42 +1790,66 @@
         function endCall() {
             console.log('📞 Görüşme sonlandırılıyor (kullanıcı tarafından)');
             
-            let duration = callDuration;
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'end-call',
-                    targetId: currentAdminId,
-                    duration: duration,
-                    userId: userInfo.id,
-                    userType: 'customer',
-                    endedBy: 'customer'
-                }));
-            }
-            let duration = Math.max(1, Math.ceil(callDuration / 60));
-            
-            // Modal ve ses göster
-           
-            showEndCallModal({ duration: duration, creditsUsed: duration });
-            playEndCallSound();
-            cleanupCall();
-            setState('idle');
+        // Duration'ı ÖNCE kaydet
+        let savedDuration = callDuration;
+        let creditsUsed = Math.ceil(savedDuration / 60) || 1;
+        
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'end-call',
+                targetId: currentAdminId,
+                duration: savedDuration,
+                userId: userInfo.id,
+                userType: 'customer',
+                endedBy: 'customer'
+            }));
         }
+        
+        // Modal ve ses ÖNCE göster
+        showEndCallModal({ duration: savedDuration, creditsUsed: creditsUsed });
+        playEndCallSound();
+        
+        // SONRA temizle
+        cleanupCall();
+        setState('idle');
+    }
         function showEndCallModal(message) {
-            const actualMinutes = Math.floor(callDuration / 60);
-            const creditsUsed = actualMinutes + 1; // İlk dakika + heartbeat dakikaları
+            const duration = message.duration || 0;
+            const actualMinutes = Math.floor(duration / 60);
+            const actualSeconds = duration % 60;
+            const creditsUsed = message.creditsUsed || Math.ceil(duration / 60) || 1;
+            
             const modal = `
-                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
-                        <h3 style="color: #2563eb; margin-bottom: 15px;">✅ Görüşme Tamamlandı</h3>
-                        <p><strong>Süre:</strong> ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}</p>
-                        <p><strong>Kullanılan Kredi:</strong> ${creditsUsed} dk</p>
-                        <p><strong>Kullanılan Kredi:</strong> ${duration} dk</p>
-                        <p><strong>Kalan Kredi:</strong> ${userInfo.credits} dk</p>
-                        <button onclick="this.closest('div').remove()" style="margin-top: 15px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">Tamam</button>
+                <div id="endCallModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px; animation: scaleIn 0.3s ease-out;">
+                        <h3 style="color: #2563eb; margin-bottom: 15px; font-size: 20px;">✅ Görüşme Tamamlandı</h3>
+                        <div style="margin: 15px 0; padding: 15px; background: #f0f9ff; border-radius: 10px;">
+                            <p style="margin: 8px 0; color: #1e293b; font-size: 14px;">
+                                <strong>⏱️ Görüşme Süresi:</strong> ${actualMinutes}:${actualSeconds.toString().padStart(2, '0')}
+                            </p>
+                            <p style="margin: 8px 0; color: #dc2626; font-size: 14px;">
+                                <strong>💳 Kullanılan Kredi:</strong> ${creditsUsed} dakika
+                            </p>
+                            <p style="margin: 8px 0; color: #059669; font-size: 16px; font-weight: bold;">
+                                <strong>✨ Kalan Kredi:</strong> ${userInfo.credits} dakika
+                            </p>
+                        </div>
+                        <button onclick="document.getElementById('endCallModal').remove()" style="margin-top: 15px; padding: 12px 24px; background: linear-gradient(135deg, #2563eb, #16a34a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            Tamam
+                        </button>
                     </div>
                 </div>
-            `;
+                <style>
+                    @keyframes scaleIn {
+                        from { transform: scale(0.8); opacity: 0; }
+                        to { transform: scale(1); opacity: 1; }
+                    }
+                </style>`;
+            
+            // Eski modal varsa kaldır
+            const oldModal = document.getElementById('endCallModal');
+            if (oldModal) oldModal.remove();
+            
             document.body.insertAdjacentHTML('beforeend', modal);
         }
         
@@ -2187,6 +2214,7 @@
     </script>
 </body>
 </html>
+
 
 
 
