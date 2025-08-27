@@ -1621,7 +1621,7 @@
             console.log('📞 Görüşme sonlandırıldı:', message);
             
             // callFinalDuration kullan
-            let savedDuration = message.callFinalDuration || callDuration || 0;
+            let savedDuration = message.duration || message.callFinalDuration || callDuration || 0;
             let creditsUsed = message.creditsUsed || Math.ceil(savedDuration / 60) || 1;
             
             console.log('📊 handleCallEnded - Duration:', savedDuration, 'Credits:', creditsUsed);
@@ -2139,6 +2139,7 @@
     </script>
 </body>
 </html>
+
 
 
 
