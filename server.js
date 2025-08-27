@@ -1678,22 +1678,25 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
-                case 'reject-incoming-call':
+                 case 'reject-incoming-call':
                     console.log(`❌ Admin tarafından arama reddedildi`);
+                    
+                    // Lock bilgisinden customer ID'yi al
+                    const lockInfo = adminLocks.get(message.adminId);
+                    if (lockInfo) {
+                        const rejectedCustomer = clients.get(lockInfo.lockedBy);
+                        if (rejectedCustomer && rejectedCustomer.ws.readyState === WebSocket.OPEN) {
+                            rejectedCustomer.ws.send(JSON.stringify({
+                                type: 'call-rejected',
+                                reason: 'Admin aramanızı reddetti'
+                            }));
+                        }
+                    }
                     
                     // Admin reddederse kilidi kaldır
                     adminLocks.delete(message.adminId);
                     broadcastAdminListToCustomers();
                     console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
-                    
-                    // Müşteriye bildir
-                    const rejectedCustomer = clients.get(message.customerId || 'unknown');
-                    if (rejectedCustomer && rejectedCustomer.ws.readyState === WebSocket.OPEN) {
-                        rejectedCustomer.ws.send(JSON.stringify({
-                            type: 'call-rejected',
-                            reason: 'Admin aramanızı reddetti'
-                        }));
-                    }
                     break;
 
                 case 'remove-callback':
@@ -2030,6 +2033,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
