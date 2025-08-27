@@ -49,6 +49,7 @@ const activeHeartbeats = new Map();
 const activeCallAdmins = new Map();
 const activeCalls = new Map();
 const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
+const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
 let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
 
@@ -82,7 +83,7 @@ function broadcastAdminListToCustomers() {
             return {
                 id: adminKey,
                 name: admin.name,
-                status: isInCall ? 'busy' : 'available'
+                status: (isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available'
             };
         });
 
@@ -1484,7 +1485,23 @@ wss.on('connection', (ws, req) => {
 
                 case 'direct-call-request':
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
+                    // Admin lock kontrolü
+                    if (adminLocks.has(message.targetAdminId)) {
+                        ws.send(JSON.stringify({
+                            type: 'call-rejected',
+                            reason: 'Bu usta şu anda meşgul!'
+                        }));
+                        break;
+                    }
                     
+                    // Admin'i kilitle
+                    adminLocks.set(message.targetAdminId, {
+                        lockedBy: message.userId,
+                        lockTime: Date.now()
+                    });
+                    
+                    console.log(`🔒 Admin ${message.targetAdminId} kilitlendi: ${message.userId}`);
+                    broadcastAdminListToCustomers();
                     if (message.credits <= 0) {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
@@ -2008,6 +2025,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
