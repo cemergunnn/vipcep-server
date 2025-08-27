@@ -1673,8 +1673,15 @@
                     
                     if (peerConnection.connectionState === 'connected') {
                         setState('connected');
-                        startCallTimer();
-                    } else if (peerConnection.connectionState === 'disconnected' || 
+                        
+                        // Timer başlat - SADECE BİR KERE
+                        if (!callStartTime) {
+                            callStartTime = Date.now();
+                            callDuration = 0;
+                            console.log('⏱️ Timer başlatıldı - callStartTime:', callStartTime);
+                            startCallTimer();
+                        }
+                    } else if (peerConnection.connectionState === 'disconnected' ||
                                peerConnection.connectionState === 'failed') {
                         handleCallEnded({ reason: 'connection_lost' });
                     }
@@ -2221,6 +2228,7 @@
     </script>
 </body>
 </html>
+
 
 
 
