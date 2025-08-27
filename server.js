@@ -1779,7 +1779,7 @@ wss.on('connection', (ws, req) => {
                             customerClient.ws.send(JSON.stringify({
                                 type: 'call-ended',
                                 reason: 'admin_ended',
-                                duration: duration,
+                                callFinalDuration: callFinalDuration,  // <-- YENİ İSİM
                                 creditsUsed: creditsUsed
                             }));
                         }
@@ -2045,6 +2045,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
