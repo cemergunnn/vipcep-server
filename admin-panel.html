@@ -2119,32 +2119,7 @@
         } catch (error) {
             console.error('Zil sesi çalınamadı:', error);
         }
-        function playRingTone() {
-            try {
-                // Basit zil sesi oluştur
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.2);
-                
-                setTimeout(() => {
-                    if (incomingCallInfo && callState === 'incoming') {
-                        playRingTone(); // Tekrar çal
-                    }
-                }, 1000);
-                
-            } catch (error) {
-                console.error('❌ Zil sesi çalınamadı:', error);
-            }
-        }
+
         function showNotification(message, type = 'info', duration = 5000) {
             const container = document.getElementById('creditNotifications');
             if (!container) return;
@@ -2236,6 +2211,7 @@
     </script>
 </body>
 </html>
+
 
 
 
