@@ -986,7 +986,7 @@
                         return loginSuccess(data);
                     }
                 }
-                console.log('❌ Yetkisiz erişim, yönlendiriliyor...');
+                console.log('❌ Yetkisiz erisim, yönlendiriliyor...');
             } catch (error) {
                 console.error('❌ Auth kontrol hatası:', error);
             }
@@ -2076,14 +2076,13 @@
                     u.name.toLowerCase().includes(term) || u.id.includes(term)
                 );
                 console.log('🔍 Arama sonucu:', filteredUsers.length, 'kullanıcı');
-            }
-            
-            renderOnlineUsers();
+renderOnlineUsers();
         }
-
+        
         // ================== UTILITY FUNCTIONS ==================
         
         function playRingTone() {
+        try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             
             // iPhone zil tonu frekansları (Marimba)
@@ -2211,6 +2210,7 @@
     </script>
 </body>
 </html>
+
 
 
 
