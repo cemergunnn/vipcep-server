@@ -2084,30 +2084,40 @@
         // ================== UTILITY FUNCTIONS ==================
         
         function playRingTone() {
-            try {
-                // Basit zil sesi oluştur
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // iPhone zil tonu frekansları (Marimba)
+            const notes = [659, 587, 659, 587, 659, 587, 659]; // E-D-E-D-E-D-E
+            let noteIndex = 0;
+            
+            function playNote() {
+                if (noteIndex >= notes.length) noteIndex = 0;
                 
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
                 
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
                 
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.2);
+                osc.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
+                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.3);
+                noteIndex++;
                 
                 setTimeout(() => {
-                    if (incomingCallInfo) {
-                        playRingTone(); // Tekrar çal
+                    if (incomingCallInfo && callState === 'incoming') {
+                        playNote();
                     }
-                }, 1000);
-                
-            } catch (error) {
-                console.error('❌ Zil sesi çalınamadı:', error);
+                }, 400);
             }
+            
+            playNote();
+            
+        } catch (error) {
+            console.error('Zil sesi çalınamadı:', error);
         }
         function playRingTone() {
             try {
@@ -2226,6 +2236,7 @@
     </script>
 </body>
 </html>
+
 
 
 
