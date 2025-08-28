@@ -702,9 +702,9 @@
                            placeholder="0000" maxlength="4" autocomplete="off">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" data-text-tr="Kullanıcı Adınız" data-text-en="Full Name">Ad Soyad</label>
+                    <label class="form-label" data-text-tr="Ad Soyad" data-text-en="Full Name">Ad Soyad</label>
                     <input type="text" class="form-input" id="userNameInput" 
-                           data-placeholder-tr="Kullanıcı Adınız" data-placeholder-en="Your user name"
+                           data-placeholder-tr="Adınızı ve Soyadınızı" data-placeholder-en="Your First and Last Name"
                            placeholder="Adınızı ve Soyadınızı">
                 </div>
                 <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
@@ -1583,7 +1583,7 @@
         // Call State Handlers
         function handleCallConnecting(message) {
             setState('connecting');
-            setupPeerConnection(true);
+            setupPeerConnection();
         }
         
         function handleCallAccepted(message) {
@@ -1618,22 +1618,103 @@
         }
         
         function handleCallEnded(message) {
-            console.log('📞 Görüşme sonlandırıldı:', message);
+            console.log('📞 handleCallEnded çağrıldı, message:', message);
+            console.log('📞 Görüşme sonlandırıldı:', message.reason);
             
-            // callFinalDuration kullan
-            let savedDuration = message.duration || message.callFinalDuration || callDuration || 0;
-            let creditsUsed = message.creditsUsed || Math.ceil(savedDuration / 60) || 1;
-            
-            console.log('📊 handleCallEnded - Duration:', savedDuration, 'Credits:', creditsUsed);
-            
-            // Modal ve ses
-            showEndCallModal({ duration: savedDuration, creditsUsed: creditsUsed });
-            playEndCallSound();
-            
-            // Temizle
             cleanupCall();
             setState('idle');
+            
+            if (message.creditsUsed) {
+                showMessage(`Görüşme sona erdi. Kullanılan kredi: ${message.creditsUsed} dk`, 'info');
+            }
         }
+        
+        // WebRTC Functions
+        async function setupPeerConnection(shouldCreateOffer = true) {
+            try {
+                console.log('🔗 WebRTC bağlantısı kuruluyor...');
+                
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate,
+                            targetId: currentAdminId || selectedAdminId
+                        }));
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    console.log('🎵 Remote stream alındı');
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    remoteAudio.srcObject = event.streams[0];
+                    setState('connected');
+                    
+                   // Admin name güncelleme - GÜVENLİ
+                    const adminName = availableAdmins.find(a => a.id === currentAdminId)?.name || incomingCallInfo?.adminName || 'Usta';
+                    const currentAdminNameEl = document.getElementById('currentAdminName');
+                    if (currentAdminNameEl) {
+                        currentAdminNameEl.textContent = adminName;
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('🔗 Connection state:', peerConnection.connectionState);
+                    
+                    if (peerConnection.connectionState === 'connected') {
+                        setState('connected');
+                        startCallTimer();
+                    } else if (peerConnection.connectionState === 'disconnected' || 
+                               peerConnection.connectionState === 'failed') {
+                        handleCallEnded({ reason: 'connection_lost' });
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }, 
+                    video: false 
+                });
+                
+                console.log('🎤 Mikrofon izni alındı');
+                localStream = stream;
+                
+                const localAudio = document.getElementById('localAudio');
+                localAudio.srcObject = stream;
+                
+                stream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, stream);
+                });
+                if (!shouldCreateOffer) {
+                console.log('⏳ Admin\'den offer bekleniyor...');
+                return;
+            }
+                console.log('📨 WebRTC Offer oluşturuluyor');
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    console.log('📤 Offer gönderiliyor, targetId:', currentAdminId);
+                    socket.send(JSON.stringify({
+                        type: 'offer',
+                        offer: offer,
+                        targetId: currentAdminId
+                    }));
+                    console.log('📤 Offer gönderildi!');
+                }
+
+            } catch (error) {
+                console.log('❌ WebRTC kurulum hatası:', error);
+                showError('Mikrofon izni alınamadı!');
+                setState('idle');
+            }
+        }
+        
         function handleWebRTCMessage(message) {
             if (!peerConnection) return;
             
@@ -1701,74 +1782,38 @@
         function endCall() {
             console.log('📞 Görüşme sonlandırılıyor (kullanıcı tarafından)');
             
-            // Timer hala çalışıyorsa güncel süreyi al
-            if (callStartTime) {
-                callDuration = Math.floor((Date.now() - callStartTime) / 1000);
-            }
-            
-            // Duration'ı KAYDET
-            const finalDuration = callDuration;
-            const finalCredits = Math.ceil(finalDuration / 60) || 1;
-            
-            console.log('🔴 GÖRÜŞME BİTTİ - Süre:', finalDuration, 'saniye, Kredi:', finalCredits);
+            const duration = callDuration;
             
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'end-call',
                     targetId: currentAdminId,
-                    duration: finalDuration,
+                    duration: duration,
                     userId: userInfo.id,
                     userType: 'customer',
                     endedBy: 'customer'
                 }));
             }
-
+            
+            cleanupCall();
+            setState('idle');
         }
         function showEndCallModal(message) {
-            console.log('🎯 Modal açılıyor - Gelen veri:', message);
-            
-            // Süreyi doğru al
-            const duration = message.duration || 0;
-            const actualMinutes = Math.floor(duration / 60);
-            const actualSeconds = duration % 60;
-            const creditsUsed = message.creditsUsed || 1;
-            
-            console.log('🎯 Modal değerleri - Süre:', duration, 'Dakika:', actualMinutes, 'Saniye:', actualSeconds, 'Kredi:', creditsUsed);
-            
+            const duration = Math.floor(callDuration / 60) + 1; // Yukarı yuvarla
             const modal = `
-                <div id="endCallModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
                     <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
-                        <h3 style="color: #2563eb; margin-bottom: 20px;">✅ Görüşme Tamamlandı</h3>
-                        
-                        <div style="font-size: 36px; font-weight: bold; color: #1e293b; margin: 20px 0;">
-                            ${actualMinutes}:${actualSeconds.toString().padStart(2, '0')}
-                        </div>
-                        
-                        <div style="background: #f0f9ff; padding: 15px; border-radius: 10px; margin: 15px 0;">
-                            <p style="color: #dc2626; font-size: 16px; margin: 5px 0;">
-                                Kullanılan: ${creditsUsed} dakika
-                            </p>
-                            <p style="color: #059669; font-size: 18px; font-weight: bold; margin: 5px 0;">
-                                Kalan: ${userInfo.credits} dakika
-                            </p>
-                        </div>
-                        <button onclick="document.getElementById('endCallModal').remove()" style="padding: 12px 24px; background: linear-gradient(135deg, #2563eb, #16a34a); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                            Tamam
-                        </button>
+                        <h3 style="color: #2563eb; margin-bottom: 15px;">✅ Görüşme Tamamlandı</h3>
+                        <p><strong>Süre:</strong> ${duration} dakika</p>
+                        <p><strong>Kullanılan Kredi:</strong> ${duration} dk</p>
+                        <p><strong>Kalan Kredi:</strong> ${userInfo.credits} dk</p>
+                        <button onclick="this.closest('div').remove()" style="margin-top: 15px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">Tamam</button>
                     </div>
-                </div>`;
-            
-            // Eski modal varsa kaldır
-            const oldModal = document.getElementById('endCallModal');
-            if (oldModal) oldModal.remove();
-            
+                </div>
+            `;
             document.body.insertAdjacentHTML('beforeend', modal);
-        // 5 saniye sonra otomatik kapat
-        setTimeout(() => {
-            const modal = document.getElementById('endCallModal');
-            if (modal) modal.remove();
-        }, 5000);
         }
+        
         function playEndCallSound() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -2130,26 +2175,6 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
