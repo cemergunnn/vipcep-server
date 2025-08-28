@@ -1722,13 +1722,6 @@
                     endedBy: 'customer'
                 }));
             }
-            
-            // Modal AÇIK SÜRE İLE göster
-            showEndCallModal({ duration: finalDuration, creditsUsed: finalCredits });
-            playEndCallSound();
-            
-            // Modal kapandıktan sonra temizle
-            setTimeout(() => {
                 cleanupCall();
                 setState('idle');
             }, 100);
@@ -2139,6 +2132,7 @@
     </script>
 </body>
 </html>
+
 
 
 
