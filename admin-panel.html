@@ -986,7 +986,7 @@
                         return loginSuccess(data);
                     }
                 }
-                console.log('❌ Yetkisiz erisim, yönlendiriliyor...');
+                console.log('❌ Yetkisiz erişim, yönlendiriliyor...');
             } catch (error) {
                 console.error('❌ Auth kontrol hatası:', error);
             }
@@ -2076,49 +2076,65 @@
                     u.name.toLowerCase().includes(term) || u.id.includes(term)
                 );
                 console.log('🔍 Arama sonucu:', filteredUsers.length, 'kullanıcı');
-renderOnlineUsers();
+            }
+            
+            renderOnlineUsers();
         }
-        
+
         // ================== UTILITY FUNCTIONS ==================
         
         function playRingTone() {
-        try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // iPhone zil tonu frekansları (Marimba)
-            const notes = [659, 587, 659, 587, 659, 587, 659]; // E-D-E-D-E-D-E
-            let noteIndex = 0;
-            
-            function playNote() {
-                if (noteIndex >= notes.length) noteIndex = 0;
+            try {
+                // Basit zil sesi oluştur
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
                 
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
                 
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
                 
-                osc.frequency.setValueAtTime(notes[noteIndex], audioContext.currentTime);
-                gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
                 
-                osc.start();
-                osc.stop(audioContext.currentTime + 0.3);
-                noteIndex++;
+                setTimeout(() => {
+                    if (incomingCallInfo) {
+                        playRingTone(); // Tekrar çal
+                    }
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Zil sesi çalınamadı:', error);
+            }
+        }
+        function playRingTone() {
+            try {
+                // Basit zil sesi oluştur
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
                 
                 setTimeout(() => {
                     if (incomingCallInfo && callState === 'incoming') {
-                        playNote();
+                        playRingTone(); // Tekrar çal
                     }
-                }, 400);
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Zil sesi çalınamadı:', error);
             }
-            
-            playNote();
-            
-        } catch (error) {
-            console.error('Zil sesi çalınamadı:', error);
         }
-
         function showNotification(message, type = 'info', duration = 5000) {
             const container = document.getElementById('creditNotifications');
             if (!container) return;
@@ -2210,9 +2226,6 @@ renderOnlineUsers();
     </script>
 </body>
 </html>
-
-
-
 
 
 
