@@ -68,13 +68,12 @@ function broadcastToCustomers(message) {
 }
 
 function broadcastAdminListToCustomers() {
-    // DÜZELTME: Admin filtrelemesini iyileştir
     const adminList = Array.from(clients.values())
         .filter(c => {
             return c.userType === 'admin' &&
                    c.ws &&
                    c.ws.readyState === WebSocket.OPEN &&
-                   c.online !== false; // Offline admin'leri dahil etme
+                   c.online !== false;
         })
         .map(admin => {
             const adminKey = admin.uniqueId || admin.id;
@@ -87,25 +86,22 @@ function broadcastAdminListToCustomers() {
             };
         });
 
-// DÜZELTME: En son aktif admin'i tut
-const uniqueAdmins = [];
-const adminMap = new Map();
+    const uniqueAdmins = [];
+    const adminMap = new Map();
 
-adminList.forEach(admin => {
-    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
+    adminList.forEach(admin => {
+        const baseId = admin.id.split('_')[0];
 
-    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
-    if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
-        adminMap.set(baseId, admin);
-    }
-});
+        if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
+            adminMap.set(baseId, admin);
+        }
+    });
 
-// Map'den array'e çevir
-adminMap.forEach(admin => uniqueAdmins.push(admin));
+    adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     const message = JSON.stringify({
         type: 'admin-list-update',
-        admins: uniqueAdmins // Unique admin listesi gönder
+        admins: uniqueAdmins
     });
 
     let sentCount = 0;
@@ -122,6 +118,7 @@ adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     console.log(`📡 Admin list sent to ${sentCount} customers: ${uniqueAdmins.length} unique admins`);
 }
+
 function broadcastCallbacksToAdmin(adminId) {
     const adminClient = Array.from(clients.values()).find(c =>
         c.userType === 'admin' &&
@@ -138,6 +135,7 @@ function broadcastCallbacksToAdmin(adminId) {
         console.log(`📋 Callback list sent to admin ${adminId}: ${callbacks.length} callbacks`);
     }
 }
+
 function broadcastToAdmins(message) {
     clients.forEach(client => {
         if (client.userType === 'admin' && client.ws.readyState === WebSocket.OPEN) {
@@ -145,6 +143,7 @@ function broadcastToAdmins(message) {
         }
     });
 }
+
 function sendToClient(clientId, message) {
     const client = clients.get(clientId);
     if (client && client.ws && client.ws.readyState === WebSocket.OPEN) {
@@ -172,6 +171,7 @@ async function checkRateLimit(ip, userType = 'customer') {
         return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
     }
 }
+
 async function recordFailedLogin(ip, userType = 'customer') {
     try {
         await pool.query(
@@ -182,6 +182,7 @@ async function recordFailedLogin(ip, userType = 'customer') {
         console.error('❌ Failed to record login attempt:', error.message);
     }
 }
+
 async function clearFailedLoginAttempts(ip) {
     try {
         await pool.query('DELETE FROM failed_logins WHERE ip_address = $1', [ip]);
@@ -218,6 +219,7 @@ async function getAdminEarning(username) {
         return 0;
     }
 }
+
 async function saveCallHistory(callData) {
     try {
         const query = `
@@ -358,6 +360,7 @@ function endCall({ callId, reason }) {
 
     broadcastAdminListToCustomers();
 }
+
 // ================== ANNOUNCEMENT MANAGEMENT ==================
 
 function broadcastAnnouncement(message) {
@@ -368,6 +371,7 @@ function broadcastAnnouncement(message) {
     };
     broadcastToCustomers(announcementMessage);
 }
+
 function clearAnnouncement() {
     currentAnnouncement = null;
     const clearMessage = {
@@ -686,7 +690,7 @@ wss.on('connection', ws => {
             clients.delete(ws.clientId);
             if (client.userType === 'admin') {
                 activeCallAdmins.delete(client.uniqueId || client.id);
-                adminLocks.delete(client.uniqueId || client.id); // Admin disconnects, remove lock
+                adminLocks.delete(client.uniqueId || client.id);
                 const callIdToTerminate = Array.from(activeCalls.values()).find(call => call.adminId === (client.uniqueId || client.id));
                 if (callIdToTerminate) {
                     endCall({ callId: callIdToTerminate.callId, reason: 'admin-disconnect' });
@@ -846,6 +850,7 @@ app.get('/api/admins', async (req, res) => {
         res.status(500).json({ success: false, error: 'Sunucu hatası.' });
     }
 });
+
 // Get all users
 app.get('/api/users', async (req, res) => {
     try {
@@ -856,6 +861,7 @@ app.get('/api/users', async (req, res) => {
         res.status(500).json({ success: false, error: 'Sunucu hatası.' });
     }
 });
+
 // Add a new user (super-admin only)
 app.post('/api/users', async (req, res) => {
     const { name, username, password, role, credits } = req.body;
@@ -876,6 +882,7 @@ app.post('/api/users', async (req, res) => {
         res.status(500).json({ success: false, error: 'Sunucu hatası.' });
     }
 });
+
 // Update a user (super-admin only)
 app.put('/api/users/:userId', async (req, res) => {
     const { userId } = req.params;
@@ -894,6 +901,7 @@ app.put('/api/users/:userId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Sunucu hatası.' });
     }
 });
+
 // Delete a user (super-admin only)
 app.delete('/api/users/:userId', async (req, res) => {
     const { userId } = req.params;
@@ -916,6 +924,7 @@ app.get('/api/admin-earnings', async (req, res) => {
         res.status(500).json({ success: false, error: 'Sunucu hatası.' });
     }
 });
+
 app.post('/api/reset-admin-earnings/:username', async (req, res) => {
     const { username } = req.params;
     try {
