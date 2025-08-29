@@ -51,6 +51,7 @@ const activeCalls = new Map();
 const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
 const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
 let currentAnnouncement = null;
+const announcementClients = new Map(); // müşteri ID'leri tracking için
 const HEARTBEAT_INTERVAL = 60000;
 
 // ================== HELPER FUNCTIONS ==================
@@ -66,7 +67,47 @@ function broadcastToCustomers(message) {
         }
     });
 }
+function broadcastAnnouncementToCustomers(announcement) {
+    const message = JSON.stringify({
+        type: 'announcement-received',
+        announcement: announcement
+    });
 
+    let sentCount = 0;
+    clients.forEach(client => {
+        if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
+            try {
+                client.ws.send(message);
+                sentCount++;
+                console.log(`📢 Duyuru gönderildi: ${client.id}`);
+            } catch (error) {
+                console.log(`⚠️ Duyuru gönderme hatası ${client.id}:`, error.message);
+            }
+        }
+    });
+
+    console.log(`📡 Duyuru ${sentCount} müşteriye gönderildi`);
+}
+
+function broadcastAnnouncementDeletion() {
+    const message = JSON.stringify({
+        type: 'announcement-deleted'
+    });
+
+    let sentCount = 0;
+    clients.forEach(client => {
+        if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
+            try {
+                client.ws.send(message);
+                sentCount++;
+            } catch (error) {
+                console.log(`⚠️ Duyuru silme hatası ${client.id}:`, error.message);
+            }
+        }
+    });
+
+    console.log(`🗑️ Duyuru silme ${sentCount} müşteriye gönderildi`);
+}
 function broadcastAdminListToCustomers() {
     // DÜZELTME: Admin filtrelemesini iyileştir
     const adminList = Array.from(clients.values())
@@ -1819,6 +1860,43 @@ wss.on('connection', (ws, req) => {
                         }, 1000);
                     }
                     break;
+                    break;
+
+                case 'announcement-broadcast':
+                    // SuperAdmin'den gelen duyuru
+                    if (senderInfo && senderInfo.userType === 'superadmin') {
+                        const announcementMessage = message.announcement;
+                        currentAnnouncement = announcementMessage;
+                        
+                        // Tüm müşterilere duyuru gönder
+                        broadcastAnnouncementToCustomers(announcementMessage);
+                        
+                        ws.send(JSON.stringify({
+                            type: 'announcement-broadcast-success',
+                            message: 'Duyuru tüm müşterilere gönderildi'
+                        }));
+                        
+                        console.log('📢 SuperAdmin duyuru gönderdi:', announcementMessage);
+                    }
+                    break;
+
+                case 'announcement-delete':
+                    // SuperAdmin duyuru silme
+                    if (senderInfo && senderInfo.userType === 'superadmin') {
+                        currentAnnouncement = null;
+                        
+                        // Tüm müşterilerden duyuru kaldır
+                        broadcastAnnouncementDeletion();
+                        
+                        ws.send(JSON.stringify({
+                            type: 'announcement-delete-success',
+                            message: 'Duyuru tüm müşterilerden silindi'
+                        }));
+                        
+                        console.log('🗑️ SuperAdmin duyuru sildi');
+                    }
+                    break;
+            }
             }
 
         } catch (error) {
@@ -2045,6 +2123,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
