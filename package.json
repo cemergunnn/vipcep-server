@@ -16,9 +16,11 @@
     "express": "^5.1.0",
     "pg": "^8.16.3",
     "ws": "^8.18.3",
-    "connect-pg-simple": "^9.0.1"
+    "connect-pg-simple": "^9.0.1",
+    "speakeasy": "^2.0.0"
   },
   "engines": {
     "node": "18.x"
   }
 }
+
