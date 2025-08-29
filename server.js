@@ -1897,7 +1897,6 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
             }
-            }
 
         } catch (error) {
             console.log('Message processing error:', error.message);
@@ -2123,6 +2122,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
