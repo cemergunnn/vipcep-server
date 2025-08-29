@@ -24,7 +24,7 @@ const SECURITY_CONFIG = {
     SUPER_ADMIN_PATH: '/panel-admin',
     NORMAL_ADMIN_PATH: '/desk-admin', 
     CUSTOMER_PATH: '/app-customer',
-    WIDGET_PATH: '/widget', // Widget yolu eklendi
+    WIDGET_PATH: '/widget', // Widget yolu eklendi - Satır 26
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
     TOTP_WINDOW: 2
@@ -46,192 +46,16 @@ app.use(express.static('.'));
 const wss = new WebSocket.Server({ server });
 
 // Global variables
-const clients = new Map(); // Tüm bağlı istemcileri (müşteri, admin, widget) yönetir
-let activeCalls = new Map(); // Aktif görüşmeleri tutar (callKey -> {customerId, adminId, startTime, status})
-let activeCallAdmins = new Map(); // Hangi adminin hangi callKey ile meşgul olduğunu tutar (adminId -> callKey)
-let activeHeartbeats = new Map(); // Aktif heartbeat'leri tutar (callKey -> interval)
-let adminCallbacks = new Map(); // Adminlere bırakılan geri dönüş taleplerini tutar (adminId -> [{customerId, customerName, timestamp}])
-let adminLocks = new Map(); // Adminlerin meşguliyetini belirtir (adminId -> {lockedBy: customerId, lockTime: Date})
-let currentAnnouncement = null; // Aktif duyuruyu tutar {text, type, createdAt, createdBy}
+const clients = new Map();
+const activeHeartbeats = new Map();
+const activeCallAdmins = new Map();
+const activeCalls = new Map();
+const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
+const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
+let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
 
-
-// Veritabanı başlatma
-async function initDatabase() {
-    try {
-        console.log('🔧 Veritabanı kontrol ediliyor...');
-
-        // Approved users tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS approved_users (
-                id VARCHAR(10) PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                credits INTEGER DEFAULT 0,
-                total_calls INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_call TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'active'
-            );
-        `);
-        console.log('✅ "approved_users" tablosu hazır.');
-
-        // Admin credentials tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_credentials ( -- Orijinal dosyanızdaki 'admins' yerine
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(255) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                role VARCHAR(50) DEFAULT 'normal',
-                secret_totp VARCHAR(255),
-                earnings DECIMAL(10, 2) DEFAULT 0, -- Orijinal dosyanızda 'earnings' yoktu, tutarlılık için ekledim
-                is_active BOOLEAN DEFAULT TRUE,
-                last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log('✅ "admin_credentials" tablosu hazır.');
-
-        // Admin Earnings tablosu (Adminlerin kazançlarını takip etmek için)
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_earnings (
-                username VARCHAR(255) PRIMARY KEY,
-                total_earned DECIMAL(10, 2) DEFAULT 0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log('✅ "admin_earnings" tablosu hazır.');
-
-        // Duyurular tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS announcements (
-                id SERIAL PRIMARY KEY,
-                message TEXT NOT NULL,
-                type VARCHAR(50) DEFAULT 'info',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP
-            );
-        `);
-        console.log('✅ "announcements" tablosu hazır.');
-
-        // Çağrı geçmişi tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS call_history (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10),
-                user_name VARCHAR(255),
-                admin_id VARCHAR(10),
-                duration INTEGER DEFAULT 0,
-                credits_used DECIMAL(10,2) DEFAULT 0,
-                call_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                end_reason VARCHAR(50) DEFAULT 'normal',
-                connection_lost BOOLEAN DEFAULT FALSE
-            );
-        `);
-        console.log('✅ "call_history" tablosu hazır.');
-
-        // Kredi hareketleri tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS credit_transactions (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10),
-                transaction_type VARCHAR(20),
-                amount DECIMAL(10, 2),
-                balance_after DECIMAL(10, 2),
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        console.log('✅ "credit_transactions" tablosu hazır.');
-        
-        // KVKK onayları tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS kvkk_consents (
-                id SERIAL PRIMARY KEY,
-                consent_hash VARCHAR(64) UNIQUE NOT NULL,
-                ip_address INET,
-                user_agent TEXT,
-                consent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                version VARCHAR(10) DEFAULT '1.0'
-            );
-        `);
-        console.log('✅ "kvkk_consents" tablosu hazır.');
-        
-        // Başarısız giriş denemeleri tablosu
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS failed_logins (
-                id SERIAL PRIMARY KEY,
-                ip_address INET NOT NULL,
-                attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                user_type VARCHAR(20) DEFAULT 'customer'
-            );
-        `);
-        console.log('✅ "failed_logins" tablosu hazır.');
-
-        // İlk super admin'i ekle (sadece yoksa)
-        const superAdminUsername = 'superadmin';
-        const superAdminPassword = 'superadminpassword'; // **UYARI: PRODUCTION İÇİN GÜVENLİK İYİLEŞTİRMESİ GEREKİR**
-        const secretTOTP = 'N73K34N4A25VCNF5C5R4XU2655K6F2S5B7J3E37Q73B24F3Q4X7'; // Örnek gizli anahtar
-        const checkAdmin = await pool.query('SELECT * FROM admin_credentials WHERE username = $1', [superAdminUsername]); // 'admins' yerine
-
-        if (checkAdmin.rows.length === 0) {
-            console.log('🔧 İlk super admin oluşturuluyor...');
-            const passwordHash = crypto.createHash('sha256').update(superAdminPassword).digest('hex');
-            await pool.query(
-                'INSERT INTO admin_credentials (username, password_hash, role, secret_totp) VALUES ($1, $2, $3, $4)', // 'admins' yerine
-                [superAdminUsername, passwordHash, 'super', secretTOTP] 
-            );
-            console.log('✅ Super admin oluşturuldu.');
-        } else {
-            // Varolan super adminin TOTP sırrını kontrol et ve güncelle
-            if (!checkAdmin.rows[0].secret_totp) {
-                console.log(`🔐 Super Admin ${superAdminUsername} için TOTP sırrı güncelleniyor...`);
-                await pool.query('UPDATE admin_credentials SET secret_totp = $1 WHERE username = $2', [secretTOTP, superAdminUsername]);
-            }
-            console.log('🔐 Super Admin zaten mevcut.');
-            // Var olan super admin'in TOTP bilgilerini logla
-            const admin = checkAdmin.rows[0];
-            if (admin.secret_totp) {
-                console.log(`   Kullanıcı Adı: ${admin.username}`);
-                console.log(`   TOTP Sırrı: ${admin.secret_totp}`);
-                console.log(`   QR Kod URL: ${generateTOTPQR(admin.username, admin.secret_totp)}`);
-            }
-        }
-
-        // Test kullanıcıları oluştur (sadece yoksa)
-        const testUsers = [
-            ['1234', 'Test Kullanıcı', 10],
-            ['0005', 'VIP Müşteri', 25],
-            ['0007', 'Cenk Zortu', 999],
-            ['9999', 'Demo User', 5]
-        ];
-
-        for (const [id, name, credits] of testUsers) {
-            const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
-            if (existingUser.rows.length === 0) {
-                await pool.query(`
-                    INSERT INTO approved_users (id, name, credits) 
-                    VALUES ($1, $2, $3)
-                `, [id, name, credits]);
-            }
-        }
-
-        // Normal admin oluştur (sadece yoksa)
-        const normalAdminCheck = await pool.query('SELECT * FROM admin_credentials WHERE username = $1', ['admin1']); // 'admins' yerine
-        if (normalAdminCheck.rows.length === 0) {
-            const hashedPassword = crypto.createHash('sha256').update('password123').digest('hex');
-            await pool.query(`
-                INSERT INTO admin_credentials (username, password_hash, role) 
-                VALUES ($1, $2, $3)
-            `, ['admin1', hashedPassword, 'normal']);
-        }
-
-
-    } catch (error) {
-        console.error('❌ Veritabanı başlatma hatası:', error.message);
-        throw error;
-    }
-}
-
-// ================== YARDIMCI FONKSİYONLAR ==================
+// ================== HELPER FUNCTIONS ==================
 
 function generateCallId() {
     return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -245,7 +69,7 @@ function broadcastToCustomers(message) {
     });
 }
 
-// YENİ: Widget'lara yayın yapma fonksiyonu
+// YENİ: Widget'lara yayın yapma fonksiyonu - Satır 55
 function broadcastToWidgets(message) {
     clients.forEach(client => {
         if (client.userType === 'widget' && client.ws.readyState === WebSocket.OPEN) {
@@ -254,8 +78,8 @@ function broadcastToWidgets(message) {
     });
 }
 
-// Admin listesini yayınlama fonksiyonu, şimdi widget'ları da destekliyor
 function broadcastAdminListToCustomers() {
+    // DÜZELTME: Admin filtrelemesini iyileştir
     const adminList = Array.from(clients.values())
         .filter(c => {
             return c.userType === 'admin' && 
@@ -266,30 +90,33 @@ function broadcastAdminListToCustomers() {
         .map(admin => {
             const adminKey = admin.uniqueId || admin.id;
             const isInCall = activeCallAdmins.has(adminKey);
-            const isLocked = adminLocks.has(adminKey); // AdminLock kontrolü eklendi
 
             return {
                 id: adminKey,
                 name: admin.name,
-                status: (isInCall || isLocked) ? 'busy' : 'available' // Lock durumu da meşgul sayılır
+                status: (isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available'
             };
         });
 
-    const uniqueAdmins = [];
-    const adminMap = new Map();
+// DÜZELTME: En son aktif admin'i tut
+const uniqueAdmins = [];
+const adminMap = new Map();
 
-    adminList.forEach(admin => {
-        const baseId = admin.id.split('_')[0]; 
-        if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
-            adminMap.set(baseId, admin);
-        }
-    });
+adminList.forEach(admin => {
+    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
 
-    adminMap.forEach(admin => uniqueAdmins.push(admin));
+    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
+    if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
+        adminMap.set(baseId, admin);
+    }
+});
+
+// Map'den array'e çevir
+adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     const message = JSON.stringify({
         type: 'admin-list-update',
-        admins: uniqueAdmins
+        admins: uniqueAdmins // Unique admin listesi gönder
     });
 
     let customerSentCount = 0;
@@ -303,8 +130,8 @@ function broadcastAdminListToCustomers() {
             }
         }
     });
-    
-    // Widget'lara da gönder
+
+    // YENİ: Widget'lara da gönder - Satır 104
     let widgetSentCount = 0;
     clients.forEach(client => {
         if (client.userType === 'widget' && client.ws && client.ws.readyState === WebSocket.OPEN) {
@@ -319,7 +146,6 @@ function broadcastAdminListToCustomers() {
 
     console.log(`📡 Admin list sent to ${customerSentCount} customers and ${widgetSentCount} widgets: ${uniqueAdmins.length} unique admins`);
 }
-
 
 function broadcastCallbacksToAdmin(adminId) {
     const adminClient = Array.from(clients.values()).find(c => 
@@ -357,8 +183,6 @@ async function checkRateLimit(ip, userType = 'customer') {
             resetTime: count >= 5 ? new Date(Date.now() + 30 * 60 * 1000) : null
         };
     } catch (error) {
-        // Hata durumunda, rate limit uygulamadan devam et
-        console.error('Rate limit kontrol hatası:', error.message);
         return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
     }
 }
@@ -373,32 +197,52 @@ async function recordFailedLogin(ip, userType = 'customer') {
         const rateStatus = await checkRateLimit(ip, userType);
         return rateStatus;
     } catch (error) {
-        console.error('Başarısız giriş kaydetme hatası:', error.message);
         return { allowed: true, attempts: 0, remaining: 5, resetTime: null };
     }
 }
 
 function generateTOTPSecret() {
-    return speakeasy.generateSecret({ length: 20, name: SECURITY_CONFIG.TOTP_ISSUER }).base32;
+    return crypto.randomBytes(16).toString('hex').toUpperCase();
 }
 
 function verifyTOTP(secret, token) {
     if (!secret || !token || token.length !== 6) return false;
 
     try {
-        const verified = speakeasy.totp.verify({
-            secret: secret,
-            encoding: 'base32',
-            token: token,
-            window: SECURITY_CONFIG.TOTP_WINDOW
-        });
+        // Orijinal speakeasy kullanımı kaldırıldı, yerel implementasyon geri getirildi
+        const secretBuffer = Buffer.from(secret, 'hex');
+        const timeStep = 30;
+        const currentTime = Math.floor(Date.now() / 1000 / timeStep);
 
-        return verified;
+        for (let i = -SECURITY_CONFIG.TOTP_WINDOW; i <= SECURITY_CONFIG.TOTP_WINDOW; i++) {
+            const time = currentTime + i;
+            const timeBuffer = Buffer.allocUnsafe(8);
+            timeBuffer.writeUInt32BE(0, 0);
+            timeBuffer.writeUInt32BE(time, 4);
+
+            const hmac = crypto.createHmac('sha1', secretBuffer);
+            hmac.update(timeBuffer);
+            const hash = hmac.digest();
+
+            const offset = hash[hash.length - 1] & 0xf;
+            const code = ((hash[offset] & 0x7f) << 24) |
+                        ((hash[offset + 1] & 0xff) << 16) |
+                        ((hash[offset + 2] & 0xff) << 8) |
+                        (hash[offset + 3] & 0xff);
+
+            const otp = (code % 1000000).toString().padStart(6, '0');
+
+            if (otp === token) {
+                return true;
+            }
+        }
+
+        return false;
     } catch (error) {
-        console.error('TOTP doğrulama hatası:', error.message);
         return false;
     }
 }
+
 
 function generateTOTPQR(username, secret) {
     const serviceName = encodeURIComponent(SECURITY_CONFIG.TOTP_ISSUER);
@@ -407,24 +251,161 @@ function generateTOTPQR(username, secret) {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthURL)}`;
 }
 
-// ================== DATABASE FUNCTIONS (TEKRAR TANIMLANDI - initDatabase'deki tablo isimleri ve admin tablosu ile tutarlılık sağlandı) ==================
+// ================== DATABASE FUNCTIONS ==================
+
+async function initDatabase() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS approved_users (
+                id VARCHAR(10) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                credits INTEGER DEFAULT 0,
+                total_calls INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_call TIMESTAMP,
+                status VARCHAR(20) DEFAULT 'active'
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_earnings (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                total_earned INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS call_history (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(10),
+                user_name VARCHAR(255),
+                admin_id VARCHAR(10),
+                duration INTEGER DEFAULT 0,
+                credits_used INTEGER DEFAULT 0,
+                call_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_reason VARCHAR(50) DEFAULT 'normal',
+                connection_lost BOOLEAN DEFAULT FALSE
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS credit_transactions (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(10),
+                transaction_type VARCHAR(20),
+                amount INTEGER,
+                balance_after INTEGER,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admins (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(50) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(20) DEFAULT 'normal',
+                is_active BOOLEAN DEFAULT TRUE,
+                totp_secret VARCHAR(64),
+                last_login TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS kvkk_consents (
+                id SERIAL PRIMARY KEY,
+                consent_hash VARCHAR(64) UNIQUE NOT NULL,
+                ip_address INET,
+                user_agent TEXT,
+                consent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                version VARCHAR(10) DEFAULT '1.0'
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS failed_logins (
+                id SERIAL PRIMARY KEY,
+                ip_address INET NOT NULL,
+                attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_type VARCHAR(20) DEFAULT 'customer'
+            )
+        `);
+
+        // Create super admin if not exists
+        const superAdminCheck = await pool.query('SELECT * FROM admins WHERE role = $1', ['super']);
+        if (superAdminCheck.rows.length === 0) {
+            const hashedPassword = crypto.createHash('sha256').update('admin123').digest('hex');
+            const totpSecret = generateTOTPSecret();
+            await pool.query(`
+                INSERT INTO admins (username, password_hash, role, totp_secret) 
+                VALUES ($1, $2, $3, $4)
+            `, ['superadmin', hashedPassword, 'super', totpSecret]);
+
+            console.log('🔐 Super Admin created:');
+            console.log(`   Username: superadmin`);
+            console.log(`   Password: admin123`);
+            console.log(`   TOTP Secret: ${totpSecret}`);
+            console.log(`   QR Code URL: ${generateTOTPQR('superadmin', totpSecret)}`);
+        } else {
+            console.log('🔐 Super Admin already exists');
+            const admin = superAdminCheck.rows[0];
+            if (admin.totp_secret) {
+                console.log(`   Username: ${admin.username}`);
+                console.log(`   TOTP Secret: ${admin.totp_secret}`);
+                console.log(`   QR Code URL: ${generateTOTPQR(admin.username, admin.totp_secret)}`);
+            }
+        }
+
+        // Create test users
+        const testUsers = [
+            ['1234', 'Test Kullanıcı', 10],
+            ['0005', 'VIP Müşteri', 25],
+            ['0007', 'Cenk Zortu', 999],
+            ['9999', 'Demo User', 5]
+        ];
+
+        for (const [id, name, credits] of testUsers) {
+            const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
+            if (existingUser.rows.length === 0) {
+                await pool.query(`
+                    INSERT INTO approved_users (id, name, credits) 
+                    VALUES ($1, $2, $3)
+                `, [id, name, credits]);
+            }
+        }
+
+        // Create normal admin
+        const normalAdminCheck = await pool.query('SELECT * FROM admins WHERE username = $1', ['admin1']);
+        if (normalAdminCheck.rows.length === 0) {
+            const hashedPassword = crypto.createHash('sha256').update('password123').digest('hex');
+            await pool.query(`
+                INSERT INTO admins (username, password_hash, role) 
+                VALUES ($1, $2, $3)
+            `, ['admin1', hashedPassword, 'normal']);
+        }
+
+    } catch (error) {
+        console.log('Database error:', error.message);
+    }
+}
 
 async function authenticateAdmin(username, password) {
     try {
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
         const result = await pool.query(
-            'SELECT * FROM admin_credentials WHERE username = $1 AND password_hash = $2 AND is_active = TRUE',
+            'SELECT * FROM admins WHERE username = $1 AND password_hash = $2 AND is_active = TRUE',
             [username, hashedPassword]
         );
 
         if (result.rows.length > 0) {
             const admin = result.rows[0];
-            await pool.query('UPDATE admin_credentials SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [admin.id]);
+            await pool.query('UPDATE admins SET last_login = CURRENT_TIMESTAMP WHERE id = $1', [admin.id]);
             return admin;
         }
         return null;
     } catch (error) {
-        console.error('Admin kimlik doğrulama hatası:', error.message);
         return null;
     }
 }
@@ -439,7 +420,7 @@ async function isUserApproved(userId, userName) {
             if (user.name.toLowerCase().trim() === userName.toLowerCase().trim()) {
                 return {
                     approved: true,
-                    credits: parseFloat(user.credits), // Decimal'i float olarak döndür
+                    credits: user.credits,
                     totalCalls: user.total_calls || 0,
                     lastCall: user.last_call,
                     user: user
@@ -451,7 +432,6 @@ async function isUserApproved(userId, userName) {
             return { approved: false, reason: 'ID kodu bulunamadı.' };
         }
     } catch (error) {
-        console.error('Kullanıcı onay kontrol hatası:', error.message);
         return { approved: false, reason: 'Sistem hatası.' };
     }
 }
@@ -467,6 +447,7 @@ function startHeartbeat(userId, adminId, callKey) {
 
     // Admin username'ini bul
     let adminUsername = adminId;
+
     const adminClient = Array.from(clients.values()).find(c => 
         c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
     );
@@ -539,8 +520,8 @@ function startHeartbeat(userId, adminId, callKey) {
         try {
             // Admin hala aktif mi kontrol et
             const adminClient = Array.from(clients.values()).find(c => 
-                c.uniqueId === adminId && 
                 c.userType === 'admin' && 
+                c.uniqueId === adminId && // uniqueId ile eşleştirme
                 c.ws && c.ws.readyState === WebSocket.OPEN
             );
 
@@ -625,25 +606,17 @@ function stopHeartbeat(callKey, reason = 'normal') {
         clearInterval(heartbeat);
         activeHeartbeats.delete(callKey);
 
-        // CallKey'den userId ve adminId'yi çıkar
-        let userId = 'unknown';
-        let adminId = 'unknown';
-        const parts = callKey.split('-');
-        if (parts.length === 2) {
-            userId = parts[0];
-            adminId = parts[1];
-        }
+        const [userId, adminId] = callKey.split('-');
 
         // Lock'u temizle
         adminLocks.delete(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
-        // activeCallAdmins'den temizle
+        activeCallAdmins.clear();
         activeCallAdmins.delete(adminId);
 
         console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
 
-        // activeCalls'tan ilgili çağrıyı temizle
         for (const [id, call] of activeCalls.entries()) {
             if (call.adminId === adminId && call.customerId === userId) {
                 activeCalls.delete(id);
@@ -711,7 +684,7 @@ function broadcastCallEnd(userId, adminId, reason) {
     }
 }
 
-// ================== EXPRESS ROUTE HANDLERS ==================
+// ================== ROUTES ==================
 
 app.get('/', (req, res) => {
     if (req.session.superAdmin) {
@@ -721,36 +694,222 @@ app.get('/', (req, res) => {
         return res.redirect(SECURITY_CONFIG.NORMAL_ADMIN_PATH);
     }
 
-    res.sendFile(path.join(__dirname, 'login.html')); // Doğrudan login.html'yi sun
-});
-
-// Admin giriş sayfaları
-app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
-    // Sadece Super Admin'lerin erişimine izin ver
-    if (req.session.superAdmin && req.session.superAdmin.username) {
-        res.sendFile(path.join(__dirname, 'super-admin.html'));
-    } else {
-        res.redirect('/'); // Giriş sayfasına yönlendir
-    }
-});
-
-app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, (req, res) => {
-    // Super veya Normal Admin'lerin erişimine izin ver
-    if (req.session.superAdmin || req.session.normalAdmin) {
-        res.sendFile(path.join(__dirname, 'admin-panel.html'));
-    } else {
-        res.redirect('/'); // Giriş sayfasına yönlendir
-    }
-});
-
-// Müşteri uygulaması
-app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
-    res.sendFile(path.join(__dirname, 'customer-app.html'));
-});
-
-// YENİ: Widget uygulaması
-app.get(SECURITY_CONFIG.WIDGET_PATH, (req, res) => {
-    res.sendFile(path.join(__dirname, 'widget.html'));
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🔐 VIPCEP Güvenli Giriş</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: system-ui; background: linear-gradient(135deg, #1e293b, #334155); color: white; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+                .login-container { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 16px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); max-width: 400px; width: 100%; }
+                .form-group { margin-bottom: 20px; }
+                .form-input { width: 100%; padding: 14px; border: 2px solid rgba(255,255,255,0.2); border-radius: 8px; background: rgba(255,255,255,0.1); color: white; font-size: 16px; box-sizing: border-box; }
+                .form-input::placeholder { color: rgba(255,255,255,0.6); }
+                .form-input:focus { outline: none; border-color: #dc2626; }
+                .btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; transition: all 0.3s ease; }
+                .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+                .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+                .btn-customer { background: linear-gradient(135deg, #059669, #047857); }
+                .title { text-align: center; margin-bottom: 30px; color: #dc2626; font-size: 24px; font-weight: bold; }
+                .twofa-section { display: none; }
+                .twofa-section.active { display: block; }
+                .twofa-code { text-align: center; font-size: 18px; letter-spacing: 3px; font-family: monospace; }
+                .back-btn { background: linear-gradient(135deg, #64748b, #475569); }
+                .error-msg { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 10px; border-radius: 6px; margin: 10px 0; text-align: center; font-size: 14px; }
+                .success-msg { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; padding: 10px; border-radius: 6px; margin: 10px 0; text-align: center; font-size: 14px; }
+                .loading { opacity: 0.7; pointer-events: none; }
+                .twofa-info { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.3); color: #93c5fd; padding: 12px; border-radius: 6px; margin: 10px 0; font-size: 13px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class="login-container">
+                <div class="title">🔐 VIPCEP</div>
+                
+                <div id="step1">
+                    <div class="form-group">
+                        <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="password" class="form-input" placeholder="🔑 Şifre">
+                    </div>
+                    <button class="btn" id="superAdminBtn" onclick="startSuperLogin()">🔴 SUPER ADMİN GİRİŞİ</button>
+                    <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
+                    <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
+                </div>
+                
+                <div id="step2" class="twofa-section">
+                    <div class="twofa-info">
+                        🔐 İki faktörlü kimlik doğrulaması gerekli
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="totpCode" class="form-input twofa-code" placeholder="000000" maxlength="6" autocomplete="off">
+                    </div>
+                    <button class="btn" id="verify2FABtn" onclick="verify2FA()">🔐 DOĞ​RULA</button>
+                    <button class="btn back-btn" onclick="goBackToStep1()">← GERİ</button>
+                </div>
+                
+                <div id="messageArea"></div>
+            </div>
+            
+            <script>
+                let currentStep = 1;
+                let currentUsername = '';
+                let currentPassword = '';
+                
+                function showMessage(message, type = 'error') {
+                    const area = document.getElementById('messageArea');
+                    area.innerHTML = \`<div class="\${type}-msg">\${message}</div>\`;
+                    setTimeout(() => { area.innerHTML = ''; }, 5000);
+                }
+                
+                function setLoading(loading) {
+                    const container = document.querySelector('.login-container');
+                    if (loading) {
+                        container.classList.add('loading');
+                    } else {
+                        container.classList.remove('loading');
+                    }
+                }
+                
+                function goToStep2() {
+                    currentStep = 2;
+                    document.getElementById('step1').style.display = 'none';
+                    document.getElementById('step2').style.display = 'block';
+                    document.getElementById('totpCode').focus();
+                }
+                
+                function goBackToStep1() {
+                    currentStep = 1;
+                    document.getElementById('step1').style.display = 'block';
+                    document.getElementById('step2').style.display = 'none';
+                    document.getElementById('totpCode').value = '';
+                    document.getElementById('messageArea').innerHTML = '';
+                }
+                
+                async function startSuperLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    
+                    if (!username || !password) {
+                        return showMessage('Kullanıcı adı ve şifre gerekli!');
+                    }
+                    
+                    currentUsername = username;
+                    currentPassword = password;
+                    
+                    setLoading(true);
+                    
+                    try {
+                        const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password, step: 'credentials' })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                        } else if (result.require2FA) {
+                            showMessage('2FA kodu girin', 'success');
+                            goToStep2();
+                        } else {
+                            showMessage(result.error || 'Giriş başarısız!');
+                        }
+                    } catch (error) {
+                        showMessage('Bağlantı hatası!');
+                    }
+                    
+                    setLoading(false);
+                }
+                
+                async function verify2FA() {
+                    const totpCode = document.getElementById('totpCode').value.trim();
+                    
+                    if (!totpCode || totpCode.length !== 6 || !/^\\d{6}$/.test(totpCode)) {
+                        return showMessage('6 haneli kod gerekli!');
+                    }
+                    
+                    setLoading(true);
+                    
+                    try {
+                        const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                username: currentUsername, 
+                                password: currentPassword,
+                                totpCode: totpCode,
+                                step: '2fa' 
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            showMessage('Giriş başarılı! Yönlendiriliyor...', 'success');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
+                            }, 1000);
+                        } else {
+                            showMessage(result.error || '2FA kodu hatalı!');
+                            document.getElementById('totpCode').value = '';
+                            document.getElementById('totpCode').focus();
+                        }
+                    } catch (error) {
+                        showMessage('Bağlantı hatası!');
+                    }
+                    
+                    setLoading(false);
+                }
+                
+                async function normalAdminLogin() {
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    if (!username || !password) return showMessage('Kullanıcı adı ve şifre gerekli!');
+                    
+                    setLoading(true);
+                    
+                    try {
+                        const response = await fetch('/auth/admin-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            showMessage('Giriş başarılı!', 'success');
+                            setTimeout(() => {
+                                window.location.href = '${SECURITY_CONFIG.NORMAL_ADMIN_PATH}';
+                            }, 1000);
+                        } else {
+                            showMessage(result.error || 'Giriş başarısız!');
+                        }
+                    } catch (error) {
+                        showMessage('Bağlantı hatası!');
+                    }
+                    
+                    setLoading(false);
+                }
+                
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (currentStep === 1) {
+                            startSuperLogin();
+                        } else if (currentStep === 2) {
+                            verify2FA();
+                        }
+                    }
+                });
+                
+                document.getElementById('totpCode').addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                });
+            </script>
+        </body>
+        </html>
+    `);
 });
 
 // Auth endpoints
@@ -770,7 +929,7 @@ app.post('/auth/super-login', async (req, res) => {
             return res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
         }
 
-        if (admin.secret_totp) { // 'totp_secret' yerine 'secret_totp'
+        if (admin.totp_secret) {
             if (step !== '2fa') {
                 req.session.tempSuperAdmin = { 
                     id: admin.id, 
@@ -789,7 +948,8 @@ app.post('/auth/super-login', async (req, res) => {
                     return res.json({ success: false, error: 'Oturum süresi doldu, tekrar deneyin!' });
                 }
 
-                if (!totpCode || !verifyTOTP(admin.secret_totp, totpCode)) { // 'totp_secret' yerine 'secret_totp'
+                // Orijinal TOTP doğrulama mantığı
+                if (!totpCode || !verifyTOTP(admin.totp_secret, totpCode)) {
                     await recordFailedLogin(clientIP, 'super-admin');
                     return res.json({ success: false, error: 'Geçersiz 2FA kodu!' });
                 }
@@ -799,13 +959,13 @@ app.post('/auth/super-login', async (req, res) => {
         } else {
             // Eğer 2FA sırrı yoksa, oluştur ve kullanıcıya QR kodu ile birlikte gönder
             const newSecret = generateTOTPSecret();
-            await pool.query('UPDATE admin_credentials SET secret_totp = $1 WHERE username = $2', [newSecret, username]);
+            await pool.query('UPDATE admins SET totp_secret = $1 WHERE username = $2', [newSecret, username]);
             const qrCodeUrl = generateTOTPQR(username, newSecret);
             return res.json({
                 success: false,
                 error: '2FA kurulumu gerekli. Lütfen QR kodunu tarayın ve kodu girin.',
                 requires2FASetup: true,
-                secretTotp: newSecret,
+                totpSecret: newSecret,
                 qrCodeUrl: qrCodeUrl
             });
         }
@@ -818,8 +978,8 @@ app.post('/auth/super-login', async (req, res) => {
         res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
 
     } catch (error) {
-        console.error('Super login error:', error);
-        res.status(500).json({ success: false, error: 'Sistem hatası!' });
+        console.log('Super login error:', error);
+        res.json({ success: false, error: 'Sistem hatası!' });
     }
 });
 
@@ -842,8 +1002,7 @@ app.post('/auth/admin-login', async (req, res) => {
             res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
         }
     } catch (error) {
-        console.error('Admin login error:', error);
-        res.status(500).json({ success: false, error: 'Sistem hatası!' });
+        res.json({ success: false, error: 'Sistem hatası!' });
     }
 });
 
@@ -860,344 +1019,366 @@ app.get('/auth/check-session', (req, res) => {
 app.post('/auth/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
-            console.error('Logout error:', err);
-            return res.status(500).json({ success: false, error: 'Çıkış hatası' });
+            return res.json({ success: false, error: 'Çıkış hatası' });
         }
         res.json({ success: true });
     });
 });
 
-// ================== SUPER ADMIN API ENDPOINTS ==================
-
-// İstatistikleri al (Super Admin)
-app.get('/api/stats', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const totalUsers = (await pool.query('SELECT COUNT(*) FROM approved_users')).rows[0].count;
-        const totalCredits = (await pool.query('SELECT SUM(credits) FROM approved_users')).rows[0].sum || 0;
-        const totalCalls = (await pool.query('SELECT COUNT(*) FROM call_history')).rows[0].count;
-        const onlineUsers = Array.from(clients.values()).filter(c => c.userType === 'customer' && c.ws.readyState === WebSocket.OPEN).length;
-        const activeAdmins = Array.from(clients.values()).filter(c => c.userType === 'admin' && c.ws.readyState === WebSocket.OPEN).length;
-
-        res.json({
-            totalUsers: parseInt(totalUsers),
-            totalCredits: parseFloat(totalCredits),
-            totalCalls: parseInt(totalCalls),
-            onlineUsers: onlineUsers,
-            activeAdmins: activeAdmins,
-            activeHeartbeats: activeHeartbeats.size
-        });
-    } catch (error) {
-        console.error('API stats error:', error.message);
-        res.status(500).json({ error: 'İstatistikler alınamadı.' });
-    }
+// Route handlers
+app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
 
-// Onaylı kullanıcıları al (Super Admin)
-app.get('/api/approved-users', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
-        res.json(result.rows.map(user => ({
-            ...user,
-            credits: parseFloat(user.credits) // Krediyi float olarak gönder
-        })));
-    } catch (error) {
-        console.error('API approved-users error:', error.message);
-        res.status(500).json({ error: 'Onaylı kullanıcılar alınamadı.' });
-    }
+app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
-// Onaylı kullanıcı ekle (Super Admin)
+app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'customer-app.html'));
+});
+
+// YENİ: Widget uygulaması için rota - Satır 370
+app.get(SECURITY_CONFIG.WIDGET_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'widget.html'));
+});
+
+// ================== API ROUTES ==================
+
 app.post('/api/approved-users', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
     const { id, name, credits } = req.body;
+
+    if (!id || !name || credits < 0) {
+        return res.json({ success: false, error: 'Geçersiz veri!' });
+    }
+
     try {
-        const check = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
-        if (check.rows.length > 0) {
-            return res.status(400).json({ success: false, error: 'Bu ID zaten kullanılıyor.' });
+        const existingUser = await pool.query('SELECT id FROM approved_users WHERE id = $1', [id]);
+        if (existingUser.rows.length > 0) {
+            return res.json({ success: false, error: 'Bu ID zaten kullanılıyor!' });
         }
-        const result = await pool.query(
-            'INSERT INTO approved_users (id, name, credits) VALUES ($1, $2, $3) RETURNING *',
-            [id, name, credits]
-        );
-        res.json({ success: true, user: { ...result.rows[0], credits: parseFloat(result.rows[0].credits) } });
+
+        const result = await pool.query(`
+            INSERT INTO approved_users (id, name, credits) 
+            VALUES ($1, $2, $3) 
+            RETURNING *
+        `, [id, name, parseInt(credits)]);
+
+        const newUser = result.rows[0];
+
+        await pool.query(`
+            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [id, 'initial', credits, credits, 'İlk kredi ataması']);
+
+        res.json({ success: true, user: newUser });
     } catch (error) {
-        console.error('API add user error:', error.message);
-        res.status(500).json({ success: false, error: 'Kullanıcı eklenemedi.' });
+        console.log('User creation error:', error);
+        res.json({ success: false, error: 'Kullanıcı oluşturulamadı!' });
     }
 });
 
-// Kullanıcı kredisi güncelle (Super Admin)
+app.delete('/api/approved-users/:userId', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query('DELETE FROM approved_users WHERE id = $1', [userId]);
+
+        if (result.rowCount > 0) {
+            await pool.query('DELETE FROM credit_transactions WHERE user_id = $1', [userId]);
+            await pool.query('DELETE FROM call_history WHERE user_id = $1', [userId]);
+
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+        }
+    } catch (error) {
+        console.log('User deletion error:', error);
+        res.json({ success: false, error: 'Kullanıcı silinemedi!' });
+    }
+});
+
 app.post('/api/approved-users/:userId/credits', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
     const { userId } = req.params;
     const { credits, reason } = req.body;
+
+    if (credits < 0) {
+        return res.json({ success: false, error: 'Kredi negatif olamaz!' });
+    }
+
     try {
-        const currentUser = (await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId])).rows[0];
-        if (!currentUser) {
-            return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı.' });
+        const currentUser = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+        if (currentUser.rows.length === 0) {
+            return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
         }
-        const oldCredits = parseFloat(currentUser.credits);
+
+        const oldCredits = currentUser.rows[0].credits;
         const newCredits = parseInt(credits);
         const creditDiff = newCredits - oldCredits;
-        const transactionType = creditDiff > 0 ? 'add' : 'subtract';
 
         await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
             VALUES ($1, $2, $3, $4, $5)
-        `, [userId, transactionType, creditDiff, newCredits, reason || 'Super admin tarafından güncellendi']);
-        
-        // Eğer kullanıcı online ise, client'ına kredi güncellemesi gönder
-        const userClient = clients.get(userId);
-        if (userClient && userClient.ws.readyState === WebSocket.OPEN) {
-            userClient.credits = newCredits; // Client objesindeki krediyi güncelle
-            userClient.ws.send(JSON.stringify({ type: 'credit-update', credits: newCredits }));
-            console.log(`📡 Kullanıcı ${userId} kredisi online olarak güncellendi: ${newCredits}`);
-        }
+        `, [userId, creditDiff > 0 ? 'add' : 'subtract', creditDiff, newCredits, reason || 'Super admin tarafından güncellendi']);
+
+        broadcastCreditUpdate(userId, newCredits, Math.abs(creditDiff));
 
         res.json({ success: true, credits: newCredits, oldCredits });
     } catch (error) {
-        console.error('API update user credits error:', error.message);
-        res.status(500).json({ success: false, error: 'Kredi güncellenemedi.' });
+        console.log('Credit update error:', error);
+        res.json({ success: false, error: 'Kredi güncellenemedi!' });
     }
 });
 
-// Kullanıcı sil (Super Admin)
-app.delete('/api/approved-users/:userId', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    const { userId } = req.params;
-    try {
-        await pool.query('DELETE FROM approved_users WHERE id = $1', [userId]);
-        res.json({ success: true, message: 'Kullanıcı başarıyla silindi.' });
-    } catch (error) {
-        console.error('API delete user error:', error.message);
-        res.status(500).json({ success: false, error: 'Kullanıcı silinemedi.' });
-    }
-});
-
-// Tüm çağrıları al (Super Admin)
-app.get('/api/calls', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) { // Normal adminler de çağrıları görebilmeli
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const result = await pool.query('SELECT * FROM call_history ORDER BY call_time DESC LIMIT 100');
-        res.json(result.rows);
-    } catch (error) {
-        console.error('API get calls error:', error.message);
-        res.status(500).json({ error: 'Çağrılar alınamadı.' });
-    }
-});
-
-// Tüm adminleri al (Super Admin)
-app.get('/api/admins', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const result = await pool.query('SELECT id, username, role, is_active, last_login FROM admin_credentials ORDER BY username ASC');
-        res.json(result.rows);
-    } catch (error) {
-        console.error('API get admins error:', error.message);
-        res.status(500).json({ error: 'Adminler alınamadı.' });
-    }
-});
-
-// Yeni admin ekle (Super Admin)
 app.post('/api/admins', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
     const { username, password, role } = req.body;
+
+    if (!username || !password || password.length < 8) {
+        return res.json({ success: false, error: 'Geçersiz veri! Şifre en az 8 karakter olmalı.' });
+    }
+
     try {
-        const check = await pool.query('SELECT * FROM admin_credentials WHERE username = $1', [username]);
-        if (check.rows.length > 0) {
-            return res.status(400).json({ success: false, error: 'Bu kullanıcı adı zaten kullanılıyor.' });
+        const existingAdmin = await pool.query('SELECT username FROM admins WHERE username = $1', [username]);
+        if (existingAdmin.rows.length > 0) {
+            return res.json({ success: false, error: 'Bu kullanıcı adı zaten kullanılıyor!' });
         }
-        
-        const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+
+        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
         let totpSecret = null;
+
         if (role === 'super') {
             totpSecret = generateTOTPSecret();
         }
-        await pool.query(
-            'INSERT INTO admin_credentials (username, password_hash, role, secret_totp) VALUES ($1, $2, $3, $4)',
-            [username, passwordHash, role, totpSecret]
-        );
-        const response = { success: true, message: 'Admin başarıyla eklendi.' };
+
+        const result = await pool.query(`
+            INSERT INTO admins (username, password_hash, role, totp_secret) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING id, username, role
+        `, [username, hashedPassword, role, totpSecret]);
+
+        const newAdmin = result.rows[0];
+
+        const response = { success: true, admin: newAdmin };
         if (totpSecret) {
             response.totpSecret = totpSecret;
             response.qrCode = generateTOTPQR(username, totpSecret);
         }
+
         res.json(response);
     } catch (error) {
-        console.error('API add admin error:', error.message);
-        res.status(500).json({ success: false, error: 'Admin eklenemedi.' });
+        console.log('Admin creation error:', error);
+        res.json({ success: false, error: 'Admin oluşturulamadı!' });
     }
 });
 
-// KVKK onaylarını al (Super Admin)
-app.get('/api/kvkk-consents', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const result = await pool.query('SELECT * FROM kvkk_consents ORDER BY consent_date DESC');
-        res.json(result.rows);
-    } catch (error) {
-        console.error('API get kvkk consents error:', error.message);
-        res.status(500).json({ error: 'KVKK onayları alınamadı.' });
-    }
-});
-
-// Başarısız girişleri al (Super Admin)
-app.get('/api/failed-logins', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        const result = await pool.query('SELECT * FROM failed_logins ORDER BY attempt_time DESC');
-        res.json(result.rows);
-    } catch (error) {
-        console.error('API get failed logins error:', error.message);
-        res.status(500).json({ error: 'Başarısız girişler alınamadı.' });
-    }
-});
-
-// Başarısız girişleri temizle (Super Admin)
-app.post('/api/clear-failed-logins', async (req, res) => {
-    if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    try {
-        await pool.query('DELETE FROM failed_logins');
-        res.json({ success: true, message: 'Başarısız giriş kayıtları temizlendi.' });
-    } catch (error) {
-        console.error('API clear failed logins error:', error.message);
-        res.status(500).json({ success: false, error: 'Başarısız giriş kayıtları temizlenemedi.' });
-    }
-});
-
-// Duyuru gönderme (Super Admin)
 app.post('/api/announcement', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
-    }
-    const { text, type, expires_at } = req.body;
-    if (!text) {
-        return res.status(400).json({ success: false, error: 'Duyuru metni boş olamaz.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
 
-    try {
-        // Mevcut duyuruyu sil
-        await pool.query('DELETE FROM announcements');
+    const { text, type } = req.body;
 
-        const result = await pool.query(
-            'INSERT INTO announcements (message, type, expires_at) VALUES ($1, $2, $3) RETURNING *',
-            [text, type || 'info', expires_at || null]
-        );
-        currentAnnouncement = { text, type: type || 'info' };
+    currentAnnouncement = {
+        text,
+        type,
+        createdAt: new Date(),
+        createdBy: req.session.superAdmin.username
+    };
 
-        // Tüm müşterilere ve WIDGET'lara duyuruyu yayınla
-        broadcastToCustomers({ type: 'announcement-broadcast', announcement: { text, type: type || 'info' } });
-        broadcastToWidgets({ type: 'announcement-broadcast', announcement: { text, type: type || 'info' } }); // Widget'lara eklendi
+    broadcastToCustomers({
+        type: 'announcement-broadcast',
+        announcement: currentAnnouncement
+    });
+    broadcastToWidgets({ // YENİ: Widget'lara da duyuru gönder - Satır 808
+        type: 'announcement-broadcast',
+        announcement: currentAnnouncement
+    });
 
-        res.json({ success: true, announcement: result.rows[0] });
-    } catch (error) {
-        console.error('API send announcement error:', error.message);
-        res.status(500).json({ success: false, error: 'Duyuru gönderilemedi.' });
-    }
+    res.json({ success: true });
 });
 
-// Duyuru silme (Super Admin)
 app.delete('/api/announcement', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
-    try {
-        await pool.query('DELETE FROM announcements');
-        currentAnnouncement = null;
 
-        // Tüm müşterilere ve WIDGET'lara duyurunun silindiğini bildir
-        broadcastToCustomers({ type: 'announcement-deleted' });
-        broadcastToWidgets({ type: 'announcement-deleted' }); // Widget'lara eklendi
+    currentAnnouncement = null;
 
-        res.json({ success: true, message: 'Duyuru başarıyla silindi.' });
-    } catch (error) {
-        console.error('API delete announcement error:', error.message);
-        res.status(500).json({ success: false, error: 'Duyuru silinemedi.' });
-    }
+    broadcastToCustomers({
+        type: 'announcement-deleted'
+    });
+    broadcastToWidgets({ // YENİ: Widget'lara da duyuru silindi mesajı gönder - Satır 827
+        type: 'announcement-deleted'
+    });
+
+    res.json({ success: true });
 });
 
-// Mevcut duyuruyu al (Super Admin)
-app.get('/api/announcement', async (req, res) => {
+app.get('/api/announcement', (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
+    res.json({ 
+        success: true, 
+        announcement: currentAnnouncement 
+    });
+});
+
+app.get('/api/approved-users', async (req, res) => {
     try {
-        const result = await pool.query('SELECT message AS text, type FROM announcements ORDER BY created_at DESC LIMIT 1');
-        if (result.rows.length > 0) {
-            res.json({ announcement: result.rows[0] });
-        } else {
-            res.json({ announcement: null });
-        }
+        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
+        res.json(result.rows);
     } catch (error) {
-        console.error('API get announcement error:', error.message);
-        res.status(500).json({ error: 'Duyuru alınamadı.' });
+        res.status(500).json({ error: error.message });
     }
 });
 
-
-// Admin kazançlarını al (Super Admin)
-app.get('/api/admin-earnings', async (req, res) => {
+app.get('/api/admins', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
     try {
-        const result = await pool.query('SELECT username, total_earned, last_updated FROM admin_earnings ORDER BY total_earned DESC');
-        res.json(result.rows.map(row => ({
-            ...row,
-            total_earned: parseFloat(row.total_earned) // float olarak gönder
-        })));
+        const result = await pool.query('SELECT id, username, role, is_active, last_login, created_at FROM admins ORDER BY created_at DESC');
+        res.json(result.rows);
     } catch (error) {
-        console.error('API get admin earnings error:', error.message);
-        res.status(500).json({ error: 'Admin kazançları alınamadı.' });
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Admin kazancını sıfırla (Super Admin)
+app.get('/api/calls', async (req, res) => {
+    if (!req.session || (!req.session.superAdmin && !req.session.normalAdmin)) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+
+    try {
+        const result = await pool.query(`
+            SELECT ch.*, au.name as user_name
+            FROM call_history ch
+            LEFT JOIN approved_users au ON ch.user_id = au.id
+            ORDER BY call_time DESC 
+            LIMIT 100
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/stats', async (req, res) => {
+    try {
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
+        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
+        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
+        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
+
+        res.json({
+            totalUsers: parseInt(totalUsers.rows[0].count),
+            totalCalls: parseInt(totalCalls.rows[0].count),
+            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
+            todayCalls: parseInt(todayCalls.rows[0].count),
+            onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
+            activeHeartbeats: activeHeartbeats.size,
+            activeCallAdmins: activeCallAdmins.size
+                });
+            } catch (error) {
+                res.status(500).json({ error: error.message });
+            }
+            });
+
+            // Admin kazanç API'ları
+            app.get('/api/admin-earnings', async (req, res) => {
+                if (!req.session || !req.session.superAdmin) {
+                    return res.status(401).json({ error: 'Yetkisiz erisim' });
+                }
+
+                try {
+                    const result = await pool.query(`
+                        SELECT username, total_earned, last_updated 
+                        FROM admin_earnings 
+                        ORDER BY total_earned DESC
+                    `);
+                    res.json(result.rows);
+                } catch (error) {
+                    res.status(500).json({ error: error.message });
+                }
+            });
+
+
+app.get('/api/my-earnings', async (req, res) => {
+    if (!req.session || (!req.session.normalAdmin && !req.session.superAdmin)) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+
+    const username = req.session.normalAdmin?.username || req.session.superAdmin?.username;
+
+    try {
+        const result = await pool.query(
+            'SELECT total_earned FROM admin_earnings WHERE username = $1',
+            [username]
+        );
+
+        const earnings = result.rows[0]?.total_earned || 0;
+        res.json({ earnings });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 app.post('/api/reset-admin-earnings/:username', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim.' });
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
+
     const { username } = req.params;
+
     try {
-        await pool.query('UPDATE admin_earnings SET total_earned = 0, last_updated = CURRENT_TIMESTAMP WHERE username = $1', [username]);
-        res.json({ success: true, message: 'Admin kazancı sıfırlandı.' });
+        await pool.query(
+            'UPDATE admin_earnings SET total_earned = 0, last_updated = CURRENT_TIMESTAMP WHERE username = $1',
+            [username]
+        );
+
+        res.json({ success: true });
     } catch (error) {
-        console.error('API reset admin earnings error:', error.message);
-        res.status(500).json({ success: false, error: 'Kazanç sıfırlanamadı.' });
+        res.json({ success: false, error: error.message });
     }
 });
 
+app.get('/health', (req, res) => {
 
-// ================== WebSocket Mesaj İşleyicileri ==================
+    res.json({ 
+        status: 'OK', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        clients: clients.size,
+        activeHeartbeats: activeHeartbeats.size,
+        activeCallAdmins: activeCallAdmins.size
+    });
+});
+
+// ================== WEBSOCKET HANDLER ==================
 
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
+
     // Yeni bağlantı için benzersiz bir ID oluştur ve clients map'ine ekle
     const uniqueId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     clients.set(uniqueId, { ws, uniqueId, userType: null, id: null, name: null, credits: null, ip: clientIP, online: true });
@@ -1215,13 +1396,13 @@ wss.on('connection', (ws, req) => {
                 senderInfo.userType = message.userType;
                 senderInfo.id = message.userId;
                 senderInfo.name = message.name;
-                senderInfo.credits = message.credits; // Müşteri ise kredi bilgisini al
+                senderInfo.credits = message.credits !== undefined ? message.credits : null; // Kredi undefined ise null yap - Satır 950
                 clients.set(message.userId, senderInfo); // ID bazında da erişim için
                 clients.delete(uniqueId); // Geçici uniqueId'yi sil
                 senderInfo.uniqueId = message.userId; // uniqueId'yi kalıcı id yap
                 console.log(`📝 ${senderInfo.userType} kaydedildi: ${senderInfo.name} (ID: ${senderInfo.id})`);
 
-                // Widget'lar için özel kayıt
+                // YENİ: Widget'lar için özel kayıt - Satır 956
                 if (senderInfo.userType === 'widget') {
                     console.log(`📝 Widget kaydedildi: ${senderInfo.id}`);
                     // Duyuru varsa gönder
@@ -1613,7 +1794,7 @@ wss.on('connection', (ws, req) => {
     });
 
 ws.on('close', () => {
-    const client = clients.get(uniqueId); // uniqueId ile istemciyi bul
+    let client = clients.get(uniqueId); // uniqueId ile istemciyi bul
     if (!client) {
         // Eğer client uniqueId ile bulunamazsa, zaten register ile id'ye geçiş yapmış olabilir
         for (const [id, c] of clients.entries()) {
@@ -1675,7 +1856,7 @@ ws.on('close', () => {
             }
             clients.delete(client.id);
             console.log(`🗑️ Deleted customer client record: ${client.id}`);
-        } else if (client.userType === 'widget') { // YENİ: Widget temizliği
+        } else if (client.userType === 'widget') { // YENİ: Widget temizliği - Satır 1111
             clients.delete(client.id);
             console.log(`🗑️ Deleted widget client record: ${client.id}`);
         }
@@ -1718,14 +1899,14 @@ function findWebRTCTarget(targetId, sourceType) {
     if (targetId.includes('_')) {
         const normalId = targetId.split('_')[0];
         for (const [clientId, clientData] of clients.entries()) {
-            if (clientData.id === normalId && clientData.userType === 'admin') {
+            if ((clientData.id === normalId || clientData.uniqueId === normalId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { // Widget userType eklendi - Satır 1170
                 return clientData;
             }
         }
     } else {
         // Normal ID ile arama (ADMIN123 formatı)
         for (const [clientId, clientData] of clients.entries()) {
-            if ((clientId.startsWith && clientId.startsWith(targetId + '_')) && clientData.userType === 'admin') {
+            if (((clientId.startsWith && clientId.startsWith(targetId + '_')) || clientData.id === targetId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { // Widget userType eklendi - Satır 1170
                 return clientData;
             }
         }
@@ -1796,13 +1977,13 @@ async function startServer() {
         console.log(`📡 WebSocket: ws://0.0.0.0:${PORT}`);
         console.log(`🗄️ Veritabanı: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'LocalStorage'}`);
         console.log('');
-        console.log('� GÜVENLİK URL\'LERİ:');
+        console.log('🔐 GÜVENLİK URL\'LERİ:');
         console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
         console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
         console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
-        console.log(` 🔵 Widget App: ${SECURITY_CONFIG.WIDGET_PATH}`); // Widget yolu eklendi
+        console.log(` 🔵 Widget App: ${SECURITY_CONFIG.WIDGET_PATH}`); // Widget yolu eklendi - Satır 1243
         console.log('');
-        console.log('📞 YENİ SİSTEM: Admin Seçim + Callback + Kredi Düşme');
+        console.log('� YENİ SİSTEM: Admin Seçim + Callback + Kredi Düşme');
         console.log(`   └── Heartbeat interval: ${HEARTBEAT_INTERVAL/1000} saniye`);
         console.log(`   └── Direct admin selection: Aktif`);
         console.log(`   └── Callback system: Aktif`);
