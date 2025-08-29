@@ -1852,4 +1852,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-�
