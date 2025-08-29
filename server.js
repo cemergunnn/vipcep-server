@@ -24,7 +24,7 @@ const SECURITY_CONFIG = {
     SUPER_ADMIN_PATH: '/panel-admin',
     NORMAL_ADMIN_PATH: '/desk-admin', 
     CUSTOMER_PATH: '/app-customer',
-    WIDGET_PATH: '/widget', // Widget yolu eklendi - Satır 26
+    WIDGET_PATH: '/widget', 
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
     TOTP_WINDOW: 2
@@ -46,7 +46,7 @@ app.use(express.static('.'));
 const wss = new WebSocket.Server({ server });
 
 // Global variables
-const clients = new Map();
+const clients = new Map(); // Tüm bağlı client'lar (müşteriler, adminler, widget'lar)
 const activeHeartbeats = new Map();
 const activeCallAdmins = new Map();
 const activeCalls = new Map();
@@ -54,6 +54,9 @@ const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, time
 const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
 let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
+
+// YENİ: Müşteri ID'sini ilişkili widget'ının WebSocket'ine bağlar
+const customerToWidgetWs = new Map(); // customerId -> widgetClientObject (içinde ws var)
 
 // ================== HELPER FUNCTIONS ==================
 
@@ -69,8 +72,7 @@ function broadcastToCustomers(message) {
     });
 }
 
-// YENİ: Widget'lara yayın yapma fonksiyonu - Satır 55
-function broadcastToWidgets(message) {
+function broadcastToWidgets(message) { // Genel widget duyuruları için hala kullanılabilir
     clients.forEach(client => {
         if (client.userType === 'widget' && client.ws.readyState === WebSocket.OPEN) {
             client.ws.send(JSON.stringify(message));
@@ -78,14 +80,25 @@ function broadcastToWidgets(message) {
     });
 }
 
+// YENİ: Belirli bir widget'a mesaj gönderme
+function sendToSpecificWidget(customerId, message) {
+    const widgetClient = customerToWidgetWs.get(customerId);
+    if (widgetClient && widgetClient.ws.readyState === WebSocket.OPEN) {
+        widgetClient.ws.send(JSON.stringify(message));
+        console.log(`📡 Widget'a (${customerId}) özel mesaj gönderildi: ${message.type}`);
+    } else {
+        console.log(`⚠️ Müşteri ${customerId} için ilişkili aktif widget bulunamadı.`);
+    }
+}
+
+
 function broadcastAdminListToCustomers() {
-    // DÜZELTME: Admin filtrelemesini iyileştir
     const adminList = Array.from(clients.values())
         .filter(c => {
             return c.userType === 'admin' && 
                    c.ws && 
                    c.ws.readyState === WebSocket.OPEN &&
-                   c.online !== false; // Offline admin'leri dahil etme
+                   c.online !== false; 
         })
         .map(admin => {
             const adminKey = admin.uniqueId || admin.id;
@@ -98,25 +111,22 @@ function broadcastAdminListToCustomers() {
             };
         });
 
-// DÜZELTME: En son aktif admin'i tut
 const uniqueAdmins = [];
 const adminMap = new Map();
 
 adminList.forEach(admin => {
-    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
+    const baseId = admin.id.split('_')[0]; 
 
-    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
     if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
         adminMap.set(baseId, admin);
     }
 });
 
-// Map'den array'e çevir
 adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     const message = JSON.stringify({
         type: 'admin-list-update',
-        admins: uniqueAdmins // Unique admin listesi gönder
+        admins: uniqueAdmins 
     });
 
     let customerSentCount = 0;
@@ -131,12 +141,12 @@ adminMap.forEach(admin => uniqueAdmins.push(admin));
         }
     });
 
-    // YENİ: Widget'lara da gönder - Satır 104
+    // Widget'lara da gönder (genel admin listesi güncellemeleri)
     let widgetSentCount = 0;
     clients.forEach(client => {
         if (client.userType === 'widget' && client.ws && client.ws.readyState === WebSocket.OPEN) {
             try {
-                client.ws.send(message);
+                client.ws.send(message); // Genel admin listesini tüm widget'lara gönderir
                 widgetSentCount++;
             } catch (error) {
                 console.log(`⚠️ Admin list broadcast error to widget ${client.id}:`, error.message);
@@ -209,7 +219,6 @@ function verifyTOTP(secret, token) {
     if (!secret || !token || token.length !== 6) return false;
 
     try {
-        // Orijinal speakeasy kullanımı kaldırıldı, yerel implementasyon geri getirildi
         const secretBuffer = Buffer.from(secret, 'hex');
         const timeStep = 30;
         const currentTime = Math.floor(Date.now() / 1000 / timeStep);
@@ -596,7 +605,6 @@ function startHeartbeat(userId, adminId, callKey) {
         callStartTime: Date.now()
     });
 
-    // Admin meşgul oldu, listesi güncelle
     broadcastAdminListToCustomers();
 }
 
@@ -608,7 +616,6 @@ function stopHeartbeat(callKey, reason = 'normal') {
 
         const [userId, adminId] = callKey.split('-');
 
-        // Lock'u temizle
         adminLocks.delete(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
@@ -625,8 +632,10 @@ function stopHeartbeat(callKey, reason = 'normal') {
         }
 
         broadcastCallEnd(userId, adminId, reason);
+        // YENİ: İlişkili widget'a arama sonu bildirimi gönder
+        sendToSpecificWidget(userId, { type: 'widget-call-ended', userId, adminId, reason });
 
-        // Admin listesini güncelle - ÖNEMLİ!
+
         broadcastAdminListToCustomers();
 
         setTimeout(() => {
@@ -1038,7 +1047,6 @@ app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'customer-app.html'));
 });
 
-// YENİ: Widget uygulaması için rota - Satır 370
 app.get(SECURITY_CONFIG.WIDGET_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'widget.html'));
 });
@@ -1207,7 +1215,7 @@ app.post('/api/announcement', async (req, res) => {
         type: 'announcement-broadcast',
         announcement: currentAnnouncement
     });
-    broadcastToWidgets({ // YENİ: Widget'lara da duyuru gönder - Satır 808
+    broadcastToWidgets({ 
         type: 'announcement-broadcast',
         announcement: currentAnnouncement
     });
@@ -1225,7 +1233,7 @@ app.delete('/api/announcement', async (req, res) => {
     broadcastToCustomers({
         type: 'announcement-deleted'
     });
-    broadcastToWidgets({ // YENİ: Widget'lara da duyuru silindi mesajı gönder - Satır 827
+    broadcastToWidgets({ 
         type: 'announcement-deleted'
     });
 
@@ -1379,7 +1387,6 @@ app.get('/health', (req, res) => {
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
 
-    // Yeni bağlantı için benzersiz bir ID oluştur ve clients map'ine ekle
     const uniqueId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     clients.set(uniqueId, { ws, uniqueId, userType: null, id: null, name: null, credits: null, ip: clientIP, online: true });
     console.log(`⚡️ Yeni bağlantı: ${uniqueId} (IP: ${clientIP})`);
@@ -1389,29 +1396,25 @@ wss.on('connection', (ws, req) => {
         try {
             const message = JSON.parse(data);
 
-            let senderInfo = clients.get(uniqueId); // uniqueId ile senderInfo'yu al
+            let senderInfo = clients.get(uniqueId); 
             
-            // Eğer register mesajı gelirse senderInfo'yu güncelleriz
             if (message.type === 'register' && message.userType) {
                 senderInfo.userType = message.userType;
                 senderInfo.id = message.userId;
                 senderInfo.name = message.name;
-                senderInfo.credits = message.credits !== undefined ? message.credits : null; // Kredi undefined ise null yap - Satır 950
-                clients.set(message.userId, senderInfo); // ID bazında da erişim için
-                clients.delete(uniqueId); // Geçici uniqueId'yi sil
-                senderInfo.uniqueId = message.userId; // uniqueId'yi kalıcı id yap
+                senderInfo.credits = message.credits !== undefined ? message.credits : null; 
+                clients.set(message.userId, senderInfo); 
+                clients.delete(uniqueId); 
+                senderInfo.uniqueId = message.userId; 
                 console.log(`📝 ${senderInfo.userType} kaydedildi: ${senderInfo.name} (ID: ${senderInfo.id})`);
 
-                // YENİ: Widget'lar için özel kayıt - Satır 956
                 if (senderInfo.userType === 'widget') {
                     console.log(`📝 Widget kaydedildi: ${senderInfo.id}`);
-                    // Duyuru varsa gönder
                     if (currentAnnouncement) {
                         senderInfo.ws.send(JSON.stringify({ type: 'announcement-broadcast', announcement: currentAnnouncement }));
                     }
-                    // Admin listesini gönder
-                    broadcastAdminListToCustomers(); // Bu fonksiyon zaten widget'lara da gönderiyor
-                    return; // Widget kaydından sonra diğer işlemlere devam etme
+                    broadcastAdminListToCustomers();
+                    return; 
                 }
             }
             
@@ -1422,15 +1425,20 @@ wss.on('connection', (ws, req) => {
 
             switch (message.type) {
                 case 'register':
-                    // Üstte halihazırda işlendi
-                    // Duyuru varsa gönder
                     if (currentAnnouncement) {
                         senderInfo.ws.send(JSON.stringify({ type: 'announcement-broadcast', announcement: currentAnnouncement }));
                     }
                     broadcastAdminListToCustomers();
-                    // Admin ise, callback listesini de gönder
                     if (senderInfo.userType === 'admin') {
                         broadcastCallbacksToAdmin(senderInfo.id);
+                    }
+                    break;
+
+                // YENİ: Widget'ı müşteriyle ilişkilendir - Satır 1024
+                case 'associate-customer':
+                    if (senderType === 'widget' && message.customerId) {
+                        customerToWidgetWs.set(message.customerId, senderInfo);
+                        console.log(`🔗 Widget ${senderInfo.id} müşteri ${message.customerId} ile ilişkilendirildi.`);
                     }
                     break;
 
@@ -1452,7 +1460,6 @@ wss.on('connection', (ws, req) => {
                     const approval = await isUserApproved(message.userId, message.userName);
 
                     if (approval.approved) {
-                        // Client objesindeki kredi bilgisini güncelle
                         if (senderInfo) {
                             senderInfo.credits = approval.credits;
                         }
@@ -1496,12 +1503,11 @@ wss.on('connection', (ws, req) => {
                     console.log(`🔒 Admin ${message.targetAdminId} kilitlendi: ${message.userId}`);
                     broadcastAdminListToCustomers();
                     
-                    if (senderInfo.credits <= 0) { // SenderInfo'daki krediyi kontrol et
+                    if (senderInfo.credits <= 0) { 
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Yetersiz kredi!'
                         }));
-                        // Admin kilidini geri al (eğer kredi yetersizse)
                         adminLocks.delete(message.targetAdminId);
                         broadcastAdminListToCustomers();
                         break;
@@ -1519,7 +1525,6 @@ wss.on('connection', (ws, req) => {
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda bağlı değil!'
                         }));
-                        // Admin kilidini geri al
                         adminLocks.delete(message.targetAdminId);
                         broadcastAdminListToCustomers();
                         break;
@@ -1530,7 +1535,6 @@ wss.on('connection', (ws, req) => {
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda başka bir aramada!'
                         }));
-                        // Admin kilidini geri al
                         adminLocks.delete(message.targetAdminId);
                         broadcastAdminListToCustomers();
                         break;
@@ -1547,6 +1551,15 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({
                         type: 'call-connecting'
                     }));
+
+                    // YENİ: İlgili widget'a gelen arama bildirimi gönder
+                    sendToSpecificWidget(message.userId, { 
+                        type: 'widget-incoming-call', 
+                        callerId: message.userId, 
+                        callerName: message.userName, 
+                        adminId: targetAdmin.uniqueId, 
+                        adminName: targetAdmin.name 
+                    });
 
                     console.log(`📡 Call request sent to admin ${targetAdmin.name}`);
                     break;
@@ -1632,6 +1645,15 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({
                         type: 'call-connecting'
                     }));
+                    
+                    // YENİ: İlgili widget'a gelen arama bildirimi gönder
+                    sendToSpecificWidget(message.targetCustomerId, { 
+                        type: 'widget-incoming-call', 
+                        callerId: message.targetCustomerId, 
+                        callerName: targetCustomer.name || 'Müşteri', 
+                        adminId: senderId, 
+                        adminName: message.adminName || senderInfo?.name || 'Usta' 
+                    });
 
                     console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
                     break;
@@ -1653,8 +1675,8 @@ wss.on('connection', (ws, req) => {
                         break;
                     }
                     
-                    const acceptCallKey = `${senderId}-${acceptingAdmin.uniqueId}`; // CallKey formatını düzelt
-                    startHeartbeat(senderId, acceptingAdmin.uniqueId, acceptCallKey); // UserId'yi senderId olarak gönder
+                    const acceptCallKey = `${senderId}-${acceptingAdmin.uniqueId}`; 
+                    startHeartbeat(senderId, acceptingAdmin.uniqueId, acceptCallKey); 
 
                     console.log(`💓 Heartbeat started for call: ${acceptCallKey}`);
 
@@ -1683,7 +1705,6 @@ wss.on('connection', (ws, req) => {
                 case 'reject-incoming-call':
                     console.log(`❌ Gelen arama reddedildi (Admin: ${message.adminId}, Müşteri: ${senderId})`);
 
-                    // Admin tarafından arama reddedildi
                     const rejectingAdmin = Array.from(clients.values()).find(c => 
                         c.userType === 'admin' && 
                         (c.uniqueId === message.adminId || c.id === message.adminId)
@@ -1696,13 +1717,15 @@ wss.on('connection', (ws, req) => {
                         }));
                     }
                     
-                    // Admin kilidini kaldır
                     adminLocks.delete(message.adminId);
                     broadcastAdminListToCustomers();
                     console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
+                    
+                    // YENİ: İlgili widget'a arama sonu bildirimi gönder (müşteri reddettiği için)
+                    sendToSpecificWidget(senderId, { type: 'widget-call-ended', userId: senderId, adminId: message.adminId, reason: 'rejected' });
                     break;
 
-                case 'admin-reject-call-request': // Admin gelen müşteri arama isteğini reddettiğinde
+                case 'admin-reject-call-request': 
                     console.log(`❌ Admin ${senderId} müşteri arama isteğini reddetti: Müşteri ID: ${message.customerId}`);
                     const customerClientForReject = clients.get(message.customerId);
                     if (customerClientForReject && customerClientForReject.ws.readyState === WebSocket.OPEN) {
@@ -1711,10 +1734,12 @@ wss.on('connection', (ws, req) => {
                             reason: 'Usta arama isteğinizi reddetti.'
                         }));
                     }
-                    // Admin kilidini kaldır
                     adminLocks.delete(senderId);
                     activeCallAdmins.delete(senderId);
                     broadcastAdminListToCustomers();
+                    
+                    // YENİ: İlgili widget'a arama sonu bildirimi gönder (admin reddettiği için)
+                    sendToSpecificWidget(message.customerId, { type: 'widget-call-ended', userId: message.customerId, adminId: senderId, reason: 'admin_rejected' });
                     break;
 
 
@@ -1767,16 +1792,15 @@ wss.on('connection', (ws, req) => {
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
 
-                    // CallKey'i bulmak için önce senderId ve targetId'yi belirle
                     let endCallCustomerId = null;
                     let endCallAdminId = null;
 
                     if (senderType === 'admin') {
                         endCallAdminId = senderId;
-                        endCallCustomerId = message.targetId; // Admin'den geliyorsa targetId müşteridir
+                        endCallCustomerId = message.targetId; 
                     } else if (senderType === 'customer') {
                         endCallCustomerId = senderId;
-                        endCallAdminId = message.targetId; // Müşteriden geliyorsa targetId admindir
+                        endCallAdminId = message.targetId; 
                     }
 
                     if (endCallCustomerId && endCallAdminId) {
@@ -1794,9 +1818,8 @@ wss.on('connection', (ws, req) => {
     });
 
 ws.on('close', () => {
-    let client = clients.get(uniqueId); // uniqueId ile istemciyi bul
+    let client = clients.get(uniqueId); 
     if (!client) {
-        // Eğer client uniqueId ile bulunamazsa, zaten register ile id'ye geçiş yapmış olabilir
         for (const [id, c] of clients.entries()) {
             if (c.ws === ws) {
                 client = c;
@@ -1817,33 +1840,28 @@ ws.on('close', () => {
             if (adminCallInfo) {
                 console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
 
-                // Admin'i clients'tan SILME, sadece ws'i null yap ve online durumunu güncelle
                 client.ws = null;
                 client.online = false;
                 
                 setTimeout(() => {
-                    const currentClient = clients.get(adminKey); // Yeniden bağlantı kontrolü
-                    // Admin hala var ama bağlantısı yok mu kontrol et
+                    const currentClient = clients.get(adminKey); 
                     if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
                         console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
                         const callKey = `${adminCallInfo.customerId}-${adminKey}`;
                         stopHeartbeat(callKey, 'admin_permanently_disconnected');
                         activeCallAdmins.delete(adminKey);
-                        broadcastAdminListToCustomers(); // Admin listesini güncelle
+                        broadcastAdminListToCustomers(); 
 
-                        // Admin'i tamamen temizle
                         clients.delete(adminKey);
                     } else {
                         console.log(`✅ Admin ${adminKey} successfully reconnected`);
                     }
-                }, 15000); // 15 saniye bekleme süresi
+                }, 15000); 
             } else {
-                // Call'da olmayan admin'i normal şekilde temizle
                 clients.delete(adminKey);
                 console.log(`🗑️ Deleted admin client record: ${adminKey}`);
             }
         } else if (client.userType === 'customer') {
-            // Customer cleanup - normal
             let customerCallKey = null;
             for(const [ckey, cval] of activeCalls.entries()){
                 if(cval.customerId === client.id){
@@ -1856,13 +1874,23 @@ ws.on('close', () => {
             }
             clients.delete(client.id);
             console.log(`🗑️ Deleted customer client record: ${client.id}`);
-        } else if (client.userType === 'widget') { // YENİ: Widget temizliği - Satır 1111
+            // YENİ: customerToWidgetWs map'inden de sil
+            customerToWidgetWs.delete(client.id);
+            console.log(`🗑️ Removed customer ${client.id} from customerToWidgetWs.`);
+        } else if (client.userType === 'widget') { 
             clients.delete(client.id);
             console.log(`🗑️ Deleted widget client record: ${client.id}`);
+            // YENİ: customerToWidgetWs map'inden de sil (eğer ilişkiliyse)
+            for (const [customerId, widgetClient] of customerToWidgetWs.entries()) {
+                if (widgetClient.id === client.id) {
+                    customerToWidgetWs.delete(customerId);
+                    console.log(`🗑️ Removed widget ${client.id} from customerToWidgetWs.`);
+                    break;
+                }
+            }
         }
     }
 
-    // Her durumda broadcast yap
     setTimeout(() => {
         broadcastAdminListToCustomers();
     }, 100);
@@ -1895,18 +1923,16 @@ function findWebRTCTarget(targetId, sourceType) {
         return targetClient;
     }
 
-    // uniqueId ile arama (ADMIN123_456_abc formatı)
     if (targetId.includes('_')) {
         const normalId = targetId.split('_')[0];
         for (const [clientId, clientData] of clients.entries()) {
-            if ((clientData.id === normalId || clientData.uniqueId === normalId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { // Widget userType eklendi - Satır 1170
+            if ((clientData.id === normalId || clientData.uniqueId === normalId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { 
                 return clientData;
             }
         }
     } else {
-        // Normal ID ile arama (ADMIN123 formatı)
         for (const [clientId, clientData] of clients.entries()) {
-            if (((clientId.startsWith && clientId.startsWith(targetId + '_')) || clientData.id === targetId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { // Widget userType eklendi - Satır 1170
+            if (((clientId.startsWith && clientId.startsWith(targetId + '_')) || clientData.id === targetId) && (clientData.userType === 'admin' || clientData.userType === 'widget')) { 
                 return clientData;
             }
         }
@@ -1956,7 +1982,6 @@ async function startServer() {
 
     await initDatabase();
     
-    // Aktif duyuruyu veritabanından yükle (uygulama başlangıcında)
     try {
         const result = await pool.query('SELECT message AS text, type FROM announcements ORDER BY created_at DESC LIMIT 1');
         if (result.rows.length > 0) {
@@ -1981,9 +2006,9 @@ async function startServer() {
         console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
         console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
         console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
-        console.log(` 🔵 Widget App: ${SECURITY_CONFIG.WIDGET_PATH}`); // Widget yolu eklendi - Satır 1243
+        console.log(` 🔵 Widget App: ${SECURITY_CONFIG.WIDGET_PATH}`); 
         console.log('');
-        console.log('� YENİ SİSTEM: Admin Seçim + Callback + Kredi Düşme');
+        console.log('📞 YENİ SİSTEM: Admin Seçim + Callback + Kredi Düşme');
         console.log(`   └── Heartbeat interval: ${HEARTBEAT_INTERVAL/1000} saniye`);
         console.log(`   └── Direct admin selection: Aktif`);
         console.log(`   └── Callback system: Aktif`);
@@ -2022,6 +2047,7 @@ process.on('SIGTERM', () => {
     activeCallAdmins.clear();
     activeCalls.clear();
     adminCallbacks.clear();
+    customerToWidgetWs.clear(); // YENİ: Sunucu kapanırken map'i temizle
 
     server.close(() => {
         console.log('✅ Server başarıyla kapatıldı');
