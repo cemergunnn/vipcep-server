@@ -365,8 +365,8 @@ async function isUserApproved(userId, userName) {
                 return {
                     approved: true,
                     credits: parseFloat(user.credits), // Decimal'i float olarak döndür
-                    totalCalls: user.total_calls || 0,
-                    lastCall: user.last_call,
+                    // totalCalls: user.total_calls || 0, // Bu satırlar kaldırıldı
+                    // lastCall: user.last_call, // Bu satırlar kaldırıldı
                     user: user
                 };
             } else {
