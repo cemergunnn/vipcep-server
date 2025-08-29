@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
+const speakeasy = require('speakeasy'); // 2FA için eklendi, lütfen package.json'a eklediğinizden emin olun
 
 // Database connection
 const pool = new Pool({
@@ -26,7 +27,7 @@ const SECURITY_CONFIG = {
     WIDGET_PATH: '/widget', // Widget yolu eklendi
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
-    TOTP_WINDOW: 2 // Not used directly, but kept for context if 2FA logic is managed elsewhere
+    TOTP_WINDOW: 2
 };
 
 // Middleware
@@ -64,7 +65,9 @@ async function initDatabase() {
                 id VARCHAR(255) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 credits DECIMAL(10, 2) DEFAULT 0,
-                last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                total_calls INTEGER DEFAULT 0, -- Orijinal yapınızda olabileceği varsayımıyla eklendi
+                last_call TIMESTAMP -- Orijinal yapınızda olabileceği varsayımıyla eklendi
             );
         `);
         console.log('✅ "approved_users" tablosu hazır.');
@@ -163,15 +166,15 @@ async function initDatabase() {
         // İlk super admin'i ekle (sadece yoksa)
         const superAdminUsername = 'superadmin';
         const superAdminPassword = 'superadminpassword'; // **UYARI: PRODUCTION İÇİN GÜVENLİK İYİLEŞTİRMESİ GEREKİR**
+        const secretTOTP = 'N73K34N4A25VCNF5C5R4XU2655K6F2S5B7J3E37Q73B24F3Q4X7'; // Örnek gizli anahtar, sizin orijinalden geldiği varsayılır
         const checkAdmin = await pool.query('SELECT * FROM admin_credentials WHERE username = $1', [superAdminUsername]);
 
         if (checkAdmin.rows.length === 0) {
             console.log('🔧 İlk super admin oluşturuluyor...');
             const passwordHash = crypto.createHash('sha256').update(superAdminPassword).digest('hex');
-            // 'secret_totp' burada başlangıçta boş bırakılıyor, admin panelinden ayarlanması beklenir.
             await pool.query(
-                'INSERT INTO admin_credentials (username, password_hash, role) VALUES ($1, $2, $3)',
-                [superAdminUsername, passwordHash, 'super'] 
+                'INSERT INTO admin_credentials (username, password_hash, role, secret_totp) VALUES ($1, $2, $3, $4)',
+                [superAdminUsername, passwordHash, 'super', secretTOTP] 
             );
             console.log('✅ Super admin oluşturuldu.');
         }
@@ -329,8 +332,34 @@ async function recordFailedLogin(ip, userType = 'customer') {
     }
 }
 
-// generateTOTPSecret, verifyTOTP, generateTOTPQR fonksiyonları kaldırıldı.
-// 2FA'nın halihazırda çalıştığını belirttiğiniz için mevcut bir sistemle entegre olduğu varsayılmıştır.
+function generateTOTPSecret() {
+    return speakeasy.generateSecret({ length: 20, name: SECURITY_CONFIG.TOTP_ISSUER }).base32;
+}
+
+function verifyTOTP(secret, token) {
+    if (!secret || !token || token.length !== 6) return false;
+
+    try {
+        const verified = speakeasy.totp.verify({
+            secret: secret,
+            encoding: 'base32',
+            token: token,
+            window: SECURITY_CONFIG.TOTP_WINDOW
+        });
+
+        return verified;
+    } catch (error) {
+        console.error('TOTP doğrulama hatası:', error.message);
+        return false;
+    }
+}
+
+function generateTOTPQR(username, secret) {
+    const serviceName = encodeURIComponent(SECURITY_CONFIG.TOTP_ISSUER);
+    const accountName = encodeURIComponent(username);
+    const otpauthURL = `otpauth://totp/${serviceName}:${accountName}?secret=${secret}&issuer=${serviceName}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthURL)}`;
+}
 
 // ================== DATABASE FUNCTIONS ==================
 
@@ -365,8 +394,8 @@ async function isUserApproved(userId, userName) {
                 return {
                     approved: true,
                     credits: parseFloat(user.credits), // Decimal'i float olarak döndür
-                    // totalCalls: user.total_calls || 0, // Bu satırlar kaldırıldı
-                    // lastCall: user.last_call, // Bu satırlar kaldırıldı
+                    totalCalls: user.total_calls || 0, // Orijinal yapınızda olabileceği varsayımıyla eklendi
+                    lastCall: user.last_call, // Orijinal yapınızda olabileceği varsayımıyla eklendi
                     user: user
                 };
             } else {
@@ -595,11 +624,7 @@ app.post('/auth/login', async (req, res) => {
             if (admin.role === 'super') { // Super admin'ler için 2FA kontrolü
                 // Admin'in secret_totp'si varsa ve bir totpToken gönderilmişse doğrula
                 if (admin.secret_totp && totpToken) {
-                    // Bu kısım, mevcut 2FA sisteminizin nasıl çalıştığına bağlı olarak entegre edilmelidir.
-                    // Örneğin, bir 2FA doğrulama fonksiyonunuz varsa onu burada çağırın.
-                    // Şimdilik varsayımsal bir doğrulama fonksiyonu:
-                    const isTotpValid = true; // YERİNE SİZİN 2FA DOĞRULAMA FONKSİYONUNUZ GELECEK
-                    if (!isTotpValid) {
+                    if (!verifyTOTP(admin.secret_totp, totpToken)) { // speakeasy ile doğrulama
                         await recordFailedLogin(clientIp, 'admin');
                         return res.status(401).json({ success: false, error: 'Geçersiz 2FA kodu!' });
                     }
@@ -608,8 +633,7 @@ app.post('/auth/login', async (req, res) => {
                     await recordFailedLogin(clientIp, 'admin');
                     return res.status(401).json({ success: false, error: '2FA kodu gerekli!' });
                 }
-                // Eğer admin.secret_totp yoksa, 2FA devre dışı varsayılır veya başka bir yöntem kullanılır.
-                // Burada yeni 2FA kurulumu tetiklenmez, çünkü mevcut sisteminizin çalıştığı belirtildi.
+                // Eğer admin.secret_totp yoksa, 2FA devre dışı varsayılır.
             }
             
             req.session.authenticated = true;
