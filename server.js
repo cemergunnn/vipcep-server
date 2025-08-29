@@ -23,6 +23,7 @@ const SECURITY_CONFIG = {
     SUPER_ADMIN_PATH: '/panel-admin',
     NORMAL_ADMIN_PATH: '/desk-admin', 
     CUSTOMER_PATH: '/app-customer',
+    WIDGET_PATH: '/widget', // Widget yolu eklendi
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
     TOTP_WINDOW: 2
@@ -45,15 +46,129 @@ const wss = new WebSocket.Server({ server });
 
 // Global variables
 const clients = new Map();
-const activeHeartbeats = new Map();
-const activeCallAdmins = new Map();
-const activeCalls = new Map();
-const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
-const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
-let currentAnnouncement = null;
-const HEARTBEAT_INTERVAL = 60000;
+let activeCalls = new Map();
+let activeCallAdmins = new Map();
+let activeHeartbeats = new Map();
+let adminCallbacks = new Map();
+let currentAnnouncement = null; // Aktif duyuruyu tutmak için
 
-// ================== HELPER FUNCTIONS ==================
+// Veritabanı başlatma
+async function initDatabase() {
+    try {
+        console.log('🔧 Veritabanı kontrol ediliyor...');
+
+        // Approved users tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS approved_users (
+                id VARCHAR(255) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                credits DECIMAL(10, 2) DEFAULT 0,
+                last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ "approved_users" tablosu hazır.');
+
+        // Admin credentials tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_credentials (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'normal',
+                secret_totp VARCHAR(255),
+                earnings DECIMAL(10, 2) DEFAULT 0
+            );
+        `);
+        console.log('✅ "admin_credentials" tablosu hazır.');
+
+        // Duyurular tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS announcements (
+                id SERIAL PRIMARY KEY,
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP
+            );
+        `);
+        console.log('✅ "announcements" tablosu hazır.');
+
+        // Çağrı geçmişi tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS call_history (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(10),
+                user_name VARCHAR(255),
+                admin_id VARCHAR(10),
+                duration INTEGER DEFAULT 0,
+                credits_used INTEGER DEFAULT 0,
+                call_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_reason VARCHAR(50) DEFAULT 'normal',
+                connection_lost BOOLEAN DEFAULT FALSE
+            )
+        `);
+        console.log('✅ "call_history" tablosu hazır.');
+
+        // Kredi hareketleri tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS credit_transactions (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(10),
+                transaction_type VARCHAR(20),
+                amount INTEGER,
+                balance_after INTEGER,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('✅ "credit_transactions" tablosu hazır.');
+        
+        // KVKK onayları tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS kvkk_consents (
+                id SERIAL PRIMARY KEY,
+                consent_hash VARCHAR(64) UNIQUE NOT NULL,
+                ip_address INET,
+                user_agent TEXT,
+                consent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                version VARCHAR(10) DEFAULT '1.0'
+            )
+        `);
+        console.log('✅ "kvkk_consents" tablosu hazır.');
+        
+        // Başarısız giriş denemeleri tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS failed_logins (
+                id SERIAL PRIMARY KEY,
+                ip_address INET NOT NULL,
+                attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_type VARCHAR(20) DEFAULT 'customer'
+            )
+        `);
+        console.log('✅ "failed_logins" tablosu hazır.');
+
+        // İlk super admin'i ekle (sadece yoksa)
+        const superAdminUsername = 'superadmin';
+        const superAdminPassword = 'superadminpassword'; // **UYARI: PRODUCTION İÇİN GÜVENLİK İYİLEŞTİRMESİ GEREKİR**
+        const secretTOTP = 'N73K34N4A25VCNF5C5R4XU2655K6F2S5B7J3E37Q73B24F3Q4X7'; // Örnek gizli anahtar
+        const checkAdmin = await pool.query('SELECT * FROM admin_credentials WHERE username = $1', [superAdminUsername]);
+
+        if (checkAdmin.rows.length === 0) {
+            console.log('🔧 İlk super admin oluşturuluyor...');
+            const passwordHash = crypto.createHash('sha256').update(superAdminPassword).digest('hex');
+            await pool.query(
+                'INSERT INTO admin_credentials (username, password_hash, role, secret_totp) VALUES ($1, $2, $3, $4)',
+                [superAdminUsername, passwordHash, 'super_admin', secretTOTP]
+            );
+            console.log('✅ Super admin oluşturuldu.');
+        }
+
+    } catch (error) {
+        console.error('❌ Veritabanı başlatma hatası:', error.message);
+        throw error;
+    }
+}
+
+// ================== YARDIMCI FONKSİYONLAR ==================
 
 function generateCallId() {
     return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -67,8 +182,16 @@ function broadcastToCustomers(message) {
     });
 }
 
+// YENİ: Widget'lara yayın yapma fonksiyonu
+function broadcastToWidgets(message) {
+    clients.forEach(client => {
+        if (client.userType === 'widget' && client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(JSON.stringify(message));
+        }
+    });
+}
+
 function broadcastAdminListToCustomers() {
-    // DÜZELTME: Admin filtrelemesini iyileştir
     const adminList = Array.from(clients.values())
         .filter(c => {
             return c.userType === 'admin' && 
@@ -79,33 +202,30 @@ function broadcastAdminListToCustomers() {
         .map(admin => {
             const adminKey = admin.uniqueId || admin.id;
             const isInCall = activeCallAdmins.has(adminKey);
+            const isLocked = adminLocks.has(adminKey); // AdminLock kontrolü eklendi
 
             return {
                 id: adminKey,
                 name: admin.name,
-                status: (isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available'
+                status: (isInCall || isLocked) ? 'busy' : 'available' // Lock durumu da meşgul sayılır
             };
         });
 
-// DÜZELTME: En son aktif admin'i tut
-const uniqueAdmins = [];
-const adminMap = new Map();
+    const uniqueAdmins = [];
+    const adminMap = new Map();
 
-adminList.forEach(admin => {
-    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
+    adminList.forEach(admin => {
+        const baseId = admin.id.split('_')[0]; 
+        if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
+            adminMap.set(baseId, admin);
+        }
+    });
 
-    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
-    if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
-        adminMap.set(baseId, admin);
-    }
-});
-
-// Map'den array'e çevir
-adminMap.forEach(admin => uniqueAdmins.push(admin));
+    adminMap.forEach(admin => uniqueAdmins.push(admin));
 
     const message = JSON.stringify({
         type: 'admin-list-update',
-        admins: uniqueAdmins // Unique admin listesi gönder
+        admins: uniqueAdmins
     });
 
     let sentCount = 0;
@@ -119,9 +239,13 @@ adminMap.forEach(admin => uniqueAdmins.push(admin));
             }
         }
     });
+    
+    // YENİ: Admin listesi güncellendiğinde widget'lara da gönder
+    broadcastToWidgets(message);
 
-    console.log(`📡 Admin list sent to ${sentCount} customers: ${uniqueAdmins.length} unique admins`);
+    console.log(`📡 Admin list sent to ${sentCount} customers and widgets: ${uniqueAdmins.length} unique admins`);
 }
+
 function broadcastCallbacksToAdmin(adminId) {
     const adminClient = Array.from(clients.values()).find(c => 
         c.userType === 'admin' && 
@@ -226,149 +350,11 @@ function generateTOTPQR(username, secret) {
 
 // ================== DATABASE FUNCTIONS ==================
 
-async function initDatabase() {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS approved_users (
-                id VARCHAR(10) PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                credits INTEGER DEFAULT 0,
-                total_calls INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_call TIMESTAMP,
-                status VARCHAR(20) DEFAULT 'active'
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admin_earnings (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(50) UNIQUE NOT NULL,
-                total_earned INTEGER DEFAULT 0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS call_history (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10),
-                user_name VARCHAR(255),
-                admin_id VARCHAR(10),
-                duration INTEGER DEFAULT 0,
-                credits_used INTEGER DEFAULT 0,
-                call_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                end_reason VARCHAR(50) DEFAULT 'normal',
-                connection_lost BOOLEAN DEFAULT FALSE
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS credit_transactions (
-                id SERIAL PRIMARY KEY,
-                user_id VARCHAR(10),
-                transaction_type VARCHAR(20),
-                amount INTEGER,
-                balance_after INTEGER,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS admins (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(50) UNIQUE NOT NULL,
-                password_hash VARCHAR(255) NOT NULL,
-                role VARCHAR(20) DEFAULT 'normal',
-                is_active BOOLEAN DEFAULT TRUE,
-                totp_secret VARCHAR(64),
-                last_login TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS kvkk_consents (
-                id SERIAL PRIMARY KEY,
-                consent_hash VARCHAR(64) UNIQUE NOT NULL,
-                ip_address INET,
-                user_agent TEXT,
-                consent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                version VARCHAR(10) DEFAULT '1.0'
-            )
-        `);
-
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS failed_logins (
-                id SERIAL PRIMARY KEY,
-                ip_address INET NOT NULL,
-                attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                user_type VARCHAR(20) DEFAULT 'customer'
-            )
-        `);
-
-        // Create super admin if not exists
-        const superAdminCheck = await pool.query('SELECT * FROM admins WHERE role = $1', ['super']);
-        if (superAdminCheck.rows.length === 0) {
-            const hashedPassword = crypto.createHash('sha256').update('admin123').digest('hex');
-            const totpSecret = generateTOTPSecret();
-            await pool.query(`
-                INSERT INTO admins (username, password_hash, role, totp_secret) 
-                VALUES ($1, $2, $3, $4)
-            `, ['superadmin', hashedPassword, 'super', totpSecret]);
-
-            console.log('🔐 Super Admin created:');
-            console.log(`   Username: superadmin`);
-            console.log(`   Password: admin123`);
-            console.log(`   TOTP Secret: ${totpSecret}`);
-            console.log(`   QR Code URL: ${generateTOTPQR('superadmin', totpSecret)}`);
-        } else {
-            console.log('🔐 Super Admin already exists');
-            const admin = superAdminCheck.rows[0];
-            if (admin.totp_secret) {
-                console.log(`   Username: ${admin.username}`);
-                console.log(`   TOTP Secret: ${admin.totp_secret}`);
-                console.log(`   QR Code URL: ${generateTOTPQR(admin.username, admin.totp_secret)}`);
-            }
-        }
-
-        // Create test users
-        const testUsers = [
-            ['1234', 'Test Kullanıcı', 10],
-            ['0005', 'VIP Müşteri', 25],
-            ['0007', 'Cenk Zortu', 999],
-            ['9999', 'Demo User', 5]
-        ];
-
-        for (const [id, name, credits] of testUsers) {
-            const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
-            if (existingUser.rows.length === 0) {
-                await pool.query(`
-                    INSERT INTO approved_users (id, name, credits) 
-                    VALUES ($1, $2, $3)
-                `, [id, name, credits]);
-            }
-        }
-
-        // Create normal admin
-        const normalAdminCheck = await pool.query('SELECT * FROM admins WHERE username = $1', ['admin1']);
-        if (normalAdminCheck.rows.length === 0) {
-            const hashedPassword = crypto.createHash('sha256').update('password123').digest('hex');
-            await pool.query(`
-                INSERT INTO admins (username, password_hash, role) 
-                VALUES ($1, $2, $3)
-            `, ['admin1', hashedPassword, 'normal']);
-        }
-
-    } catch (error) {
-        console.log('Database error:', error.message);
-    }
-}
-
 async function authenticateAdmin(username, password) {
     try {
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
         const result = await pool.query(
-            'SELECT * FROM admins WHERE username = $1 AND password_hash = $2 AND is_active = TRUE',
+            'SELECT * FROM admin_credentials WHERE username = $1 AND password_hash = $2 AND is_active = TRUE',
             [username, hashedPassword]
         );
 
@@ -418,9 +404,7 @@ function startHeartbeat(userId, adminId, callKey) {
         activeHeartbeats.delete(callKey);
     }
 
-    // Admin username'ini bul
     let adminUsername = adminId;
-
     const adminClient = Array.from(clients.values()).find(c => 
         c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
     );
@@ -430,7 +414,6 @@ function startHeartbeat(userId, adminId, callKey) {
 
     console.log(`Admin earnings icin username: ${adminUsername}`);
 
-    // İlk dakika krediyi hemen düş (call başında)
     (async () => {
         try {
             console.log(`Initial credit deduction for ${userId}`);
@@ -453,7 +436,6 @@ function startHeartbeat(userId, adminId, callKey) {
                     VALUES ($1, $2, $3, $4, $5)
                 `, [userId, 'initial_call', -1, newCredits, `Arama baslangic kredisi`]);
 
-                // Initial admin kazancı
                 try {
                     await pool.query(`
                         INSERT INTO admin_earnings (username, total_earned) 
@@ -468,7 +450,6 @@ function startHeartbeat(userId, adminId, callKey) {
                     console.log(`Admin kazanc hatası: ${error.message}`);
                 }
 
-                // Customer'a kredi güncellemesi gönder
                 const customerClient = clients.get(userId);
                 if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                     customerClient.ws.send(JSON.stringify({
@@ -491,7 +472,6 @@ function startHeartbeat(userId, adminId, callKey) {
         console.log(`Checking credits for user: ${userId}`);
 
         try {
-            // Admin hala aktif mi kontrol et
             const adminClient = Array.from(clients.values()).find(c => 
                 c.uniqueId === adminId && 
                 c.userType === 'admin' && 
@@ -504,7 +484,6 @@ function startHeartbeat(userId, adminId, callKey) {
                 return;
             }
 
-            // Customer hala bağlı mı?
             const customerClient = clients.get(userId);
             if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
                 console.log(`Customer ${userId} disconnected, stopping heartbeat`);
@@ -526,7 +505,6 @@ function startHeartbeat(userId, adminId, callKey) {
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
 
-                // Admin kazancı artır
                 try {
                     await pool.query(`
                         INSERT INTO admin_earnings (username, total_earned) 
@@ -546,7 +524,6 @@ function startHeartbeat(userId, adminId, callKey) {
                     VALUES ($1, $2, $3, $4, $5)
                 `, [userId, 'heartbeat', -1, newCredits, `Arama dakikasi`]);
 
-                // Customer'a kredi güncellemesi gönder
                 const customerClient = clients.get(userId);
                 if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                     customerClient.ws.send(JSON.stringify({
@@ -569,7 +546,6 @@ function startHeartbeat(userId, adminId, callKey) {
         callStartTime: Date.now()
     });
 
-    // Admin meşgul oldu, listesi güncelle
     broadcastAdminListToCustomers();
 }
 
@@ -581,7 +557,6 @@ function stopHeartbeat(callKey, reason = 'normal') {
 
         const [userId, adminId] = callKey.split('-');
 
-        // Lock'u temizle
         adminLocks.delete(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
@@ -599,7 +574,6 @@ function stopHeartbeat(callKey, reason = 'normal') {
 
         broadcastCallEnd(userId, adminId, reason);
 
-        // Admin listesini güncelle - ÖNEMLİ!
         broadcastAdminListToCustomers();
 
         setTimeout(() => {
@@ -631,6 +605,12 @@ function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
             }));
         }
     });
+    // YENİ: Widget'lara da kredi güncelleme bilgisi gönderilebilir, isteğe bağlı
+    broadcastToWidgets({
+        type: 'widget-credit-update',
+        userId: userId,
+        newCredits: newCredits
+    });
 }
 
 function broadcastCallEnd(userId, adminId, reason) {
@@ -655,6 +635,13 @@ function broadcastCallEnd(userId, adminId, reason) {
             endedBy: 'system'
         }));
     }
+    // YENİ: Widget'lara da arama sonu bildirimi gönder
+    broadcastToWidgets({
+        type: 'widget-call-ended',
+        userId: userId,
+        adminId: adminId,
+        reason: reason
+    });
 }
 
 // ================== ROUTES ==================
@@ -998,6 +985,10 @@ app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'customer-app.html'));
 });
 
+app.get(SECURITY_CONFIG.WIDGET_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'widget.html'));
+});
+
 // ================== API ROUTES ==================
 
 app.post('/api/approved-users', async (req, res) => {
@@ -1162,6 +1153,11 @@ app.post('/api/announcement', (req, res) => {
         type: 'announcement-broadcast',
         announcement: currentAnnouncement
     });
+    // YENİ: Widget'lara duyuru bildirimi gönder
+    broadcastToWidgets({
+        type: 'widget-announcement-broadcast',
+        announcement: currentAnnouncement
+    });
 
     res.json({ success: true });
 });
@@ -1175,6 +1171,10 @@ app.delete('/api/announcement', (req, res) => {
 
     broadcastToCustomers({
         type: 'announcement-deleted'
+    });
+    // YENİ: Widget'lara duyuru silme bildirimi gönder
+    broadcastToWidgets({
+        type: 'widget-announcement-deleted'
     });
 
     res.json({ success: true });
@@ -1247,30 +1247,29 @@ app.get('/api/stats', async (req, res) => {
             onlineUsers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
             activeHeartbeats: activeHeartbeats.size,
             activeCallAdmins: activeCallAdmins.size
-                });
-            } catch (error) {
-                res.status(500).json({ error: error.message });
-            }
-            });
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
-            // Admin kazanç API'ları
-            app.get('/api/admin-earnings', async (req, res) => {
-                if (!req.session || !req.session.superAdmin) {
-                    return res.status(401).json({ error: 'Yetkisiz erisim' });
-                }
+// Admin kazanç API'ları
+app.get('/api/admin-earnings', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erisim' });
+    }
 
-                try {
-                    const result = await pool.query(`
-                        SELECT username, total_earned, last_updated 
-                        FROM admin_earnings 
-                        ORDER BY total_earned DESC
-                    `);
-                    res.json(result.rows);
-                } catch (error) {
-                    res.status(500).json({ error: error.message });
-                }
-            });
-
+    try {
+        const result = await pool.query(`
+            SELECT username, total_earned, last_updated 
+            FROM admin_earnings 
+            ORDER BY total_earned DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 app.get('/api/my-earnings', async (req, res) => {
     if (!req.session || (!req.session.normalAdmin && !req.session.superAdmin)) {
@@ -1291,6 +1290,7 @@ app.get('/api/my-earnings', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 app.post('/api/reset-admin-earnings/:username', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1349,7 +1349,6 @@ wss.on('connection', (ws, req) => {
                     console.log(`🔄 Registration request: ${message.name} (${message.userId}) as ${message.userType}`);
 
                         if (message.userType === 'admin') {
-                            // Eski admin bağlantılarını temizle
                             const oldAdminEntries = Array.from(clients.entries()).filter(([clientId, clientData]) => 
                                 clientData.id === message.userId && 
                                 clientData.userType === 'admin' &&
@@ -1361,7 +1360,6 @@ wss.on('connection', (ws, req) => {
                                 clients.delete(oldClientId);
                             });
 
-                            // Aktif call kontrol et - DÜZELTME: Base ID matching
                             let activeAdminId = null;
                             for (const [adminId, callInfo] of activeCallAdmins.entries()) {
                                 const baseAdminId = adminId.split('_')[0];
@@ -1373,22 +1371,8 @@ wss.on('connection', (ws, req) => {
                             }
 
                             let uniqueClientId;
+                            uniqueClientId = message.userId; 
 
-                            // RADIKAL DEĞİŞİKLİK: Admin ID'yi sabit tut
-                            // Admin ID kontrol et - her admin kendi ID'sini kullansın
-                            console.log(`DEBUG: Admin registration - userId: ${message.userId}, name: ${message.name}`);
-
-                            // Mevcut clients'ta aynı isimde başka admin var mı?
-                            const sameNameAdmin = Array.from(clients.values()).find(c => 
-                                c.userType === 'admin' && c.name === message.name && c.id !== message.userId
-                            );
-
-                            if (sameNameAdmin) {
-                                console.log(`⚠️ SORUN: ${message.name} admin'i farklı ID ile kayıtlı: ${sameNameAdmin.id}`);
-                            }
-                            uniqueClientId = message.userId; // Sadece ADMIN001, ADMIN002 vs.
-
-                            // Eski admin kayıtlarını temizle
                             clients.delete(uniqueClientId);
 
                             console.log(`👤 Admin connection: ${message.name} as ${uniqueClientId}`);
@@ -1419,7 +1403,27 @@ wss.on('connection', (ws, req) => {
                                 broadcastAdminListToCustomers();
                             }, 500);
 
-                        } else {
+                        } else if (message.userType === 'widget') { // YENİ: Widget kaydı
+                            console.log(`⚙️ Widget registered: ${message.userId}`);
+                            clients.set(message.userId, {
+                                ws: ws,
+                                id: message.userId,
+                                uniqueId: message.userId,
+                                name: 'Widget',
+                                userType: 'widget',
+                                registeredAt: new Date().toLocaleTimeString(),
+                                online: true
+                            });
+                            // Widget'a mevcut duyuruyu gönder
+                            if (currentAnnouncement) {
+                                ws.send(JSON.stringify({
+                                    type: 'widget-announcement-broadcast',
+                                    announcement: currentAnnouncement
+                                }));
+                            }
+                            broadcastAdminListToCustomers(); // Widget'a da admin listesi gönder
+                        }
+                        else {
                         const existingCustomer = clients.get(message.userId);
                         if (existingCustomer && existingCustomer.ws.readyState !== WebSocket.OPEN) {
                             clients.delete(message.userId);
@@ -1526,6 +1530,9 @@ wss.on('connection', (ws, req) => {
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda bağlı değil!'
                         }));
+                        // Admin kilitini serbest bırak
+                        adminLocks.delete(message.targetAdminId);
+                        broadcastAdminListToCustomers();
                         break;
                     }
 
@@ -1534,6 +1541,9 @@ wss.on('connection', (ws, req) => {
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda başka bir aramada!'
                         }));
+                        // Admin kilitini serbest bırak
+                        adminLocks.delete(message.targetAdminId);
+                        broadcastAdminListToCustomers();
                         break;
                     }
 
@@ -1550,6 +1560,12 @@ wss.on('connection', (ws, req) => {
                     }));
 
                     console.log(`📡 Call request sent to admin ${targetAdmin.name}`);
+                    // YENİ: Widget'a gelen arama bildirimi gönder
+                    broadcastToWidgets({
+                        type: 'widget-incoming-call',
+                        customerName: message.userName,
+                        adminName: targetAdmin.name
+                    });
                     break;
 
                 case 'callback-request':
@@ -1628,6 +1644,12 @@ wss.on('connection', (ws, req) => {
                     }));
 
                     console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
+                    // YENİ: Widget'a admin tarafından başlatılan arama bildirimi gönder
+                    broadcastToWidgets({
+                        type: 'widget-incoming-call',
+                        customerName: targetCustomer.name || message.targetCustomerId,
+                        adminName: message.adminName || senderInfo?.name || 'Usta'
+                    });
                     break;
 
                 case 'accept-incoming-call':
@@ -1643,8 +1665,6 @@ wss.on('connection', (ws, req) => {
                         ws.send(JSON.stringify({
                             type: 'call-failed',
                             reason: 'Usta artık bağlı değil!'
-
-
                         }));
                         break;
                     }
@@ -1666,7 +1686,7 @@ wss.on('connection', (ws, req) => {
                     broadcastCallbacksToAdmin(acceptingAdmin.uniqueId);
 
                     broadcastAdminListToCustomers();
-                    // Doğru customer ID'sini bul - incomingCallInfo'dan al
+                    
                     const customerClient = clients.get(message.userId || message.customerId);
                     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                         customerClient.ws.send(JSON.stringify({
@@ -1679,10 +1699,8 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'reject-incoming-call':
-                 case 'reject-incoming-call':
                     console.log(`❌ Admin tarafından arama reddedildi`);
 
-                    // Lock bilgisinden customer ID'yi al
                     const lockInfo = adminLocks.get(message.adminId);
                     if (lockInfo) {
                         const rejectedCustomer = clients.get(lockInfo.lockedBy);
@@ -1694,12 +1712,10 @@ wss.on('connection', (ws, req) => {
                         }
                     }
                     
-                    // Admin reddederse kilidi kaldır
                     adminLocks.delete(message.adminId);
                     broadcastAdminListToCustomers();
                     console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
                     
-                    // Müşteriye bildir
                     const rejectedCustomer = clients.get(message.customerId || 'unknown');
                     if (rejectedCustomer && rejectedCustomer.ws.readyState === WebSocket.OPEN) {
                         rejectedCustomer.ws.send(JSON.stringify({
@@ -1718,19 +1734,20 @@ wss.on('connection', (ws, req) => {
 
                     broadcastCallbacksToAdmin(senderId);
                     break;
-                    case 'admin-ready-for-webrtc':
-                        console.log(`🔗 Admin ${senderId} WebRTC için hazır, customer ${message.userId} bilgilendiriliyor`);
+                    
+                case 'admin-ready-for-webrtc':
+                    console.log(`🔗 Admin ${senderId} WebRTC için hazır, customer ${message.userId} bilgilendiriliyor`);
 
-                        const readyCustomer = clients.get(message.userId);
-                        if (readyCustomer && readyCustomer.ws.readyState === WebSocket.OPEN) {
-                            readyCustomer.ws.send(JSON.stringify({
-                                type: 'admin-ready-for-webrtc',
-                                adminId: message.adminId,
-                                message: 'Admin WebRTC için hazır'
-                            }));
-                            console.log(`📡 Admin ready mesajı customer ${message.userId}'e gönderildi`);
-                        }
-                        break;
+                    const readyCustomer = clients.get(message.userId);
+                    if (readyCustomer && readyCustomer.ws.readyState === WebSocket.OPEN) {
+                        readyCustomer.ws.send(JSON.stringify({
+                            type: 'admin-ready-for-webrtc',
+                            adminId: message.adminId,
+                            message: 'Admin WebRTC için hazır'
+                        }));
+                        console.log(`📡 Admin ready mesajı customer ${message.userId}'e gönderildi`);
+                    }
+                    break;
 
                 case 'offer':
                 case 'answer':
@@ -1763,13 +1780,11 @@ wss.on('connection', (ws, req) => {
                     if (senderType === 'admin') {
                         adminIdToRemove = senderId;
                         activeCallAdmins.delete(senderId);
-                        // Admin müsait oldu, listesi güncelle  
                         broadcastAdminListToCustomers();
                         console.log(`🟢 Admin ${senderId} is now available`);
                     } else if (message.targetId) {
                         adminIdToRemove = message.targetId;
                         activeCallAdmins.delete(message.targetId);
-                        // Admin müsait oldu, listesi güncelle  
                         broadcastAdminListToCustomers();
                         console.log(`🟢 Admin ${message.targetId} is now available`);
                     }
@@ -1837,7 +1852,6 @@ ws.on('close', () => {
         if (adminCallInfo) {
             console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
 
-            // Admin'i clients'tan SILME, sadece ws'i null yap
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws && clientData.userType === 'admin') {
                     clientData.ws = null;
@@ -1851,23 +1865,19 @@ ws.on('close', () => {
                     c.uniqueId === adminKey && c.userType === 'admin'
                 );
 
-                // Admin hala var ama bağlantısı yok mu kontrol et
                 if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
                     console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
                     const callKey = `${adminCallInfo.customerId}-${adminKey}`;
                     stopHeartbeat(callKey, 'admin_permanently_disconnected');
                     activeCallAdmins.delete(adminKey);
-                    // Admin müsait oldu, listesi güncelle  
                     broadcastAdminListToCustomers();
 
-                    // Admin'i tamamen temizle
                     clients.delete(adminKey);
                 } else {
                     console.log(`✅ Admin ${adminKey} successfully maintained connection`);
                 }
             }, 15000);
         } else {
-            // Call'da olmayan admin'i normal şekilde temizle
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws) {
                     clients.delete(key);
@@ -1876,8 +1886,11 @@ ws.on('close', () => {
                 }
             }
         }
-    } else {
-        // Customer cleanup - normal
+    } else if (client && client.userType === 'widget') { // YENİ: Widget bağlantısı kesildiğinde
+        console.log(`🗑️ Widget client disconnected: ${client.id}`);
+        clients.delete(client.id);
+    }
+    else {
         for (const [key, clientData] of clients.entries()) {
             if (clientData.ws === ws) {
                 clients.delete(key);
@@ -1887,7 +1900,6 @@ ws.on('close', () => {
         }
     }
 
-    // Her durumda broadcast yap
     setTimeout(() => {
         broadcastAdminListToCustomers();
     }, 100);
@@ -1920,7 +1932,6 @@ function findWebRTCTarget(targetId, sourceType) {
         return targetClient;
     }
 
-    // uniqueId ile arama (ADMIN123_456_abc formatı)
     if (targetId.includes('_')) {
         const normalId = targetId.split('_')[0];
         for (const [clientId, clientData] of clients.entries()) {
@@ -1929,7 +1940,6 @@ function findWebRTCTarget(targetId, sourceType) {
             }
         }
     } else {
-        // Normal ID ile arama (ADMIN123 formatı)
         for (const [clientId, clientData] of clients.entries()) {
             if ((clientId.startsWith && clientId.startsWith(targetId + '_')) && clientData.userType === 'admin') {
                 return clientData;
@@ -1992,6 +2002,7 @@ async function startServer() {
         console.log(` 🔴 Super Admin: ${SECURITY_CONFIG.SUPER_ADMIN_PATH}`);
         console.log(` 🟡 Normal Admin: ${SECURITY_CONFIG.NORMAL_ADMIN_PATH}`);
         console.log(` 🟢 Customer App: ${SECURITY_CONFIG.CUSTOMER_PATH}`);
+        console.log(` ⚙️ Widget: ${SECURITY_CONFIG.WIDGET_PATH}`); // Widget yolu eklendi
         console.log('');
         console.log('📞 YENİ SİSTEM: Admin Seçim + Callback + Kredi Düşme');
         console.log(`   └── Heartbeat interval: ${HEARTBEAT_INTERVAL/1000} saniye`);
@@ -2011,7 +2022,7 @@ async function startServer() {
     });
 }
 
-
+// ================== ERROR HANDLING ==================
 
 process.on('uncaughtException', (error) => {
     console.log('❌ Yakalanmamış hata:', error.message);
