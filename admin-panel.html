@@ -886,8 +886,6 @@
     </div>
     
     <div id="creditNotifications" class="notification-container"></div>
-    
-    <audio id="silentAudio" loop></audio>
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
     
@@ -910,11 +908,15 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         let adminUniqueId = null;
-        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100); 
+                // Dynamic admin ID - session bazlı
+        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100); // ADMIN123, ADMIN456 vs.
+        
+        // Veya localStorage'dan al
         const savedAdminId = localStorage.getItem('vipcep_admin_id');
         if (savedAdminId) {
             originalAdminId = savedAdminId;
         } else {
+            originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100);
             localStorage.setItem('vipcep_admin_id', originalAdminId);
         }
         
@@ -925,12 +927,7 @@
         let speakerEnabled = true;
         let noiseSuppression = false;
         let callState = 'idle';
-        let isInitializing = false; 
-
-        // YENİ: Kulaklık kontrolü için global değişkenler
-        let headsetControlsEnabled = false;
-        let silentAudio = null;
-        const SILENT_MP3 = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+        let isInitializing = false; // PREVENT INFINITE LOOPS
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -940,13 +937,9 @@
         
         window.onload = function() {
             console.log('🎯 VIPCEP Admin Panel başlatılıyor...');
-            if (isInitializing) return; 
+            if (isInitializing) return; // PREVENT DOUBLE INIT
             isInitializing = true;
             
-            // YENİ: Sessiz audio elementini değişkene ata
-            silentAudio = document.getElementById('silentAudio');
-            silentAudio.src = SILENT_MP3;
-
             setupEventListeners();
             checkAuthStatus();
         };
@@ -1033,11 +1026,6 @@
             updateAdminStatus('available');
             connectToServer();
             loadMyEarnings(); 
-
-            // YENİ: Eğer kullanıcı daha önce etkinleştirdiyse, kulaklık kontrollerini otomatik başlat
-            if (localStorage.getItem('vipcep_headset_enabled') === 'true') {
-                toggleHeadsetControls(true); 
-            }
         }
 
         async function performLogout() {
@@ -1049,11 +1037,6 @@
             
             if (currentCall) {
                 endCall();
-            }
-
-            // YENİ: Media session temizleniyor
-            if (headsetControlsEnabled) {
-                clearMediaSession();
             }
             
             try { 
@@ -1489,7 +1472,7 @@
                 }));
             }
 
-            // YENİ: Media session bilgisini "Görüşmede" olarak güncelle
+            // DEĞİŞİKLİK: Media session bilgisini "Görüşmede" olarak güncelle
             if (headsetControlsEnabled) {
                 updateMediaSession('Görüşmede', currentCall.userName);
             }
@@ -1595,8 +1578,8 @@
             callState = 'idle';
             
             updateAdminStatus('available');
-
-            // YENİ: Media session bilgisini "Arama Bekleniyor" olarak güncelle
+            
+            // DEĞİŞİKLİK: Media session bilgisini "Arama Bekleniyor" olarak güncelle
             if (headsetControlsEnabled) {
                 updateMediaSession('Arama Bekleniyor', currentAdmin ? currentAdmin.username : 'Admin');
             }
@@ -2311,8 +2294,9 @@
                     if (callState === 'connected') {
                         console.log('📞 Aktif görüşme var, sonlandırılıyor...');
                         endCall();
-                    } else {
-                        if (silentAudio.paused) silentAudio.play();
+                    } else if (callState === 'incoming') {
+                        console.log('📞 Gelen arama var, reddediliyor...');
+                        rejectIncomingCall();
                     }
                 });
 
@@ -2341,6 +2325,7 @@
                         { src: 'https://cdn-icons-png.flaticon.com/512/126/126467.png', sizes: '512x512', type: 'image/png' }
                     ]
                 });
+                // DEĞİŞİKLİK: Playback state'i burada açıkça belirtiyoruz.
                 navigator.mediaSession.playbackState = "playing";
             }
         }
@@ -2351,11 +2336,12 @@
                 navigator.mediaSession.setActionHandler('pause', null);
                 navigator.mediaSession.setActionHandler('stop', null);
                 navigator.mediaSession.metadata = null;
+                // DEĞİŞİKLİK: Playback state'i burada açıkça sıfırlıyoruz.
                 navigator.mediaSession.playbackState = "none";
                 console.log('🧹 Media Session temizlendi.');
             }
         }
-
+        
         // ================== FINAL INITIALIZATION ==================
         
         console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
