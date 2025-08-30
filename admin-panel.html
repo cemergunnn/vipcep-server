@@ -1009,8 +1009,9 @@
             console.log("🎧 Media Session kontrolleri ayarlanıyor...");
 
             const mediaAudio = document.getElementById('mediaSessionAudio');
-            // FIX: Using a longer, looping silent MP3 to ensure the media session stays active reliably.
-            mediaAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAAgAAANMYXZmNTcuODMgBwAAAAChkZXJbk907vYADf+3YAAA//20DEACQAAAAAABuaW5nAAAADAAAAAAAAP/20DECGQAAAAAAGebjGAAAAAAAACADhAYUAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA';
+            // Using a reliable, short, silent WAV file that is universally supported.
+            // The `loop` attribute will ensure it keeps the session active.
+            mediaAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: 'VIPCEP Admin Panel',
