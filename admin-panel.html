@@ -1009,8 +1009,8 @@
             console.log("🎧 Media Session kontrolleri ayarlanıyor...");
 
             const mediaAudio = document.getElementById('mediaSessionAudio');
-            // Sessiz bir ses dosyası (base64 formatında, ek dosya gerektirmez)
-            mediaAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            // FIX: Using a longer, looping silent MP3 to ensure the media session stays active reliably.
+            mediaAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAAgAAANMYXZmNTcuODMgBwAAAAChkZXJbk907vYADf+3YAAA//20DEACQAAAAAABuaW5nAAAADAAAAAAAAP/20DECGQAAAAAAGebjGAAAAAAAACADhAYUAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA//20DEBwwAAAAAAGhYpQAAA';
 
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: 'VIPCEP Admin Panel',
@@ -1033,21 +1033,15 @@
 
             switch (callState) {
                 case 'incoming':
-                    // Gelen arama sırasında, tek tuşlu kulaklıklar genellikle 'pause' gönderir
-                    // çünkü biz durumu 'playing' olarak ayarladık. Bu yüzden 'pause' ve 'play' kabul etmeli.
-                    if (details.action === 'play' || details.action === 'pause') {
-                        console.log("🎧 Kulaklık tuşu ile arama KABUL EDİLİYOR...");
-                        acceptIncomingCall();
-                    } 
-                    // 'stop' tuşu (eğer varsa) aramayı reddetmek için kullanılabilir.
-                    else if (details.action === 'stop') {
-                        console.log("🎧 Kulaklık tuşu (stop) ile arama REDDEDİLİYOR...");
-                        rejectIncomingCall();
-                    }
+                    // FIX: Accept call on ANY primary media key press (play/pause/stop)
+                    // This makes it work reliably with single-button headsets where the first press
+                    // might send a 'pause' or 'play' command. We interpret any as 'accept'.
+                    console.log("🎧 Kulaklık tuşu ile arama KABUL EDİLİYOR...");
+                    acceptIncomingCall();
                     break;
 
                 case 'connected':
-                    // Görüşme aktifken, herhangi bir tuşa basmak (genellikle yine 'pause' olur) görüşmeyi sonlandırmalı.
+                    // When connected, pressing the button (which sends 'pause' or 'stop') should end the call.
                     if (details.action === 'pause' || details.action === 'stop') {
                         console.log("🎧 Kulaklık tuşu ile görüşme SONLANDIRILIYOR...");
                         endCall();
