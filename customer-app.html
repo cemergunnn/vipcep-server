@@ -624,7 +624,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
         <div class="app-header">
             <div class="connection-status">
                 <div class="status-dot" id="connectionDot"></div>
@@ -645,7 +644,6 @@
             <div class="app-subtitle" data-text-tr="Teknik Servis Danışmanlığı" data-text-en="Technical Support Service">Teknik Servis Danışmanlığı</div>
         </div>
         
-        <!-- KVKK Onay Ekranı -->
         <div id="kvkkScreen" class="kvkk-screen">
             <div class="kvkk-title" data-text-tr="📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme" data-text-en="📋 Personal Data Protection Information">📋 Kişisel Verilerin Korunması Hakkında Bilgilendirme</div>
             
@@ -694,7 +692,6 @@
         </div>
         
         <div class="app-content">
-            <!-- Giriş Ekranı -->
             <div id="loginScreen" class="hidden">
                 <div class="form-group">
                     <label class="form-label" data-text-tr="4 Haneli ID Kodunuz" data-text-en="Your 4-Digit ID Code">4 Haneli ID Kodunuz</label>
@@ -739,9 +736,7 @@
                 <div id="loginMessage"></div>
             </div>
             
-            <!-- Ana Uygulama -->
             <div id="mainApp" class="hidden">
-                <!-- Kullanıcı Bilgileri -->
                 <div class="user-info">
                     <div class="info-grid">
                         <div class="info-item">
@@ -763,7 +758,6 @@
                     </div>
                 </div>
 
-                <!-- Usta Seçim Dropdown -->
                 <div class="admin-selector">
                     <label class="form-label" data-text-tr="🎯 Usta Seç" data-text-en="🎯 Select Master">🎯 Usta Seç</label>
                     <select id="adminDropdown" class="admin-dropdown" onchange="onAdminSelect()">
@@ -771,14 +765,12 @@
                     </select>
                 </div>
 
-                <!-- Callback Success Message -->
                 <div id="callbackSuccess" class="callback-success hidden">
                     <h4>✅ Geri Dönüş Talebi Alındı</h4>
                     <p><strong id="callbackAdminName">Usta</strong> müsait olduğunda sizi arayacak.</p>
                     <small>Telefonu yanınızda bulundurun.</small>
                 </div>
 
-                <!-- Gelen Arama Ekranı -->
                 <div id="incomingCallState" class="hidden">
                     <div class="incoming-call-status">
                         <div class="incoming-call-title" data-text-tr="📞 GELEN ARAMA" data-text-en="📞 INCOMING CALL">📞 GELEN ARAMA</div>
@@ -804,7 +796,6 @@
                     </div>
                 </div>
                 
-                <!-- Boş Durum -->
                 <div id="idleState">
                     <button class="btn btn-call" id="callButton" onclick="makeCall()" disabled>
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -830,7 +821,6 @@
                     <div id="errorMessage" class="error-message hidden"></div>
                 </div>
                 
-                <!-- Bağlanıyor Durumu -->
                 <div id="connectingState" class="hidden">
                     <div class="call-status">
                         <div style="color: #2563eb; font-weight: 700; font-size: 18px;" 
@@ -846,7 +836,6 @@
                     </button>
                 </div>
                 
-                <!-- Aktif Görüşme -->
                 <div id="connectedState" class="hidden">
                     <div class="call-status">
                         <div style="color: #2563eb; font-weight: 700; font-size: 18px;" 
@@ -867,14 +856,12 @@
             </div>
         </div>
         
-        <!-- Footer -->
         <div class="footer">
             <div data-text-tr="VIPCEP Teknik Servis © 2025" data-text-en="VIPCEP Technical Service © 2025">VIPCEP Teknik Servis © 2025</div>
             <div style="margin-top: 5px;" data-text-tr="Mobil Cihaz Teknik Danışmanlığı" data-text-en="Mobile Device Technical Consultancy">Mobil Cihaz Teknik Danışmanlığı</div>
         </div>
     </div>
     
-    <!-- Gizli ses elementleri -->
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
     
@@ -1085,26 +1072,18 @@
                     })();
                     break;
                 
+                // DEĞİŞİKLİK: call-failed artık merkezi handleCallEnded fonksiyonunu çağırıyor
                 case 'call-failed':
-                    handleCallFailed(message);
-                    // Görüşme sonu modalı göster
-                    showEndCallModal(message);
-                    // Ses çal
-                    playEndCallSound();
+                    handleCallEnded(message);
                     break;
                     
                 case 'call-rejected':
                     handleCallRejected(message);
                     break;
 
-                
+                // DEĞİŞİKLİK: call-ended artık sadece merkezi handleCallEnded fonksiyonunu çağırıyor
                 case 'call-ended':
-                    console.log('📞 Call-ended mesajı alındı:', message);
                     handleCallEnded(message);
-                    console.log('📱 showEndCallModal çağrılıyor...');
-                    showEndCallModal(message);
-                    console.log('🔊 playEndCallSound çağrılıyor...');
-                    playEndCallSound();
                     break;
                 
                 case 'callback-success':
@@ -1617,16 +1596,13 @@
             showError(message.reason || 'Arama reddedildi');
         }
         
+        // DEĞİŞİKLİK: handleCallEnded merkezi hale getirildi
         function handleCallEnded(message) {
-            console.log('📞 handleCallEnded çağrıldı, message:', message);
             console.log('📞 Görüşme sonlandırıldı:', message.reason);
-            
             cleanupCall();
             setState('idle');
-            
-            if (message.creditsUsed) {
-                showMessage(`Görüşme sona erdi. Kullanılan kredi: ${message.creditsUsed} dk`, 'info');
-            }
+            showEndCallModal(message);
+            playEndCallSound();
         }
         
         // WebRTC Functions
@@ -1798,16 +1774,38 @@
             cleanupCall();
             setState('idle');
         }
+
+        // YENİ: Süreyi MM:SS formatında göstermek için yardımcı fonksiyon
+        function formatDuration(seconds) {
+            if (isNaN(seconds) || seconds < 0) {
+                return "00:00";
+            }
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // DEĞİŞİKLİK: showEndCallModal fonksiyonu tamamen sunucudan gelen veriye dayalı hale getirildi
         function showEndCallModal(message) {
-            const duration = Math.floor(callDuration / 60) + 1; // Yukarı yuvarla
+            // Tüm verileri sunucudan gelen 'message' objesinden alıyoruz.
+            // Sunucudan veri gelmezse diye varsayılan değerler (fallback) ekliyoruz.
+            const durationSeconds = message.duration || callDuration; 
+            const creditsUsed = message.creditsUsed !== undefined ? message.creditsUsed : Math.ceil(durationSeconds / 60);
+            const remainingCredits = message.remainingCredits !== undefined ? message.remainingCredits : userInfo.credits;
+
+            // Kalan krediyi lokalde de güncelleyelim ki arayüz senkronize kalsın.
+            if (message.remainingCredits !== undefined) {
+                updateCredits(remainingCredits);
+            }
+
             const modal = `
-                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px;">
-                        <h3 style="color: #2563eb; margin-bottom: 15px;">✅ Görüşme Tamamlandı</h3>
-                        <p><strong>Süre:</strong> ${duration} dakika</p>
-                        <p><strong>Kullanılan Kredi:</strong> ${duration} dk</p>
-                        <p><strong>Kalan Kredi:</strong> ${userInfo.credits} dk</p>
-                        <button onclick="this.closest('div').remove()" style="margin-top: 15px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px;">Tamam</button>
+                <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
+                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px; color: #333;" onclick="event.stopPropagation()">
+                        <h3 style="color: #2563eb; margin-bottom: 20px;">✅ Görüşme Tamamlandı</h3>
+                        <p style="margin-bottom: 10px; font-size: 16px;"><strong>Süre:</strong> ${formatDuration(durationSeconds)}</p>
+                        <p style="margin-bottom: 10px; font-size: 16px;"><strong>Harcanan Kredi:</strong> ${creditsUsed} dk</p>
+                        <p style="font-weight: bold; margin-bottom: 20px; font-size: 18px; color: #16a34a;"><strong>Kalan Kredi:</strong> ${remainingCredits} dk</p>
+                        <button onclick="this.closest('.modal-overlay').remove()" style="padding: 12px 25px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">Tamam</button>
                     </div>
                 </div>
             `;
@@ -2175,33 +2173,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
