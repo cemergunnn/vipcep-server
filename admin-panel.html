@@ -678,6 +678,29 @@
             box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); 
         }
 
+        /* YENİ: Kulaklık butonu için stil */
+        .headset-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+        .headset-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        .headset-btn.active {
+            background: #1d4ed8;
+            border-color: #3b82f6;
+        }
+
         /* Responsive Design */
         @media (max-width: 1200px) { 
             .main-content { 
@@ -723,6 +746,10 @@
                 <p>Teknik Servis Danışmanlığı</p>
             </div>
             <div class="header-right">
+                <button class="headset-btn" id="headsetControlBtn" onclick="toggleHeadsetControls()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1a9 9 0 00-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 00-9-9z"/></svg>
+                    <span id="headsetControlText">Kulaklık Kapalı</span>
+                </button>
                 <div class="status">
                     <div class="status-dot disconnected" id="statusDot"></div>
                     <span id="statusText">Bağlanıyor...</span>
@@ -743,11 +770,9 @@
         </div>
         
         <div class="main-content">
-            <!-- Arama Yönetimi Panel -->
             <div class="panel call-management-panel">
                 <h3>📞 Arama Yönetimi</h3>
                 
-                <!-- Audio Controls -->
                 <div class="audio-controls">
                     <h4>🔊 Ses Kontrolleri</h4>
                     <div class="volume-control">
@@ -762,7 +787,6 @@
                     </div>
                 </div>
 
-                <!-- Gelen Arama Status -->
                 <div id="incomingCall" class="call-status-card incoming-call hidden">
                     <div class="call-status-title">📞 GELEN ARAMA</div>
                     <div class="call-status-details">
@@ -776,7 +800,6 @@
                     </div>
                 </div>
 
-                <!-- Giden Arama Status -->
                 <div id="outgoingCall" class="call-status-card outgoing-call hidden">
                     <div class="call-status-title">📞 GİDEN ARAMA</div>
                     <div class="call-status-details">
@@ -789,7 +812,6 @@
                     </div>
                 </div>
                 
-                <!-- Aktif Görüşme Status -->
                 <div id="activeCall" class="call-status-card active-call hidden">
                     <div class="call-status-title">🔊 GÖRÜŞME AKTİF</div>
                     <div class="call-status-details">
@@ -812,7 +834,6 @@
                 </div>
             </div>
             
-            <!-- Online Kullanıcılar Panel -->
             <div class="panel users-panel hidden">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
@@ -831,7 +852,6 @@
                 </div>
             </div>
 
-            <!-- Geri Dönüş Bekleyenler Panel -->
             <div class="callback-panel">
                 <div class="callback-container" id="callbackContainer">
                     <div class="callback-header">
@@ -849,7 +869,6 @@
                 </div>
             </div>
             
-            <!-- Aktif Bağlantılar Panel -->
             <div class="panel connections-panel">
                 <h3>👥 Aktif Bağlantılar</h3>
                 <div id="userList" style="margin-top: 15px;">
@@ -867,10 +886,11 @@
     </div>
     
     <div id="creditNotifications" class="notification-container"></div>
+
+    <audio id="silentAudio" loop></audio>
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
-    
-    <script>
+<script>
         // Global değişkenler
         let socket = null;
         let peerConnection = null;
@@ -909,6 +929,11 @@
         let noiseSuppression = false;
         let callState = 'idle';
         let isInitializing = false; // PREVENT INFINITE LOOPS
+
+        // YENİ: Kulaklık kontrolü için global değişkenler
+        let headsetControlsEnabled = false;
+        let silentAudio = null;
+        const SILENT_MP3 = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -921,6 +946,10 @@
             if (isInitializing) return; // PREVENT DOUBLE INIT
             isInitializing = true;
             
+            // YENİ: Sessiz audio elementini değişkene ata
+            silentAudio = document.getElementById('silentAudio');
+            silentAudio.src = SILENT_MP3;
+
             setupEventListeners();
             checkAuthStatus();
         };
@@ -994,6 +1023,7 @@
             window.location.href = '/';
         }
 
+        // DEĞİŞİKLİK: loginSuccess fonksiyonuna media session kontrolü ekleniyor
         function loginSuccess(adminData) {
             console.log('✅ Giriş başarılı:', adminData.username);
             
@@ -1007,8 +1037,14 @@
             updateAdminStatus('available');
             connectToServer();
             loadMyEarnings(); 
+
+            // YENİ: Eğer kullanıcı daha önce etkinleştirdiyse, kulaklık kontrollerini otomatik başlat
+            if (localStorage.getItem('vipcep_headset_enabled') === 'true') {
+                toggleHeadsetControls(true); // true parametresi, butona basmadan direkt aktif et demek
+            }
         }
 
+        // DEĞİŞİKLİK: performLogout'a media session temizliği eklendi
         async function performLogout() {
             if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 return;
@@ -1018,6 +1054,11 @@
             
             if (currentCall) {
                 endCall();
+            }
+
+            // YENİ: Media session temizleniyor
+            if (headsetControlsEnabled) {
+                clearMediaSession();
             }
             
             try { 
@@ -2226,14 +2267,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
