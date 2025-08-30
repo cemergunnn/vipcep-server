@@ -869,9 +869,11 @@
     <div id="creditNotifications" class="notification-container"></div>
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
+    <!-- Sessiz ses dosyası ve medya oturumu kontrolü için -->
+    <audio id="mediaSessionAudio" loop></audio>
     
     <script>
-        // Global değişkenler
+        // Global variables
         let socket = null;
         let peerConnection = null;
         let localStream = null;
@@ -890,7 +892,7 @@
         let currentAdmin = null;
         let adminUniqueId = null;
                 // Dynamic admin ID - session bazlı
-        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100); // ADMIN123, ADMIN456 vs.
+        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100); // ADMIN123, ADMIN456 etc.
         
         // Veya localStorage'dan al
         const savedAdminId = localStorage.getItem('vipcep_admin_id');
@@ -913,6 +915,9 @@
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const baseUrl = window.location.hostname === 'localhost' ? 
+            'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
+
 
         // ================== INITIALIZATION ==================
         
@@ -973,12 +978,94 @@
             });
         }
 
+        // ================== MEDIA SESSION (HEADSET CONTROL) ==================
+
+        /**
+         * Tarayıcının kulaklık ve diğer medya tuşlarını dinlemesini sağlar.
+         */
+        function setupMediaSessionControls() {
+            if (!('mediaSession' in navigator)) {
+                console.warn("MediaSession API is not supported. Headset controls will not work.");
+                return;
+            }
+
+            console.log("🎧 Setting up Media Session controls...");
+
+            const mediaAudio = document.getElementById('mediaSessionAudio');
+            // A silent audio file (base64 encoded, no external file needed)
+            mediaAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'VIPCEP Admin Panel',
+                artist: 'Aktif Çağrı Yönetimi',
+                album: 'Sistem'
+            });
+
+            // Assign actions to media keys
+            navigator.mediaSession.setActionHandler('play', handleMediaAction);
+            navigator.mediaSession.setActionHandler('pause', handleMediaAction); 
+            navigator.mediaSession.setActionHandler('stop', handleMediaAction);
+        }
+
+        /**
+         * Handles actions based on the current call state when a media key is pressed.
+         * @param {object} details - Action details (e.g., { action: 'play' })
+         */
+        function handleMediaAction(details) {
+            console.log(`🎧 Media key detected: ${details.action} | Current State: ${callState}`);
+
+            switch (callState) {
+                case 'incoming':
+                    if (details.action === 'play') {
+                        console.log("🎧 Accepting call with headset button...");
+                        acceptIncomingCall();
+                    } else if (details.action === 'stop' || details.action === 'pause') {
+                        console.log("🎧 Rejecting call with headset button...");
+                        rejectIncomingCall();
+                    }
+                    break;
+
+                case 'connected':
+                    if (details.action === 'stop' || details.action === 'pause') {
+                        console.log("🎧 Ending call with headset button...");
+                        endCall();
+                    }
+                    break;
+
+                default:
+                    console.log('🎧 No active call to control.');
+                    break;
+            }
+        }
+
+        /**
+         * Activates the media session (headset control).
+         */
+        function activateMediaSession() {
+            const mediaAudio = document.getElementById('mediaSessionAudio');
+            if (mediaAudio && mediaAudio.paused) {
+                mediaAudio.play().catch(e => console.error("Could not play silent audio:", e));
+                console.log("🎧 Media session activated.");
+            }
+        }
+
+        /**
+         * Deactivates the media session (headset control).
+         */
+        function deactivateMediaSession() {
+            const mediaAudio = document.getElementById('mediaSessionAudio');
+            if (mediaAudio) {
+                mediaAudio.pause();
+                console.log("🎧 Media session deactivated.");
+            }
+        }
+
         // ================== AUTHENTICATION ==================
         
         async function checkAuthStatus() {
             try {
                 console.log('🔐 Oturum kontrol ediliyor...');
-                const response = await fetch('/auth/check-session', { credentials: 'include' });
+                const response = await fetch(`${baseUrl}/auth/check-session`, { credentials: 'include' });
                 
                 if (response.ok) {
                     const data = await response.json();
@@ -991,7 +1078,7 @@
                 console.error('❌ Auth kontrol hatası:', error);
             }
             
-            window.location.href = '/';
+            window.location.href = baseUrl;
         }
 
         function loginSuccess(adminData) {
@@ -1007,6 +1094,7 @@
             updateAdminStatus('available');
             connectToServer();
             loadMyEarnings(); 
+            setupMediaSessionControls(); // Initialize headset controls
         }
 
         async function performLogout() {
@@ -1021,7 +1109,7 @@
             }
             
             try { 
-                await fetch('/auth/logout', { method: 'POST', credentials: 'include' }); 
+                await fetch(`${baseUrl}/auth/logout`, { method: 'POST', credentials: 'include' }); 
             } catch (error) {
                 console.error('Logout hatası:', error);
             }
@@ -1031,7 +1119,7 @@
                 socket = null;
             }
             
-            window.location.href = '/';
+            window.location.href = baseUrl;
         }
 
         // ================== SERVER CONNECTION ==================
@@ -1180,6 +1268,7 @@
                     
                     // Zil sesi çal
                     playRingTone();
+                    activateMediaSession(); // Activate headset controls
                     console.log('📱 Gelen arama UI gösterildi, kullanıcı kararını bekliyor');
                     break;
                                     
@@ -1343,7 +1432,7 @@
             
             callState = 'outgoing';
             
-            // UI Güncelle
+            // UI Update
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
             const outgoingCallEl = document.getElementById('outgoingCall');
@@ -1354,7 +1443,7 @@
             
             updateAdminStatus('busy');
             
-            // Sunucuya mesaj gönder
+            // Send message to server
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'admin-call-customer',
@@ -1406,7 +1495,7 @@
             
             callState = 'incoming';
             
-            // UI Güncelle
+            // UI Update
             const incomingNameEl = document.getElementById('incomingName');
             const incomingIdEl = document.getElementById('incomingId');
             const incomingCallEl = document.getElementById('incomingCall');
@@ -1415,7 +1504,7 @@
             if (incomingIdEl) incomingIdEl.textContent = message.userId;
             if (incomingCallEl) incomingCallEl.classList.remove('hidden');
             
-            // Zil sesi çal
+            // Play ringtone
             playRingTone();
         }
 
@@ -1491,7 +1580,7 @@
                 outgoingCallInfo = null;
                 callState = 'connected';
                 
-                // WebRTC'yi başlat
+                // Start WebRTC
                 setupPeerConnection(callInfo);
             }
         }
@@ -1570,7 +1659,7 @@
                 
                 updateAdminStatus('busy');
                 
-                // MediaStream al
+                // Get MediaStream
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: { 
                         echoCancellation: true, 
@@ -1582,16 +1671,16 @@
                 localStream = stream;
                 console.log('🎤 Mikrofon erişimi alındı');
                 
-                // PeerConnection oluştur
+                // Create PeerConnection
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 
-                // Audio track kontrolü
+                // Audio track control
                 const audioTrack = stream.getAudioTracks()[0];
                 if (audioTrack) {
                     audioTrack.enabled = micEnabled;
                 }
                 
-                // Tracks ekle
+                // Add tracks
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
@@ -1626,14 +1715,14 @@
                 };
                 
                 peerConnection.onconnectionstatechange = () => {
-                    if (!peerConnection) return; // Null kontrol
+                    if (!peerConnection) return; // Null check
                     const state = peerConnection.connectionState;
                     console.log('🔗 Bağlantı durumu:', state);
                     
                     updateConnectionQuality(state);
                     
                     if (state === 'connected') {
-                        // Görüşme başladı
+                        // Call started
                         const activeCallerEl = document.getElementById('activeCaller');
                         const activeCallEl = document.getElementById('activeCall');
                         const outgoingCallEl = document.getElementById('outgoingCall');
@@ -1644,6 +1733,7 @@
                         if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
                         if (incomingCallEl) incomingCallEl.classList.add('hidden');
                         
+                        activateMediaSession(); // Activate headset controls when call is connected
                         startTimer();
                         console.log('✅ Görüşme başladı:', callInfo.userName);
                         
@@ -1653,7 +1743,7 @@
                     }
                 };
                 
-                // Admin her zaman offer oluşturur (outgoing veya incoming)
+                // Admin always creates the offer (outgoing or incoming)
                 if (callState === 'connected') {
                     console.log('📤 WebRTC offer oluşturuluyor...');
                     const offer = await peerConnection.createOffer();
@@ -1682,7 +1772,7 @@
         if (!peerConnection) {
             console.log('⚠️ PeerConnection yok, kurulacak...');
             
-            // Admin kabul ettiyse ama henüz connecting değilse, connecting yap
+            // If admin accepted but not yet connecting, make it connecting
             if (callState === 'accepted') {
                 callState = 'connecting';
                 console.log('✅ CallState accepted->connecting değiştirildi');
@@ -1697,7 +1787,7 @@
             
             await setupPeerConnection(currentCall);
             
-            // Setup sadece bir kez çalışsın - ICE candidate'ları tekrar işleme
+            // Process ICE candidates again after setup
             if (message.type === 'ice-candidate') {
                 setTimeout(() => handleWebRTCMessage(message), 100);
                 return;
@@ -1707,7 +1797,7 @@
             try {
                 switch (message.type) {
             case 'offer':
-                // Gelen arama kabul edilmemişse offer'ı reddet
+                // Reject offer if incoming call is not yet accepted
                 if (callState === 'incoming' && incomingCallInfo) {
                     console.log('⚠️ Offer reddedildi - gelen arama henüz kabul edilmedi');
                     return;
@@ -1728,7 +1818,7 @@
                     console.log('📤 Answer gönderildi');
                 }
                 
-                // Bekleyen ICE candidate'ları işle
+                // Process pending ICE candidates
                 processPendingIceCandidates();
                 break;
                         
@@ -1736,13 +1826,13 @@
                         console.log('📨 Answer alındı');
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
                         
-                        // Bekleyen ICE candidate'ları işle
+                        // Process pending ICE candidates
                         processPendingIceCandidates();
                         break;
                         
                     case 'ice-candidate':
                         if (message.candidate) {
-                            // Remote description yoksa beklet
+                            // Queue if remote description is not set
                             if (!peerConnection.remoteDescription) {
                                 console.log('⏳ ICE candidate bekletiliyor, remote description yok');
                                 if (!window.pendingIceCandidates) {
@@ -1760,7 +1850,7 @@
             } catch (error) {
                 console.error('❌ WebRTC hata:', error);
                 
-                // ICE candidate hatası ise beklet
+                // Queue on InvalidStateError
                 if (error.name === 'InvalidStateError' && message.type === 'ice-candidate') {
                     console.log('⏳ ICE candidate bekletiliyor (InvalidStateError)');
                     if (!window.pendingIceCandidates) {
@@ -1773,7 +1863,7 @@
                 showNotification('WebRTC bağlantı hatası: ' + error.message, 'error');
             }
         }
-        // Bekleyen ICE candidate'ları işle
+        // Process pending ICE candidates
         function processPendingIceCandidates() {
             if (!window.pendingIceCandidates || window.pendingIceCandidates.length === 0) {
                 return;
@@ -1796,6 +1886,7 @@
         }
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
+            deactivateMediaSession(); // Deactivate headset controls
             
             if (callTimer) { 
                 clearInterval(callTimer); 
@@ -1824,7 +1915,7 @@
             callDuration = 0;
             callStartTime = null;
             
-            // Bekleyen ICE candidate'ları temizle
+            // Clear pending ICE candidates
             window.pendingIceCandidates = [];
             
             console.log('✅ Call cleanup tamamlandı');
@@ -1974,11 +2065,11 @@
             try {
                 console.log('👥 Online kullanıcılar yükleniyor...');
                 
-                const response = await fetch('/api/approved-users');
+                const response = await fetch(`${baseUrl}/api/approved-users`);
                 if (response.ok) {
                     const allUsers = await response.json();
                     
-                    // Online olan kullanıcıları belirle
+                    // Determine which users are online
                     onlineUsers = allUsers.map(user => ({
                         ...user,
                         isOnline: connectedUsers.some(c => c.id === user.id && c.userType === 'customer')
@@ -2085,7 +2176,7 @@
         
         function playRingTone() {
             try {
-                // Basit zil sesi oluştur
+                // Create simple ringtone
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
@@ -2101,7 +2192,7 @@
                 
                 setTimeout(() => {
                     if (incomingCallInfo) {
-                        playRingTone(); // Tekrar çal
+                        playRingTone(); // Play again
                     }
                 }, 1000);
                 
@@ -2111,7 +2202,7 @@
         }
         function playRingTone() {
             try {
-                // Basit zil sesi oluştur
+                // Create simple ringtone
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
@@ -2127,7 +2218,7 @@
                 
                 setTimeout(() => {
                     if (incomingCallInfo && callState === 'incoming') {
-                        playRingTone(); // Tekrar çal
+                        playRingTone(); // Play again
                     }
                 }, 1000);
                 
@@ -2192,7 +2283,7 @@
         
         async function loadMyEarnings() {
             try {
-                const response = await fetch('/api/my-earnings', { 
+                const response = await fetch(`${baseUrl}/api/my-earnings`, { 
                     credentials: 'include' 
                 });
                 
@@ -2226,14 +2317,4 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
 
