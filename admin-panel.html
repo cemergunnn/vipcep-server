@@ -911,6 +911,7 @@
         let noiseSuppression = false;
         let callState = 'idle';
         let isInitializing = false; // PREVENT INFINITE LOOPS
+        let isMediaAudioUnlocked = false; // Flag to check if audio is unlocked by user interaction
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -976,6 +977,22 @@
                     }
                 }
             });
+            
+            // Unlock audio context on the first user interaction to allow autoplay for media session
+            document.body.addEventListener('click', () => {
+                if (!isMediaAudioUnlocked) {
+                    const mediaAudio = document.getElementById('mediaSessionAudio');
+                    if (mediaAudio) {
+                        mediaAudio.play().then(() => {
+                            mediaAudio.pause();
+                            isMediaAudioUnlocked = true;
+                            console.log('🎧 Medya oturumu için ses kilidi kullanıcı etkileşimiyle açıldı.');
+                        }).catch(e => {
+                           console.warn('Ses kilidi açılamadı, tarayıcı engelliyor olabilir.', e);
+                        });
+                    }
+                }
+            }, { once: true });
         }
 
         // ================== MEDIA SESSION (HEADSET CONTROL) ==================
@@ -985,14 +1002,14 @@
          */
         function setupMediaSessionControls() {
             if (!('mediaSession' in navigator)) {
-                console.warn("MediaSession API is not supported. Headset controls will not work.");
+                console.warn("MediaSession API desteklenmiyor. Kulaklık tuşları çalışmayacaktır.");
                 return;
             }
 
-            console.log("🎧 Setting up Media Session controls...");
+            console.log("🎧 Media Session kontrolleri ayarlanıyor...");
 
             const mediaAudio = document.getElementById('mediaSessionAudio');
-            // A silent audio file (base64 encoded, no external file needed)
+            // Sessiz bir ses dosyası (base64 formatında, ek dosya gerektirmez)
             mediaAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
 
             navigator.mediaSession.metadata = new MediaMetadata({
@@ -1001,7 +1018,7 @@
                 album: 'Sistem'
             });
 
-            // Assign actions to media keys
+            // Medya tuşlarına basıldığında hangi fonksiyonların çalışacağını belirle
             navigator.mediaSession.setActionHandler('play', handleMediaAction);
             navigator.mediaSession.setActionHandler('pause', handleMediaAction); 
             navigator.mediaSession.setActionHandler('stop', handleMediaAction);
@@ -1012,28 +1029,28 @@
          * @param {object} details - Action details (e.g., { action: 'play' })
          */
         function handleMediaAction(details) {
-            console.log(`🎧 Media key detected: ${details.action} | Current State: ${callState}`);
+            console.log(`🎧 Medya tuşu algılandı: ${details.action} | Mevcut Durum: ${callState}`);
 
             switch (callState) {
                 case 'incoming':
                     if (details.action === 'play') {
-                        console.log("🎧 Accepting call with headset button...");
+                        console.log("🎧 Kulaklık tuşu ile arama kabul ediliyor...");
                         acceptIncomingCall();
                     } else if (details.action === 'stop' || details.action === 'pause') {
-                        console.log("🎧 Rejecting call with headset button...");
+                        console.log("🎧 Kulaklık tuşu ile arama reddediliyor...");
                         rejectIncomingCall();
                     }
                     break;
 
                 case 'connected':
                     if (details.action === 'stop' || details.action === 'pause') {
-                        console.log("🎧 Ending call with headset button...");
+                        console.log("🎧 Kulaklık tuşu ile görüşme sonlandırılıyor...");
                         endCall();
                     }
                     break;
 
                 default:
-                    console.log('🎧 No active call to control.');
+                    console.log('🎧 Kontrol edilecek aktif bir arama yok.');
                     break;
             }
         }
@@ -1042,10 +1059,14 @@
          * Activates the media session (headset control).
          */
         function activateMediaSession() {
+            if (!isMediaAudioUnlocked) {
+                console.warn("🎧 Medya oturumu aktif edilemedi. Önce kullanıcı etkileşimi gerekli.");
+                return;
+            }
             const mediaAudio = document.getElementById('mediaSessionAudio');
             if (mediaAudio && mediaAudio.paused) {
-                mediaAudio.play().catch(e => console.error("Could not play silent audio:", e));
-                console.log("🎧 Media session activated.");
+                mediaAudio.play().catch(e => console.error("Sessiz ses oynatılamadı:", e));
+                console.log("🎧 Medya oturumu aktif edildi.");
             }
         }
 
@@ -1056,7 +1077,7 @@
             const mediaAudio = document.getElementById('mediaSessionAudio');
             if (mediaAudio) {
                 mediaAudio.pause();
-                console.log("🎧 Media session deactivated.");
+                console.log("🎧 Medya oturumu pasif edildi.");
             }
         }
 
