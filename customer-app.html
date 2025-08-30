@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIPCEP Müşteri Uygulaması</title>
     <style>
-            :root {
-                --primary-color: #2563eb;    /* Logo mavisi */
-                --primary-dark: #1e40af;     /* Koyu mavi */
-                --primary-light: #dbeafe;    /* Açık mavi */
-            }
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #dbeafe;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -121,7 +121,6 @@
             padding: 20px;
         }
 
-        /* KVKK Onay Ekranı */
         .kvkk-screen {
             padding: 20px;
             max-height: 80vh;
@@ -395,62 +394,129 @@
             font-size: 18px;
         }
 
-        /* Admin Selection Dropdown */
         .admin-selector {
             margin-bottom: 15px;
         }
 
-        .admin-dropdown {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
+        .admin-list-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
             border-radius: 10px;
-            font-size: 15px;
+            padding: 10px;
             background: #f9fafb;
+        }
+
+        .admin-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
             transition: all 0.3s ease;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 12px center;
-            background-repeat: no-repeat;
-            background-size: 16px;
             cursor: pointer;
         }
 
-        .admin-dropdown:focus {
-            outline: none;
+        .admin-item:hover {
             border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-            background-color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .admin-option.available {
-            color: #059669;
+        .admin-item.selected {
+            border-color: #2563eb;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+        }
+
+        .admin-item.available {
+            border-left: 4px solid #22c55e;
+        }
+
+        .admin-item.busy {
+            border-left: 4px solid #ef4444;
+            opacity: 0.8;
+        }
+
+        .admin-info-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #16a34a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .admin-details {
+            flex: 1;
+        }
+
+        .admin-name {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .admin-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .stars {
+            color: #f59e0b;
+        }
+
+        .admin-status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
 
-        .admin-option.busy {
+        .status-available {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .status-busy {
+            background: #fee2e2;
             color: #dc2626;
-            font-weight: 600;
         }
-        .admin-dropdown {
-                    width: 100%;
-                    padding: 12px 16px;
-                    border: 2px solid #e5e7eb;
-                    border-radius: 10px;
-                    font-size: 15px;
-                    background: #f9fafb;
-                    cursor: pointer;
-                    appearance: none;
-                }
-        
-                .admin-dropdown:focus {
-                    outline: none;
-                    border-color: #2563eb;
-                    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-                    background-color: white;
-                }
 
-        /* Callback Success Message */
+        .btn-detail {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-detail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
         .callback-success {
             background: linear-gradient(135deg, #d1fae5, #a7f3d0);
             border: 2px solid #2563eb;
@@ -585,6 +651,331 @@
             color: #374151;
             font-size: 13px;
         }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #333;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal h3 {
+            color: #2563eb;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-picture {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #16a34a);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .profile-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+
+        .profile-specialization {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .profile-rating {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .rating-stars {
+            color: #f59e0b;
+            font-size: 18px;
+        }
+
+        .rating-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .profile-review-count {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .profile-bio {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .reviews-section {
+            margin-top: 20px;
+        }
+
+        .reviews-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .review-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #2563eb;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .review-author {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 14px;
+        }
+
+        .review-rating {
+            color: #f59e0b;
+            font-size: 14px;
+        }
+
+        .review-comment {
+            font-size: 13px;
+            color: #374151;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .review-tip {
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .review-date {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 8px;
+        }
+
+        .no-reviews {
+            text-align: center;
+            padding: 30px;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .close-modal-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #64748b, #475569);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .close-modal-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .rating-modal {
+            text-align: center;
+        }
+
+        .star-rating-input {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .star-btn {
+            background: none;
+            border: none;
+            font-size: 32px;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .star-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .star-btn.active {
+            color: #f59e0b;
+            animation: starPulse 0.3s ease;
+        }
+
+        @keyframes starPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1.2); }
+        }
+
+        .rating-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .comment-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        .comment-textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .tip-section {
+            background: #f0fdf4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tip-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #16a34a;
+            margin-bottom: 10px;
+        }
+
+        .tip-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .tip-btn {
+            padding: 10px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .tip-btn:hover {
+            border-color: #16a34a;
+            background: #dcfce7;
+        }
+
+        .tip-btn.selected {
+            background: linear-gradient(135deg, #16a34a, #059669);
+            color: white;
+            border-color: #16a34a;
+        }
+
+        .submit-rating-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2563eb, #16a34a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-rating-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+        }
+
+        .submit-rating-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .skip-rating-btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: #64748b;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            text-decoration: underline;
+        }
+
+        .skip-rating-btn:hover {
+            color: #1e293b;
+        }
         
         @keyframes pulse {
             0%, 100% { 
@@ -599,14 +990,22 @@
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         
-        /* Loading State */
         .loading {
             opacity: 0.7;
             pointer-events: none;
         }
 
-        /* Responsive Design */
         @media (max-width: 400px) {
             .app-container {
                 max-width: 320px;
@@ -760,9 +1159,9 @@
 
                 <div class="admin-selector">
                     <label class="form-label" data-text-tr="🎯 Usta Seç" data-text-en="🎯 Select Master">🎯 Usta Seç</label>
-                    <select id="adminDropdown" class="admin-dropdown" onchange="onAdminSelect()">
-                        <option value="">-- Bir usta seçin --</option>
-                    </select>
+                    <div class="admin-list-container" id="adminListContainer">
+                        <!-- Admin listesi buraya dinamik olarak yüklenecek -->
+                    </div>
                 </div>
 
                 <div id="callbackSuccess" class="callback-success hidden">
@@ -839,7 +1238,7 @@
                 <div id="connectedState" class="hidden">
                     <div class="call-status">
                         <div style="color: #2563eb; font-weight: 700; font-size: 18px;" 
-                             data-text-tr="📊 Görüşme Aktif" data-text-en="📊 Call Active">📊 Görüşme Aktif</div>
+                             data-text-tr="🔊 Görüşme Aktif" data-text-en="🔊 Call Active">🔊 Görüşme Aktif</div>
                         <div class="call-timer" id="callTimer">00:00</div>
                         <div style="font-size: 14px; color: #64748b;" 
                              data-text-tr="Usta ile görüşüyorsunuz" data-text-en="Talking with master">
@@ -882,7 +1281,8 @@
         let currentAdminId = null;
         let selectedAdminId = null;
         let availableAdmins = [];
-       
+        let lastCallAdminId = null;
+        let callStatistics = null;
         
         let userInfo = {
             id: '',
@@ -892,6 +1292,8 @@
         
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
+        const baseUrl = window.location.hostname === 'localhost' ?
+            'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
         
         // Uygulama başlatma
@@ -1008,11 +1410,13 @@
                 case 'announcement-broadcast':
                     displayAnnouncement(message.announcement);
                     break;
-                                case 'announcement-deleted':
-                                    const banner = document.getElementById('announcementBanner');
-                                    if (banner) banner.remove();
-                                    break;
-                                case 'login-response':
+                    
+                case 'announcement-deleted':
+                    const banner = document.getElementById('announcementBanner');
+                    if (banner) banner.remove();
+                    break;
+                    
+                case 'login-response':
                     handleLoginResponse(message);
                     break;
                 
@@ -1031,18 +1435,13 @@
                 case 'call-accepted':
                     console.log('✅ Call accepted, message:', message);
                     
-                    // currentAdminId'yi set et
                     if (outgoingCallInfo) {
                         currentAdminId = selectedAdminId;
                         outgoingCallInfo = null;
                         callState = 'connected';
                         
                         console.log('✅ currentAdminId set to:', currentAdminId);
-                        
-                        // WebRTC zaten kuruldu, sadece state'i güncelle
                         setState('connecting');
-                        
-                        // PeerConnection zaten var, tekrar kurma!
                         console.log('🔗 Admin kabul etti, mevcut WebRTC devam ediyor');
                     }
                     break;
@@ -1072,7 +1471,6 @@
                     })();
                     break;
                 
-                // DEĞİŞİKLİK: call-failed artık merkezi handleCallEnded fonksiyonunu çağırıyor
                 case 'call-failed':
                     handleCallEnded(message);
                     break;
@@ -1081,7 +1479,6 @@
                     handleCallRejected(message);
                     break;
 
-                // DEĞİŞİKLİK: call-ended artık sadece merkezi handleCallEnded fonksiyonunu çağırıyor
                 case 'call-ended':
                     handleCallEnded(message);
                     break;
@@ -1093,9 +1490,7 @@
                 case 'callback-failed':
                     showMessage(message.reason || 'Geri dönüş talebi başarısız!', 'error');
                     break;
-                case 'admin-list-update':
-                    updateAdminList(message.admins || []);
-                    break;
+                    
                 case 'credit-update':
                     updateCredits(message.credits);
                     showMessage(`Kredi güncellendi: ${message.credits} dk`, 'success');
@@ -1193,7 +1588,7 @@
                 localStorage.removeItem('vipcep_user_name');
                 localStorage.removeItem('vipcep_remember_me');
             }
-            console.log('🎯 Arama yapılıyor - Admin ID:', selectedAdminId, 'Current Admin ID:', currentAdminId);
+            
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'login-request',
@@ -1278,64 +1673,74 @@
         // Admin Selection Functions
         function updateAdminList(admins) {
             availableAdmins = admins || [];
-            const dropdown = document.getElementById('adminDropdown');
+            const container = document.getElementById('adminListContainer');
             
-            if (!dropdown) {
-                console.log('⚠️ Admin dropdown bulunamadı');
+            if (!container) {
+                console.log('⚠️ Admin list container bulunamadı');
                 return;
             }
             
-            // Mevcut seçimi koru
-            const currentSelection = dropdown.value;
-            
-            // Clear dropdown
-            dropdown.innerHTML = '<option value="">-- Bir usta seçin --</option>';
-            
-            // Add available admins first (green)
-            const availableAdminsList = availableAdmins.filter(a => a.status === 'available');
-            const busyAdminsList = availableAdmins.filter(a => a.status === 'busy');
-            
-            availableAdminsList.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.textContent = `🟢 ${admin.name} (Müsait)`;
-                option.className = 'admin-option available';
-                dropdown.appendChild(option);
-            });
-            
-            // Add busy admins (red)
-            busyAdminsList.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.textContent = `🔴 ${admin.name} (Meşgul)`;
-                option.className = 'admin-option busy';
-                dropdown.appendChild(option);
-            });
-            
-            // Seçimi geri yükle (eğer admin hala listede varsa)
-            if (currentSelection && availableAdmins.find(a => a.id === currentSelection)) {
-                dropdown.value = currentSelection;
-                selectedAdminId = currentSelection;
-                // Buton durumunu güncelle
-                setTimeout(() => onAdminSelect(), 100);
-            } else if (currentSelection && !availableAdmins.find(a => a.id === currentSelection)) {
-                // Seçili admin artık yok, temizle
-                selectedAdminId = null;
-                updateCallButtonState();
+            if (availableAdmins.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">Çevrimiçi usta bulunmuyor</div>';
+                return;
             }
             
-            console.log(`📊 Admin listesi güncellendi: ${availableAdminsList.length} müsait, ${busyAdminsList.length} meşgul`);
+            container.innerHTML = availableAdmins.map(admin => {
+                const isAvailable = admin.status === 'available';
+                const statusClass = isAvailable ? 'available' : 'busy';
+                const statusBadgeClass = isAvailable ? 'status-available' : 'status-busy';
+                const statusText = isAvailable ? 'Müsait' : 'Meşgul';
+                const isSelected = selectedAdminId === admin.id;
+                
+                return `
+                    <div class="admin-item ${statusClass} ${isSelected ? 'selected' : ''}" onclick="selectAdmin('${admin.id}')">
+                        <div class="admin-info-section">
+                            <div class="admin-avatar">
+                                ${admin.profile_picture_url ? 
+                                    `<img src="${admin.profile_picture_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : 
+                                    admin.name.charAt(0).toUpperCase()
+                                }
+                            </div>
+                            <div class="admin-details">
+                                <div class="admin-name">${admin.name}</div>
+                                <div class="admin-rating">
+                                    <span class="stars">${generateStars(admin.average_rating || 0)}</span>
+                                    <span>(${admin.review_count || 0})</span>
+                                </div>
+                                ${admin.specialization ? `<div style="font-size: 11px; color: #64748b;">${admin.specialization}</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                            <div class="admin-status-badge ${statusBadgeClass}">${statusText}</div>
+                            <button class="btn-detail" onclick="event.stopPropagation(); showAdminProfile('${admin.id}')">Detay</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log(`📊 Admin listesi güncellendi: ${availableAdmins.length} usta`);
         }
-        function onAdminSelect() {
-            const dropdown = document.getElementById('adminDropdown');
+        
+        function selectAdmin(adminId) {
+            selectedAdminId = adminId;
+            updateAdminList(availableAdmins);
+            
+            const selectedAdmin = availableAdmins.find(a => a.id === adminId);
+            if (selectedAdmin) {
+                updateCallButtonState();
+                
+                const callButton = document.getElementById('callButton');
+                callButton.classList.add('pulse');
+                setTimeout(() => callButton.classList.remove('pulse'), 600);
+            }
+        }
+        
+        function updateCallButtonState() {
             const callButton = document.getElementById('callButton');
             
-            selectedAdminId = dropdown.value;
-            
             if (!selectedAdminId) {
-                // No admin selected - button disabled
                 callButton.disabled = true;
-                callButton.textContent = '📞 Ustamı Ara';
+                callButton.innerHTML = '<span>Önce bir usta seçin</span>';
                 callButton.className = 'btn btn-call-disabled';
                 callButton.onclick = null;
                 return;
@@ -1343,61 +1748,119 @@
             
             const selectedAdmin = availableAdmins.find(a => a.id === selectedAdminId);
             
-            if (selectedAdmin) {
+            if (userInfo.credits <= 0) {
+                callButton.disabled = true;
+                callButton.innerHTML = '<span>Yetersiz Kredi</span>';
+                callButton.className = 'btn btn-call-disabled';
+            } else if (selectedAdmin) {
                 if (selectedAdmin.status === 'available') {
-                    // Available admin - enable call button
                     callButton.disabled = false;
-                    callButton.textContent = '📞 Ustamı Ara';
+                    callButton.innerHTML = `
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                        </svg>
+                        <span>Ustamı Ara</span>
+                    `;
                     callButton.className = 'btn btn-call';
                     callButton.onclick = makeCall;
-                    
-                    // Pulse animation
-                    callButton.classList.add('pulse');
-                    setTimeout(() => callButton.classList.remove('pulse'), 600);
-                    
                 } else if (selectedAdmin.status === 'busy') {
-                    // Busy admin - callback button
                     callButton.disabled = false;
-                    callButton.textContent = '📝 Çağrı Bırak';
+                    callButton.innerHTML = '<span>📝 Çağrı Bırak</span>';
                     callButton.className = 'btn btn-callback';
                     callButton.onclick = makeCallbackRequest;
-                    
-                    // Pulse animation
-                    callButton.classList.add('pulse');
-                    setTimeout(() => callButton.classList.remove('pulse'), 600);
                 }
             }
         }
         
-        function updateCallButtonState() {
-            const callButton = document.getElementById('callButton');
+        // Profile Modal Functions
+        async function showAdminProfile(adminId) {
+            const admin = availableAdmins.find(a => a.id === adminId);
+            if (!admin) return;
             
-            if (userInfo.credits <= 0) {
-                callButton.disabled = true;
-                callButton.className = 'btn btn-call-disabled';
-            } else if (selectedAdminId) {
-                const selectedAdmin = availableAdmins.find(a => a.id === selectedAdminId);
-                if (selectedAdmin?.status === 'available') {
-                    callButton.disabled = false;
-                    callButton.className = 'btn btn-call';
-                } else if (selectedAdmin?.status === 'busy') {
-                    callButton.disabled = false;
-                    callButton.className = 'btn btn-callback';
+            try {
+                const response = await fetch(`${baseUrl}/api/admins/${adminId}/profile`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const profile = result.profile;
+                    const modal = `
+                        <div class="modal-overlay" onclick="if(event.target === this) this.remove()">
+                            <div class="modal">
+                                <h3>👤 Usta Profili</h3>
+                                <div class="profile-header">
+                                    <div class="profile-picture">
+                                        ${profile.profile_picture_url ? 
+                                            `<img src="${profile.profile_picture_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : 
+                                            admin.name.charAt(0).toUpperCase()
+                                        }
+                                    </div>
+                                    <div class="profile-name">${admin.name}</div>
+                                    ${profile.specialization ? `<div class="profile-specialization">${profile.specialization}</div>` : ''}
+                                    <div class="profile-rating">
+                                        <span class="rating-stars">${generateStars(profile.average_rating || 0)}</span>
+                                        <span class="rating-value">${profile.average_rating || '0.0'}</span>
+                                    </div>
+                                    <div class="profile-review-count">(${profile.reviews?.length || 0} değerlendirme)</div>
+                                </div>
+                                
+                                ${profile.bio ? `
+                                    <div class="profile-bio">
+                                        <strong>Hakkında:</strong><br>
+                                        ${profile.bio}
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="reviews-section">
+                                    <div class="reviews-title">📝 Müşteri Yorumları</div>
+                                    ${profile.reviews && profile.reviews.length > 0 ? 
+                                        profile.reviews.map(review => `
+                                            <div class="review-item">
+                                                <div class="review-header">
+                                                    <span class="review-author">${review.customer_name || 'Anonim'}</span>
+                                                    <span class="review-rating">${generateStars(review.rating)}</span>
+                                                </div>
+                                                ${review.comment ? `<div class="review-comment">${review.comment}</div>` : ''}
+                                                ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} kredi destek gönderdi</div>` : ''}
+                                                <div class="review-date">${new Date(review.created_at).toLocaleDateString('tr-TR')}</div>
+                                            </div>
+                                        `).join('') : 
+                                        '<div class="no-reviews">Henüz değerlendirme yok</div>'
+                                    }
+                                </div>
+                                
+                                <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">Kapat</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', modal);
                 }
+            } catch (error) {
+                console.error('Profil yüklenemedi:', error);
+                showMessage('Profil bilgileri yüklenemedi', 'error');
             }
+        }
+        
+        function generateStars(rating) {
+            const fullStars = Math.floor(rating);
+            const halfStar = rating % 1 >= 0.5 ? 1 : 0;
+            const emptyStars = 5 - fullStars - halfStar;
+            
+            let stars = '';
+            for (let i = 0; i < fullStars; i++) stars += '★';
+            if (halfStar) stars += '☆';
+            for (let i = 0; i < emptyStars; i++) stars += '☆';
+            
+            return stars;
         }
         
         // Call Functions
         function makeCall() {
-            // Ses context'i etkinleştir
             if (!window.audioContext) {
                 window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
             
-            // Existing makeCall code...
-            
-            // Çeviri sesini başlat
             playClassicRing();
+            
             if (!selectedAdminId) {
                 showError('Lütfen bir usta seçin!');
                 return;
@@ -1413,12 +1876,14 @@
                 showError('Yetersiz kredi! WhatsApp\'tan kredi talep edin.');
                 return;
             }
-                        // Admin ID'yi kaydet - ÖNEMLİ!
-                currentAdminId = selectedAdminId;
-                outgoingCallInfo = {
-                    adminId: selectedAdminId,
-                    adminName: admin.name
-                };
+            
+            currentAdminId = selectedAdminId;
+            lastCallAdminId = selectedAdminId;
+            outgoingCallInfo = {
+                adminId: selectedAdminId,
+                adminName: admin.name
+            };
+            
             setState('connecting');
             
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1464,7 +1929,6 @@
             
             showMessage('Geri dönüş talebi gönderildi!', 'success');
             
-            // Hide after 5 seconds
             setTimeout(() => {
                 document.getElementById('callbackSuccess').classList.add('hidden');
             }, 5000);
@@ -1473,7 +1937,6 @@
         function setState(newState) {
             callState = newState;
             
-            // Hide all states
             document.getElementById('idleState').classList.add('hidden');
             document.getElementById('connectingState').classList.add('hidden');
             document.getElementById('connectedState').classList.add('hidden');
@@ -1510,11 +1973,10 @@
                 adminId: message.adminId,
                 adminName: message.adminName || 'USTAM'
             };
+            lastCallAdminId = message.adminId;
             
-            // Önce state'i değiştir, element görünür olsun
             setState('incoming');
             
-            // Sonra elementi güncelle
             setTimeout(() => {
                 const adminNameElement = document.getElementById('incomingAdminName');
                 if (adminNameElement) {
@@ -1522,6 +1984,7 @@
                 }
             }, 50);
         }
+        
         function acceptIncomingCall() {
             if (!incomingCallInfo) return;
             
@@ -1537,8 +2000,7 @@
             
             currentAdminId = incomingCallInfo.adminId;
             setState('connecting');
-                // WebRTC'yi başlat ama offer gönderme, admin gönderecek
-             setupPeerConnection(false); // false = offer gönderme
+            setupPeerConnection(false);
             incomingCallInfo = null;
         }
         
@@ -1572,36 +2034,37 @@
         }
         
         function handleCallRejected(message) {
-            showError(message.reason || 'Arama reddedildi');
-            setState('idle');
-        }
-        
-        function handleCallFailed(message) {
-            showError(message.reason || 'Arama başarısız!');
-            setState('idle');
-        }
-        function handleCallRejected(message) {
             console.log('❌ Arama reddedildi:', message.reason);
             
-            // Ses durdur
             if (window.audioContext) {
                 window.audioContext.close();
                 window.audioContext = null;
             }
             
-            // Call cleanup
             cleanupCall();
             setState('idle');
             
             showError(message.reason || 'Arama reddedildi');
         }
         
-        // DEĞİŞİKLİK: handleCallEnded merkezi hale getirildi
         function handleCallEnded(message) {
             console.log('📞 Görüşme sonlandırıldı:', message.reason);
+            
+            // Görüşme istatistiklerini sakla
+            callStatistics = {
+                duration: message.duration || callDuration,
+                creditsUsed: message.creditsUsed,
+                remainingCredits: message.remainingCredits,
+                adminId: message.adminId || lastCallAdminId || currentAdminId
+            };
+            
             cleanupCall();
             setState('idle');
-            showEndCallModal(message);
+            
+            if (callStatistics.duration > 0) {
+                showEndCallModal(callStatistics);
+            }
+            
             playEndCallSound();
         }
         
@@ -1628,7 +2091,6 @@
                     remoteAudio.srcObject = event.streams[0];
                     setState('connected');
                     
-                   // Admin name güncelleme - GÜVENLİ
                     const adminName = availableAdmins.find(a => a.id === currentAdminId)?.name || incomingCallInfo?.adminName || 'Usta';
                     const currentAdminNameEl = document.getElementById('currentAdminName');
                     if (currentAdminNameEl) {
@@ -1666,10 +2128,12 @@
                 stream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, stream);
                 });
+                
                 if (!shouldCreateOffer) {
-                console.log('⏳ Admin\'den offer bekleniyor...');
-                return;
-            }
+                    console.log('⏳ Admin\'den offer bekleniyor...');
+                    return;
+                }
+                
                 console.log('📨 WebRTC Offer oluşturuluyor');
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
@@ -1775,7 +2239,6 @@
             setState('idle');
         }
 
-        // YENİ: Süreyi MM:SS formatında göstermek için yardımcı fonksiyon
         function formatDuration(seconds) {
             if (isNaN(seconds) || seconds < 0) {
                 return "00:00";
@@ -1785,38 +2248,149 @@
             return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         }
 
-        // DEĞİŞİKLİK: showEndCallModal fonksiyonu tamamen sunucudan gelen veriye dayalı hale getirildi
-        function showEndCallModal(message) {
-            // Tüm verileri sunucudan gelen 'message' objesinden alıyoruz.
-            // Sunucudan veri gelmezse diye varsayılan değerler (fallback) ekliyoruz.
-            const durationSeconds = message.duration || callDuration; 
-            const creditsUsed = message.creditsUsed !== undefined ? message.creditsUsed : Math.ceil(durationSeconds / 60);
-            const remainingCredits = message.remainingCredits !== undefined ? message.remainingCredits : userInfo.credits;
-
-            // Kalan krediyi lokalde de güncelleyelim ki arayüz senkronize kalsın.
-            if (message.remainingCredits !== undefined) {
+        function showEndCallModal(statistics) {
+            const durationSeconds = statistics.duration || 0;
+            const creditsUsed = statistics.creditsUsed || Math.ceil(durationSeconds / 60);
+            const remainingCredits = statistics.remainingCredits !== undefined ? statistics.remainingCredits : userInfo.credits;
+            
+            if (statistics.remainingCredits !== undefined) {
                 updateCredits(remainingCredits);
             }
 
             const modal = `
-                <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="this.remove()">
-                    <div style="background: white; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px; color: #333;" onclick="event.stopPropagation()">
-                        <h3 style="color: #2563eb; margin-bottom: 20px;">✅ Görüşme Tamamlandı</h3>
-                        <p style="margin-bottom: 10px; font-size: 16px;"><strong>Süre:</strong> ${formatDuration(durationSeconds)}</p>
-                        <p style="margin-bottom: 10px; font-size: 16px;"><strong>Harcanan Kredi:</strong> ${creditsUsed} dk</p>
-                        <p style="font-weight: bold; margin-bottom: 20px; font-size: 18px; color: #16a34a;"><strong>Kalan Kredi:</strong> ${remainingCredits} dk</p>
-                        <button onclick="this.closest('.modal-overlay').remove()" style="padding: 12px 25px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;">Tamam</button>
+                <div class="modal-overlay" id="ratingModal">
+                    <div class="modal rating-modal">
+                        <h3>✅ Görüşme Tamamlandı</h3>
+                        <div style="margin-bottom: 20px;">
+                            <p style="margin-bottom: 10px; font-size: 16px;"><strong>Süre:</strong> ${formatDuration(durationSeconds)}</p>
+                            <p style="margin-bottom: 10px; font-size: 16px;"><strong>Harcanan Kredi:</strong> ${creditsUsed} dk</p>
+                            <p style="font-weight: bold; margin-bottom: 20px; font-size: 18px; color: #16a34a;"><strong>Kalan Kredi:</strong> ${remainingCredits} dk</p>
+                        </div>
+                        
+                        <div style="border-top: 2px solid #e5e7eb; padding-top: 20px;">
+                            <h4 style="color: #2563eb; margin-bottom: 15px;">Hizmetimizi Değerlendirin</h4>
+                            
+                            <div class="rating-text">Görüşmeyi nasıl değerlendirirsiniz?</div>
+                            <div class="star-rating-input" id="starRating">
+                                <button class="star-btn" onclick="setRating(1)">☆</button>
+                                <button class="star-btn" onclick="setRating(2)">☆</button>
+                                <button class="star-btn" onclick="setRating(3)">☆</button>
+                                <button class="star-btn" onclick="setRating(4)">☆</button>
+                                <button class="star-btn" onclick="setRating(5)">☆</button>
+                            </div>
+                            
+                            <textarea class="comment-textarea" id="reviewComment" placeholder="Yorumunuz (İsteğe bağlı)"></textarea>
+                            
+                            <div class="tip-section">
+                                <div class="tip-title">💰 Ustaya destek olmak ister misiniz?</div>
+                                <div class="tip-buttons">
+                                    <button class="tip-btn" onclick="selectTip(10)">10 dk</button>
+                                    <button class="tip-btn" onclick="selectTip(30)">30 dk</button>
+                                    <button class="tip-btn" onclick="selectTip(50)">50 dk</button>
+                                </div>
+                            </div>
+                            
+                            <button class="submit-rating-btn" onclick="submitRating()">Gönder</button>
+                            <button class="skip-rating-btn" onclick="closeRatingModal()">Değerlendirme yapmadan kapat</button>
+                        </div>
                     </div>
                 </div>
             `;
             document.body.insertAdjacentHTML('beforeend', modal);
         }
         
+        let selectedRating = 0;
+        let selectedTip = 0;
+        
+        function setRating(rating) {
+            selectedRating = rating;
+            const stars = document.querySelectorAll('#starRating .star-btn');
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.textContent = '★';
+                    star.classList.add('active');
+                } else {
+                    star.textContent = '☆';
+                    star.classList.remove('active');
+                }
+            });
+        }
+        
+        function selectTip(amount) {
+            selectedTip = amount;
+            const tipButtons = document.querySelectorAll('.tip-btn');
+            tipButtons.forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.textContent.includes(amount.toString())) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+        
+        async function submitRating() {
+            if (selectedRating === 0) {
+                alert('Lütfen bir puan seçiniz!');
+                return;
+            }
+            
+            const comment = document.getElementById('reviewComment').value;
+            
+            if (selectedTip > userInfo.credits) {
+                alert('Yetersiz kredi! Daha düşük bir miktar seçin.');
+                return;
+            }
+            
+            const adminId = callStatistics?.adminId || lastCallAdminId;
+            if (!adminId) {
+                console.error('Admin ID bulunamadı!');
+                closeRatingModal();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/admins/${adminId}/review`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerId: userInfo.id,
+                        customerName: userInfo.name,
+                        rating: selectedRating,
+                        comment: comment,
+                        tipAmount: selectedTip,
+                        callId: `call_${Date.now()}`
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('Değerlendirmeniz için teşekkürler!', 'success');
+                    if (selectedTip > 0) {
+                        userInfo.credits -= selectedTip;
+                        updateUserDisplay();
+                    }
+                } else {
+                    showMessage(result.error || 'Değerlendirme gönderilemedi', 'error');
+                }
+            } catch (error) {
+                console.error('Değerlendirme hatası:', error);
+                showMessage('Değerlendirme gönderilemedi', 'error');
+            }
+            
+            closeRatingModal();
+        }
+        
+        function closeRatingModal() {
+            const modal = document.getElementById('ratingModal');
+            if (modal) modal.remove();
+            selectedRating = 0;
+            selectedTip = 0;
+        }
+        
         function playEndCallSound() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // İki tonlu kapanış sesi
                 setTimeout(() => {
                     const osc1 = audioContext.createOscillator();
                     const gain1 = audioContext.createGain();
@@ -1845,6 +2419,7 @@
                 console.log('Ses çalınamadı:', error);
             }
         }
+        
         function cleanupCall() {
             if (callTimer) {
                 clearInterval(callTimer);
@@ -1998,75 +2573,6 @@
             localStorage.setItem('vipcep_language', currentLanguage);
             updateLanguage();
         }
-        function updateAdminList(admins) {
-            availableAdmins = admins || [];
-            const dropdown = document.getElementById('adminDropdown');
-            dropdown.innerHTML = '<option value="">-- Bir usta seçin --</option>';
-            
-            const availableList = admins.filter(a => a.status === 'available');
-            const busyList = admins.filter(a => a.status === 'busy');
-            
-            availableList.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.textContent = `🟢 ${admin.name} (Müsait)`;
-                dropdown.appendChild(option);
-            });
-            
-            busyList.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.id;
-                option.textContent = `🔴 ${admin.name} (Meşgul)`;
-                dropdown.appendChild(option);
-            });
-            
-            console.log(`📊 Admin listesi güncellendi: ${availableList.length} müsait, ${busyList.length} meşgul`);
-        }
-
-        function onAdminSelect() {
-            const dropdown = document.getElementById('adminDropdown');
-            const callButton = document.getElementById('callButton');
-            selectedAdminId = dropdown.value;
-            
-            if (!selectedAdminId) {
-                callButton.disabled = true;
-                callButton.textContent = 'Ustamı Ara';
-                callButton.className = 'btn btn-call-disabled';
-                return;
-            }
-            
-            const selectedAdmin = availableAdmins.find(a => a.id === selectedAdminId);
-            if (selectedAdmin?.status === 'available') {
-                callButton.disabled = false;
-                callButton.textContent = '📞 Ustamı Ara';
-                callButton.className = 'btn btn-call';
-                callButton.onclick = makeCall;
-                callButton.classList.add('pulse');
-                setTimeout(() => callButton.classList.remove('pulse'), 600);
-            } else if (selectedAdmin?.status === 'busy') {
-                callButton.disabled = false;
-                callButton.textContent = '📝 Çağrı Bırak';
-                callButton.className = 'btn btn-callback';
-                callButton.onclick = makeCallbackRequest;
-            }
-        }
-
-        function makeCallbackRequest() {
-            if (!selectedAdminId) {
-                showError('Lütfen bir usta seçin!');
-                return;
-            }
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'callback-request',
-                    userId: userInfo.id,
-                    userName: userInfo.name,
-                    targetAdminId: selectedAdminId
-                }));
-                console.log('📝 Callback talebi gönderildi');
-            }
-        }
         
         function updateLanguage() {
             const flagElement = document.getElementById('currentFlag');
@@ -2105,15 +2611,9 @@
             });
         }
         
-        console.log('🎯 VIPCEP Customer App - New Admin Selection System');
-        console.log('✅ Usta seç dropdown sistemi aktif');
-        console.log('✅ Callback sistemi entegre edildi');
-        console.log('✅ Buton animasyonları ve durumları hazır');
-        console.log('✅ Direct call + callback hybrid sistem');
         function displayAnnouncement(announcement) {
             if (!announcement) return;
             
-            // Eski duyuru varsa kaldır
             const existing = document.getElementById('announcementBanner');
             if (existing) existing.remove();
             
@@ -2141,35 +2641,40 @@
             
             document.body.insertAdjacentHTML('beforeend', banner);
         }
+        
         function playClassicRing() {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-          function ring() {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-        
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-        
-            osc.frequency.setValueAtTime(425, audioContext.currentTime); // 425 Hz sabit
-            gain.gain.setValueAtTime(0.5, audioContext.currentTime);
-        
-            // Cadence: 2 saniye çal → 5 saniye sus → döngü
-            gain.gain.setValueAtTime(0.5, audioContext.currentTime + 2);
-            gain.gain.setValueAtTime(0.0, audioContext.currentTime + 2.001);
-            gain.gain.setValueAtTime(0.0, audioContext.currentTime + 7);
-        
-            osc.start();
-            osc.stop(audioContext.currentTime + 2);
-        
-            // 7 saniyelik döngü (2s çal + 5s sus)
-            setTimeout(() => {
-              if (callState === 'connecting') ring();
-            }, 7000);
-          }
-        
-          ring();
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            function ring() {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.frequency.setValueAtTime(425, audioContext.currentTime);
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime);
+                
+                gain.gain.setValueAtTime(0.5, audioContext.currentTime + 2);
+                gain.gain.setValueAtTime(0.0, audioContext.currentTime + 2.001);
+                gain.gain.setValueAtTime(0.0, audioContext.currentTime + 7);
+                
+                osc.start();
+                osc.stop(audioContext.currentTime + 2);
+                
+                setTimeout(() => {
+                    if (callState === 'connecting') ring();
+                }, 7000);
+            }
+            
+            ring();
         }
+        
+        console.log('🎯 VIPCEP Customer App - Enhanced with Profile & Review System');
+        console.log('✅ Usta profil görüntüleme sistemi hazır');
+        console.log('✅ Görüşme sonrası değerlendirme sistemi aktif');
+        console.log('✅ Bahşiş (destek) sistemi entegre');
+        console.log('✅ Tüm özellikler tam fonksiyonel');
     </script>
 </body>
 </html>
