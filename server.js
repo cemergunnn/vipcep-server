@@ -98,6 +98,7 @@ async function broadcastAdminListToCustomers() {
         clients.forEach(client => {
             if (client.userType === 'admin' && client.ws && client.ws.readyState === WebSocket.OPEN && client.online !== false) {
                 onlineAdminIds.add(client.id);
+                console.log('🟢 Online admin tespit edildi:', client.id); // Debug için
             }
         });
 
@@ -2129,5 +2130,6 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
