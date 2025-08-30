@@ -1059,14 +1059,18 @@
          * Activates the media session (headset control).
          */
         function activateMediaSession() {
+            if (!('mediaSession' in navigator)) return;
             if (!isMediaAudioUnlocked) {
                 console.warn("🎧 Medya oturumu aktif edilemedi. Önce kullanıcı etkileşimi gerekli.");
                 return;
             }
             const mediaAudio = document.getElementById('mediaSessionAudio');
-            if (mediaAudio && mediaAudio.paused) {
-                mediaAudio.play().catch(e => console.error("Sessiz ses oynatılamadı:", e));
-                console.log("🎧 Medya oturumu aktif edildi.");
+            try {
+                mediaAudio.play();
+                navigator.mediaSession.playbackState = 'playing';
+                console.log("🎧 Medya oturumu AKTİF edildi (state: playing).");
+            } catch (error) {
+                console.error("Sessiz ses oynatılamadı:", error);
             }
         }
 
@@ -1074,11 +1078,11 @@
          * Deactivates the media session (headset control).
          */
         function deactivateMediaSession() {
+            if (!('mediaSession' in navigator)) return;
             const mediaAudio = document.getElementById('mediaSessionAudio');
-            if (mediaAudio) {
-                mediaAudio.pause();
-                console.log("🎧 Medya oturumu pasif edildi.");
-            }
+            mediaAudio.pause();
+            navigator.mediaSession.playbackState = 'paused';
+            console.log("🎧 Medya oturumu PASİF edildi (state: paused).");
         }
 
         // ================== AUTHENTICATION ==================
@@ -1663,6 +1667,7 @@
             incomingCallInfo = null;
             callState = 'idle';
             
+            deactivateMediaSession(); // Deactivate headset controls on any call state reset
             updateAdminStatus('available');
             
             console.log('🔄 Call state sıfırlandı');
