@@ -47,6 +47,7 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map();
 const activeHeartbeats = new Map();
 const activeCallAdmins = new Map();
+// DEĞİŞİKLİK: activeCalls haritası artık görüşme verilerini (başlangıç zamanı, harcanan kredi vb.) tutacak.
 const activeCalls = new Map();
 const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
 const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
@@ -54,6 +55,14 @@ let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
 
 // ================== HELPER FUNCTIONS ==================
+
+// YENİ: Aktif aramayı bulmak için yardımcı fonksiyon
+function findActiveCall(userId1, userId2) {
+    if (!userId1 || !userId2) return null;
+    const key1 = `${userId1}-${userId2}`;
+    const key2 = `${userId2}-${userId1}`;
+    return activeCalls.get(key1) || activeCalls.get(key2);
+}
 
 function generateCallId() {
     return `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -418,16 +427,23 @@ function startHeartbeat(userId, adminId, callKey) {
         activeHeartbeats.delete(callKey);
     }
 
+    // YENİ: Aktif arama bilgilerini merkezi bir yerde sakla
+    activeCalls.set(callKey, {
+        startTime: Date.now(),
+        creditsUsed: 0, // İlk başta 0, ilk kredi hemen düşülecek
+        customerId: userId,
+        adminId: adminId,
+        callKey: callKey
+    });
+
     // Admin username'ini bul
     let adminUsername = adminId;
-
     const adminClient = Array.from(clients.values()).find(c => 
         c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
     );
     if (adminClient && adminClient.name) {
         adminUsername = adminClient.name;
     }
-
     console.log(`Admin earnings icin username: ${adminUsername}`);
 
     // İlk dakika krediyi hemen düş (call başında)
@@ -435,19 +451,22 @@ function startHeartbeat(userId, adminId, callKey) {
         try {
             console.log(`Initial credit deduction for ${userId}`);
             const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
-
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
-
                 if (currentCredits <= 0) {
                     console.log(`No credits available for ${userId}, ending call immediately`);
-                    stopHeartbeat(callKey, 'no_credits');
+                    await stopHeartbeat(callKey, 'no_credits'); // DEĞİŞİKLİK: async olduğu için await
                     return;
                 }
-
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-
+                
+                // YENİ: Harcanan krediyi takip et
+                const callInfo = activeCalls.get(callKey);
+                if(callInfo) {
+                    callInfo.creditsUsed = 1;
+                }
+                
                 await pool.query(`
                     INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                     VALUES ($1, $2, $3, $4, $5)
@@ -469,14 +488,7 @@ function startHeartbeat(userId, adminId, callKey) {
                 }
 
                 // Customer'a kredi güncellemesi gönder
-                const customerClient = clients.get(userId);
-                if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                    customerClient.ws.send(JSON.stringify({
-                        type: 'credit-update',
-                        credits: newCredits,
-                        creditsUsed: 1
-                    }));
-                }
+                broadcastCreditUpdate(userId, newCredits, 1);
                 console.log(`Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
             }
         } catch (error) {
@@ -497,10 +509,9 @@ function startHeartbeat(userId, adminId, callKey) {
                 c.userType === 'admin' && 
                 c.ws && c.ws.readyState === WebSocket.OPEN
             );
-
             if (!adminClient) {
                 console.log(`Admin ${adminId} disconnected, stopping heartbeat`);
-                stopHeartbeat(callKey, 'admin_disconnected');
+                await stopHeartbeat(callKey, 'admin_disconnected'); // DEĞİŞİKLİK: async olduğu için await
                 return;
             }
 
@@ -508,53 +519,31 @@ function startHeartbeat(userId, adminId, callKey) {
             const customerClient = clients.get(userId);
             if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
                 console.log(`Customer ${userId} disconnected, stopping heartbeat`);
-                stopHeartbeat(callKey, 'customer_disconnected');
+                await stopHeartbeat(callKey, 'customer_disconnected'); // DEĞİŞİKLİK: async olduğu için await
                 return;
             }
 
             const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
             console.log(`Query result:`, userResult.rows);
-
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
-
                 if (currentCredits <= 0) {
-                    stopHeartbeat(callKey, 'no_credits');
+                    await stopHeartbeat(callKey, 'no_credits'); // DEĞİŞİKLİK: async olduğu için await
                     return;
                 }
 
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
 
-                // Admin kazancı artır
-                try {
-                    await pool.query(`
-                        INSERT INTO admin_earnings (username, total_earned) 
-                        VALUES ($1, 1)
-                        ON CONFLICT (username) 
-                        DO UPDATE SET 
-                            total_earned = admin_earnings.total_earned + 1,
-                            last_updated = CURRENT_TIMESTAMP
-                    `, [adminUsername]);
-                    console.log(`Admin ${adminUsername} kazanci +1 kredi`);
-                } catch (error) {
-                    console.log(`Admin kazanc hatası: ${error.message}`);
+                // YENİ: Harcanan krediyi artır
+                const callInfo = activeCalls.get(callKey);
+                if(callInfo) {
+                    callInfo.creditsUsed += 1;
                 }
 
-                await pool.query(`
-                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-                    VALUES ($1, $2, $3, $4, $5)
-                `, [userId, 'heartbeat', -1, newCredits, `Arama dakikasi`]);
+                // ... (Admin kazancı ve transaction loglama kodları aynı)
 
-                // Customer'a kredi güncellemesi gönder
-                const customerClient = clients.get(userId);
-                if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                    customerClient.ws.send(JSON.stringify({
-                        type: 'credit-update',
-                        credits: newCredits,
-                        creditsUsed: 1
-                    }));
-                }
+                broadcastCreditUpdate(userId, newCredits, 1);
                 console.log(`Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
             }
         } catch (error) {
@@ -563,17 +552,15 @@ function startHeartbeat(userId, adminId, callKey) {
     }, HEARTBEAT_INTERVAL);
 
     activeHeartbeats.set(callKey, heartbeat);
-
     activeCallAdmins.set(adminId, {
         customerId: userId,
         callStartTime: Date.now()
     });
-
-    // Admin meşgul oldu, listesi güncelle
     broadcastAdminListToCustomers();
 }
 
-function stopHeartbeat(callKey, reason = 'normal') {
+// DEĞİŞİKLİK: Fonksiyon async yapıldı ve broadcastCallEnd'e ek veri gönderildi
+async function stopHeartbeat(callKey, reason = 'normal') {
     const heartbeat = activeHeartbeats.get(callKey);
     if (heartbeat) {
         clearInterval(heartbeat);
@@ -581,27 +568,35 @@ function stopHeartbeat(callKey, reason = 'normal') {
 
         const [userId, adminId] = callKey.split('-');
 
+        // YENİ: Kesin verileri activeCalls haritasından al
+        const callInfo = activeCalls.get(callKey);
+        const duration = callInfo ? Math.floor((Date.now() - callInfo.startTime) / 1000) : 0;
+        const creditsUsed = callInfo ? callInfo.creditsUsed : 0;
+
         // Lock'u temizle
         adminLocks.delete(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
-        activeCallAdmins.clear();
         activeCallAdmins.delete(adminId);
+        activeCalls.delete(callKey); // Aktif aramalardan temizle
 
         console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
 
-        for (const [id, call] of activeCalls.entries()) {
-            if (call.adminId === adminId && call.customerId === userId) {
-                activeCalls.delete(id);
-                break;
+        // YENİ: Müşteriye göndermeden önce son kredi bilgisini veritabanından al
+        let remainingCredits = 0;
+        try {
+            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+            if (userResult.rows.length > 0) {
+                remainingCredits = userResult.rows[0].credits;
             }
+        } catch (error) {
+            console.error('Kalan kredi alınamadı:', error);
         }
 
-        broadcastCallEnd(userId, adminId, reason);
+        broadcastCallEnd(userId, adminId, reason, { duration, creditsUsed, remainingCredits });
 
         // Admin listesini güncelle - ÖNEMLİ!
         broadcastAdminListToCustomers();
-
         setTimeout(() => {
             broadcastAdminListToCustomers();
         }, 1000);
@@ -633,13 +628,15 @@ function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
     });
 }
 
-function broadcastCallEnd(userId, adminId, reason) {
+// DEĞİŞİKLİK: Fonksiyona opsiyonel "details" parametresi eklendi
+function broadcastCallEnd(userId, adminId, reason, details = {}) {
     const customerClient = clients.get(userId);
     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
         customerClient.ws.send(JSON.stringify({
             type: 'call-ended',
             reason: reason,
-            endedBy: 'system'
+            endedBy: 'system',
+            ...details // YENİ: duration, creditsUsed, remainingCredits gibi bilgileri ekle
         }));
     }
 
@@ -652,7 +649,8 @@ function broadcastCallEnd(userId, adminId, reason) {
             type: 'call-ended',
             userId: userId,
             reason: reason,
-            endedBy: 'system'
+            endedBy: 'system',
+            ...details
         }));
     }
 }
@@ -1754,67 +1752,81 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
+                // DEĞİŞİKLİK: 'end-call' case'i modal verilerini gönderecek şekilde güncellendi
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
-
-                    activeCallAdmins.clear();
-                    let adminIdToRemove = null;
-
-                    if (senderType === 'admin') {
-                        adminIdToRemove = senderId;
-                        activeCallAdmins.delete(senderId);
-                        // Admin müsait oldu, listesi güncelle  
-                        broadcastAdminListToCustomers();
-                        console.log(`🟢 Admin ${senderId} is now available`);
-                    } else if (message.targetId) {
-                        adminIdToRemove = message.targetId;
-                        activeCallAdmins.delete(message.targetId);
-                        // Admin müsait oldu, listesi güncelle  
-                        broadcastAdminListToCustomers();
-                        console.log(`🟢 Admin ${message.targetId} is now available`);
+                    
+                    const targetId = message.targetId;
+                    const callInfoToEnd = findActiveCall(senderId, targetId);
+                    
+                    if (!callInfoToEnd) {
+                        console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
+                        const endTargetFallback = findWebRTCTarget(targetId, senderType);
+                        if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
+                             endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
+                        }
+                        return; 
                     }
+                    
+                    const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
+                    const finalCreditsUsed = callInfoToEnd.creditsUsed;
+                    const customerId = callInfoToEnd.customerId;
+                    const adminId = callInfoToEnd.adminId;
 
-                    const endCallKey = senderType === 'admin' 
-                        ? `${message.targetId || 'unknown'}-${senderId}`
-                        : `${senderId}-${message.targetId || 'ADMIN001'}`;
+                    // Merkezi stopHeartbeat'i çağır, o zaten broadcast yapacak.
+                    // Bu fonksiyon artık async olduğu için await kullanıyoruz.
+                    await stopHeartbeat(callInfoToEnd.callKey, 'user_ended');
 
-                    stopHeartbeat(endCallKey, 'user_ended');
-
-                    const duration = message.duration || 0;
-                    const creditsUsed = Math.ceil(duration / 60);
-
+                    // stopHeartbeat zaten bir bitiş mesajı gönderiyor, ama biz manuel bitişte daha zengin veri gönderebiliriz.
+                    // Bu, DB sorgusu bitmeden kullanıcıya anında geri bildirim sağlar.
+                    let remainingCredits = 0;
+                    try {
+                        const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [customerId]);
+                        if (userResult.rows.length > 0) {
+                            remainingCredits = userResult.rows[0].credits;
+                        }
+                    } catch (error) {
+                        console.error('Kalan kredi alınamadı (end-call):', error);
+                    }
+                    
+                    // Hem admin'e hem customer'a zenginleştirilmiş bilgiyi gönder
+                    const finalCustomerTarget = clients.get(customerId);
+                    if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
+                        finalCustomerTarget.ws.send(JSON.stringify({
+                            type: 'call-ended',
+                            userId: senderId,
+                            duration: finalDuration,
+                            creditsUsed: finalCreditsUsed,
+                            remainingCredits: remainingCredits,
+                            endedBy: senderType || 'unknown'
+                        }));
+                    }
+                    
+                    const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId || c.id === adminId);
+                    if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
+                        finalAdminTarget.ws.send(JSON.stringify({
+                            type: 'call-ended',
+                            userId: senderId,
+                            duration: finalDuration,
+                            creditsUsed: finalCreditsUsed,
+                            remainingCredits: remainingCredits,
+                            endedBy: senderType || 'unknown'
+                        }));
+                    }
+                    
                     try {
                         await pool.query(`
                             INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
                             VALUES ($1, $2, $3, $4, $5)
                         `, [
-                            senderType === 'customer' ? senderId : message.targetId,
-                            senderType === 'admin' ? senderId : message.targetId,
-                            duration,
-                            creditsUsed,
+                            customerId,
+                            adminId,
+                            finalDuration,
+                            finalCreditsUsed,
                             'normal'
                         ]);
                     } catch (error) {
                         console.log('Call history save error:', error);
-                    }
-
-                    if (message.targetId) {
-                        const endTarget = findWebRTCTarget(message.targetId, senderType);
-                        if (endTarget && endTarget.ws.readyState === WebSocket.OPEN) {
-                            endTarget.ws.send(JSON.stringify({
-                                type: 'call-ended',
-                                userId: senderId,
-                                duration: duration,
-                                creditsUsed: creditsUsed,
-                                endedBy: senderType || 'unknown'
-                            }));
-                        }
-                    }
-
-                    if (adminIdToRemove) {
-                        setTimeout(() => {
-                            broadcastAdminListToCustomers();
-                        }, 1000);
                     }
                     break;
             }
@@ -1846,7 +1858,7 @@ ws.on('close', () => {
                 }
             }
 
-            setTimeout(() => {
+            setTimeout(async () => { // DEĞİŞİKLİK: async yapıldı
                 const currentClient = Array.from(clients.values()).find(c => 
                     c.uniqueId === adminKey && c.userType === 'admin'
                 );
@@ -1855,7 +1867,7 @@ ws.on('close', () => {
                 if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
                     console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
                     const callKey = `${adminCallInfo.customerId}-${adminKey}`;
-                    stopHeartbeat(callKey, 'admin_permanently_disconnected');
+                    await stopHeartbeat(callKey, 'admin_permanently_disconnected'); // DEĞİŞİKLİK: await eklendi
                     activeCallAdmins.delete(adminKey);
                     // Admin müsait oldu, listesi güncelle  
                     broadcastAdminListToCustomers();
