@@ -192,7 +192,6 @@
             box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
         }
 
-        /* Announcement Panel Styles */
         .announcement-panel {
             grid-column: 1 / -1;
             background: rgba(59, 130, 246, 0.1);
@@ -617,6 +616,21 @@
             margin-top: -10px;
             margin-right: -10px;
         }
+
+        /* YENİ: Admin Profili Yönetim Stilleri */
+        .admin-profile-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .admin-profile-item .user-info {
+            flex-grow: 1;
+        }
+
+        .admin-profile-item .user-name {
+            font-size: 18px;
+        }
         
         @media (max-width: 1200px) {
             .main-content {
@@ -808,6 +822,17 @@
                 </div>
             </div>
         </div>
+        
+        <!-- YENİ: Usta Profili Yönetim Paneli -->
+        <div class="panel" style="grid-column: 1 / -1;">
+            <h3>👤 Usta Profili Yönetimi</h3>
+            <div id="adminProfileList" class="user-list" style="max-height: none;">
+                 <div class="empty-state">
+                    <div class="empty-state-icon">👨‍💼</div>
+                    <div>Admin listesi yükleniyor...</div>
+                </div>
+            </div>
+        </div>
             
         <!-- Güvenlik ve KVKK Yönetimi -->
         <div class="panel security-section">
@@ -837,8 +862,8 @@
                 </button>
             </div>
         </div>
-    </div>
-     <!-- Admin Kazanç Yönetimi -->
+    
+         <!-- Admin Kazanç Yönetimi -->
         <div class="panel" style="grid-column: 1 / -1; margin-top: 30px;">
             <h3>💰 Admin Kazanç Yönetimi</h3>
             
@@ -868,6 +893,17 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- YENİ: Admin Profili Düzenleme Modal'ı -->
+    <div id="adminProfileModal" class="modal-overlay hidden">
+        <div class="modal">
+            <button class="modal-close" onclick="closeAdminProfileModal()">×</button>
+            <div id="adminProfileModalContent">
+                <!-- İçerik JavaScript ile yüklenecek -->
+            </div>
+        </div>
+    </div>
     
     <script>
         // Global değişkenler
@@ -901,15 +937,21 @@
                 const charCount = e.target.value.length;
                 document.getElementById('charCount').textContent = charCount;
                 
-                // 500 karakter sınırı
                 if (charCount > 500) {
                     e.target.value = e.target.value.substring(0, 500);
                     document.getElementById('charCount').textContent = 500;
                 }
             });
+
+            // YENİ: Modal dışına tıklayınca kapatma
+            document.getElementById('adminProfileModal').addEventListener('click', (e) => {
+                if (e.target.id === 'adminProfileModal') {
+                    closeAdminProfileModal();
+                }
+            });
         }
         
-        // Auth durumu kontrol et
+        // ... (Mevcut auth, duyuru, kullanıcı yönetimi fonksiyonları)
         async function checkAuthStatus() {
             try {
                 const response = await fetch('/auth/check-session', {
@@ -944,9 +986,8 @@
             
             loadData();
             loadCurrentAnnouncement();
+            loadAdminsForProfileManagement(); // YENİ: Admin listesini yükle
         }
-
-        // Duyuru Yönetimi Fonksiyonları
         function updateAnnouncementPreview() {
             const text = document.getElementById('announcementText').value.trim();
             const type = document.getElementById('announcementType').value;
@@ -960,16 +1001,13 @@
                 return;
             }
             
-            // Tip'e göre stil uygula
             preview.className = `announcement-preview ${type}`;
             
-            // Link'leri işle
             let processedText = text.replace(
                 /(https?:\/\/[^\s]+)/g, 
                 '<a href="$1" target="_blank">$1</a>'
             );
             
-            // Satır sonlarını işle
             processedText = processedText.replace(/\n/g, '<br>');
             
             content.innerHTML = processedText;
@@ -980,13 +1018,8 @@
             const text = document.getElementById('announcementText').value.trim();
             const type = document.getElementById('announcementType').value;
             
-            if (!text) {
-                showMessage('Lütfen duyuru metni girin!', 'error');
-                return;
-            }
-
-            if (text.length > 500) {
-                showMessage('Duyuru metni 500 karakterden fazla olamaz!', 'error');
+            if (!text || text.length > 500) {
+                showMessage('Lütfen 1-500 karakter arası duyuru metni girin!', 'error');
                 return;
             }
             
@@ -995,11 +1028,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ 
-                        text: text,
-                        type: type,
-                        createdBy: currentAdmin.username
-                    })
+                    body: JSON.stringify({ text, type, createdBy: currentAdmin.username })
                 });
                 
                 const result = await response.json();
@@ -1007,7 +1036,7 @@
                 if (result.success) {
                     currentAnnouncement = { text, type };
                     document.getElementById('deleteAnnouncementBtn').disabled = false;
-                    showMessage('📢 Duyuru başarıyla gönderildi! Tüm müşterilere iletildi.', 'success');
+                    showMessage('📢 Duyuru başarıyla gönderildi!', 'success');
                 } else {
                     showMessage(result.error || 'Duyuru gönderilemedi!', 'error');
                 }
@@ -1017,9 +1046,7 @@
         }
 
         async function deleteAnnouncement() {
-            if (!currentAnnouncement) return;
-            
-            if (!confirm('Aktif duyuruyu silmek istediğinizden emin misiniz? Bu işlem tüm müşterilerden duyuruyu kaldıracak.')) {
+            if (!currentAnnouncement || !confirm('Aktif duyuruyu silmek istediğinizden emin misiniz?')) {
                 return;
             }
             
@@ -1038,7 +1065,7 @@
                     document.getElementById('deleteAnnouncementBtn').disabled = true;
                     document.getElementById('charCount').textContent = '0';
                     updateAnnouncementPreview();
-                    showMessage('🗑️ Duyuru başarıyla silindi! Tüm müşterilerden kaldırıldı.', 'success');
+                    showMessage('🗑️ Duyuru başarıyla silindi!', 'success');
                 } else {
                     showMessage(result.error || 'Duyuru silinemedi!', 'error');
                 }
@@ -1049,10 +1076,7 @@
 
         async function loadCurrentAnnouncement() {
             try {
-                const response = await fetch('/api/announcement', {
-                    credentials: 'include'
-                });
-                
+                const response = await fetch('/api/announcement', { credentials: 'include' });
                 if (response.ok) {
                     const result = await response.json();
                     if (result.announcement) {
@@ -1068,95 +1092,67 @@
                 console.error('Duyuru yükleme hatası:', error);
             }
         }
-        
         async function loadData() {
             try {
-                // İstatistikleri yükle
-                const statsResponse = await fetch('/api/stats');
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
+                const [statsRes, usersRes] = await Promise.all([
+                    fetch('/api/stats'),
+                    fetch('/api/approved-users')
+                ]);
+                if (statsRes.ok) {
+                    const stats = await statsRes.json();
                     document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
                     document.getElementById('totalCredits').textContent = stats.totalCredits || 0;
                     document.getElementById('totalCalls').textContent = stats.totalCalls || 0;
                     document.getElementById('onlineUsers').textContent = stats.onlineUsers || 0;
                 }
-                
-                // Kullanıcıları yükle
-                const usersResponse = await fetch('/api/approved-users');
-                if (usersResponse.ok) {
-                    users = await usersResponse.json();
+                if (usersRes.ok) {
+                    users = await usersRes.json();
                     filteredUsers = [...users];
                     renderUsers();
                 }
-                
-                // Güvenlik istatistikleri yükle
                 loadSecurityStats();
-                loadAdminEarnings(); // Bu satırı ekle
-
-                
+                loadAdminEarnings();
             } catch (error) {
                 console.error('Veri yükleme hatası:', error);
                 showMessage('Veri yükleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function loadSecurityStats() {
             try {
-                // KVKK onayları
-                const kvkkResponse = await fetch('/api/kvkk-consents');
-                if (kvkkResponse.ok) {
-                    const kvkkData = await kvkkResponse.json();
+                const [kvkkRes, adminsRes, failedRes] = await Promise.all([
+                    fetch('/api/kvkk-consents'),
+                    fetch('/api/admins'),
+                    fetch('/api/failed-logins')
+                ]);
+                if (kvkkRes.ok) {
+                    const kvkkData = await kvkkRes.json();
                     document.getElementById('kvkkConsents').textContent = kvkkData.length || 0;
                 }
-                
-                // Admin sayısı
-                const adminsResponse = await fetch('/api/admins');
-                if (adminsResponse.ok) {
-                    const adminsData = await adminsResponse.json();
+                if (adminsRes.ok) {
+                    const adminsData = await adminsRes.json();
                     document.getElementById('activeAdmins').textContent = adminsData.filter(a => a.is_active).length || 0;
                 }
-                
-                // Başarısız girişler
-                const failedResponse = await fetch('/api/failed-logins');
-                if (failedResponse.ok) {
-                    const failedData = await failedResponse.json();
+                if (failedRes.ok) {
+                    const failedData = await failedRes.json();
                     document.getElementById('failedLogins').textContent = failedData.length || 0;
                 }
-                
             } catch (error) {
                 console.error('Güvenlik istatistik hatası:', error);
             }
         }
-        
         function searchUsers() {
             const term = document.getElementById('searchInput').value.toLowerCase().trim();
-            
-            if (term === '') {
-                filteredUsers = [...users];
-            } else {
-                filteredUsers = users.filter(user => {
-                    const nameMatch = user.name.toLowerCase().includes(term);
-                    const idMatch = user.id.includes(term);
-                    return nameMatch || idMatch;
-                });
-            }
-            
+            filteredUsers = term === '' ? [...users] : users.filter(user => 
+                user.name.toLowerCase().includes(term) || user.id.includes(term)
+            );
             renderUsers();
         }
-        
         function renderUsers() {
             const container = document.getElementById('userList');
-            
             if (filteredUsers.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🔍</div>
-                        <div>Kullanıcı bulunamadı</div>
-                    </div>
-                `;
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><div>Kullanıcı bulunamadı</div></div>`;
                 return;
             }
-            
             container.innerHTML = filteredUsers.map(user => `
                 <div class="user-item">
                     <div class="user-info">
@@ -1169,29 +1165,22 @@
                         </div>
                     </div>
                     <div class="user-actions">
-                        <input type="number" value="${user.credits}" min="0" 
-                               class="credit-input" 
-                               onchange="updateUserCredits('${user.id}', this.value)">
-                        <button class="btn btn-danger" onclick="deleteUser('${user.id}')" 
-                                style="padding: 8px 12px; font-size: 12px;">🗑️</button>
+                        <input type="number" value="${user.credits}" min="0" class="credit-input" onchange="updateUserCredits('${user.id}', this.value)">
+                        <button class="btn btn-danger" onclick="deleteUser('${user.id}')" style="padding: 8px 12px; font-size: 12px;">🗑️</button>
                     </div>
                 </div>
             `).join('');
         }
-        
         async function addUser() {
             const id = document.getElementById('newUserId').value.trim();
             const name = document.getElementById('newUserName').value.trim();
             const credits = parseInt(document.getElementById('newUserCredits').value) || 0;
             
             if (!id || id.length !== 4 || !/^\d{4}$/.test(id)) {
-                showMessage('Lütfen 4 haneli sayısal ID girin!', 'error');
-                return;
+                return showMessage('Lütfen 4 haneli sayısal ID girin!', 'error');
             }
-            
             if (!name || name.length < 2) {
-                showMessage('Lütfen en az 2 karakter ad girin!', 'error');
-                return;
+                return showMessage('Lütfen en az 2 karakter ad girin!', 'error');
             }
             
             try {
@@ -1200,20 +1189,15 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id, name, credits })
                 });
-                
                 const result = await response.json();
-                
                 if (result.success) {
                     users.push(result.user);
                     filteredUsers = [...users];
                     renderUsers();
                     updateStats();
-                    
-                    // Form temizle
                     document.getElementById('newUserId').value = '';
                     document.getElementById('newUserName').value = '';
                     document.getElementById('newUserCredits').value = '';
-                    
                     showMessage(`Kullanıcı başarıyla eklendi: ${name} (${id})`, 'success');
                 } else {
                     showMessage(result.error || 'Kullanıcı eklenemedi!', 'error');
@@ -1222,20 +1206,14 @@
                 showMessage('Kullanıcı ekleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function updateUserCredits(userId, newCredits) {
             try {
                 const response = await fetch(`/api/approved-users/${userId}/credits`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        credits: parseInt(newCredits) || 0,
-                        reason: 'Super admin tarafından güncellendi'
-                    })
+                    body: JSON.stringify({ credits: parseInt(newCredits) || 0, reason: 'Super admin tarafından güncellendi' })
                 });
-                
                 const result = await response.json();
-                
                 if (result.success) {
                     const user = users.find(u => u.id === userId);
                     if (user) {
@@ -1251,19 +1229,11 @@
                 showMessage('Kredi güncelleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function deleteUser(userId) {
-            if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
-                return;
-            }
-            
+            if (!confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) return;
             try {
-                const response = await fetch(`/api/approved-users/${userId}`, {
-                    method: 'DELETE'
-                });
-                
+                const response = await fetch(`/api/approved-users/${userId}`, { method: 'DELETE' });
                 const result = await response.json();
-                
                 if (result.success) {
                     users = users.filter(u => u.id !== userId);
                     filteredUsers = filteredUsers.filter(u => u.id !== userId);
@@ -1277,20 +1247,13 @@
                 showMessage('Kullanıcı silme hatası: ' + error.message, 'error');
             }
         }
-        
         async function addAdmin() {
             const username = document.getElementById('newAdminUsername').value.trim();
             const password = document.getElementById('newAdminPassword').value.trim();
             const role = document.getElementById('newAdminRole').value;
             
-            if (!username || !password) {
-                showMessage('Kullanıcı adı ve şifre gerekli!', 'error');
-                return;
-            }
-            
-            if (password.length < 8) {
-                showMessage('Şifre en az 8 karakter olmalı!', 'error');
-                return;
+            if (!username || !password || password.length < 8) {
+                return showMessage('Kullanıcı adı ve en az 8 karakter şifre gerekli!', 'error');
             }
             
             try {
@@ -1299,28 +1262,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password, role })
                 });
-                
                 const result = await response.json();
-                
                 if (result.success) {
-                    // Form temizle
                     document.getElementById('newAdminUsername').value = '';
                     document.getElementById('newAdminPassword').value = '';
                     document.getElementById('newAdminRole').value = 'normal';
-                    
                     showMessage(`Admin başarıyla eklendi: ${username} (${role})`, 'success');
-                    loadSecurityStats(); // Admin sayısını güncelle
+                    loadSecurityStats();
+                    loadAdminsForProfileManagement(); // YENİ: Admin listesini yenile
                     
-                    // 2FA bilgilerini göster
                     if (result.totpSecret) {
-                        showModal(`
-                            <h3>🔐 2FA Kurulum Bilgileri</h3>
-                            <p><strong>Kullanıcı:</strong> ${username}</p>
-                            <p><strong>Secret:</strong> ${result.totpSecret}</p>
-                            <p><strong>QR Kod:</strong></p>
-                            <img src="${result.qrCode}" alt="QR Code" style="max-width: 200px; background: white; padding: 10px; border-radius: 8px;">
-                            <p style="margin-top: 10px; font-size: 12px; color: #94a3b8;">Bu bilgileri güvenli bir yerde saklayın.</p>
-                        `);
+                        showModal(`<h3>🔐 2FA Kurulum Bilgileri</h3><p><strong>Kullanıcı:</strong> ${username}</p><p><strong>Secret:</strong> ${result.totpSecret}</p><p><strong>QR Kod:</strong></p><img src="${result.qrCode}" alt="QR Code" style="max-width: 200px; background: white; padding: 10px; border-radius: 8px;"><p style="margin-top: 10px; font-size: 12px; color: #94a3b8;">Bu bilgileri güvenli bir yerde saklayın.</p>`);
                     }
                 } else {
                     showMessage(result.error || 'Admin eklenemedi!', 'error');
@@ -1330,107 +1282,53 @@
             }
         }
         
+        // ... (Mevcut utility, message, modal, logout fonksiyonları)
         async function exportData() {
             try {
-                const [usersRes, callsRes, statsRes] = await Promise.all([
-                    fetch('/api/approved-users'),
-                    fetch('/api/calls'),
-                    fetch('/api/stats')
-                ]);
-                
-                const [users, calls, stats] = await Promise.all([
-                    usersRes.json(),
-                    callsRes.json(),
-                    statsRes.json()
-                ]);
-                
-                const exportData = {
-                    exportDate: new Date().toISOString(),
-                    exportedBy: currentAdmin.username,
-                    statistics: stats,
-                    users: users,
-                    recentCalls: calls,
-                    systemInfo: {
-                        totalHeartbeats: stats.activeHeartbeats,
-                        onlineUsers: stats.onlineUsers,
-                        multiAdminSystem: 'Active',
-                        announcementSystem: 'Active'
-                    }
-                };
-                
+                const [usersRes, callsRes, statsRes] = await Promise.all([ fetch('/api/approved-users'), fetch('/api/calls'), fetch('/api/stats') ]);
+                const [users, calls, stats] = await Promise.all([ usersRes.json(), callsRes.json(), statsRes.json() ]);
+                const exportData = { exportDate: new Date().toISOString(), exportedBy: currentAdmin.username, statistics: stats, users: users, recentCalls: calls, systemInfo: { totalHeartbeats: stats.activeHeartbeats, onlineUsers: stats.onlineUsers, multiAdminSystem: 'Active', announcementSystem: 'Active' } };
                 const dataStr = JSON.stringify(exportData, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(dataBlob);
                 link.download = `vipcep_export_${new Date().toISOString().split('T')[0]}.json`;
                 link.click();
-                
                 showMessage('Veriler başarıyla dışa aktarıldı!', 'success');
             } catch (error) {
                 showMessage('Veri dışa aktarma hatası: ' + error.message, 'error');
             }
         }
-        
         async function viewCallHistory() {
             try {
                 const response = await fetch('/api/calls');
                 const calls = await response.json();
-                
                 let historyHtml = '<h3>📞 Son 100 Arama Geçmişi</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
                 if (calls.length === 0) {
                     historyHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Henüz arama kaydı yok.</p>';
                 } else {
                     calls.forEach(call => {
                         const duration = Math.floor(call.duration / 60) + ':' + (call.duration % 60).toString().padStart(2, '0');
                         const date = new Date(call.call_time).toLocaleString('tr-TR');
-                        
-                        historyHtml += `
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #22c55e;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: #fbbf24;">${call.user_name || call.user_id}</strong> 
-                                        <span style="color: #94a3b8;">(#${call.user_id})</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 12px; color: #94a3b8;">
-                                        ${date}
-                                    </div>
-                                </div>
-                                <div style="margin-top: 8px; font-size: 14px;">
-                                    ⏱️ Süre: <span style="color: #22c55e;">${duration}</span> • 
-                                    💳 Kredi: <span style="color: #ef4444;">${call.credits_used} dk</span> • 
-                                    📊 Durum: <span style="color: #06b6d4;">${call.end_reason || 'normal'}</span>
-                                </div>
-                            </div>
-                        `;
+                        historyHtml += `<div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #22c55e;"><div style="display: flex; justify-content: space-between; align-items: center;"><div><strong style="color: #fbbf24;">${call.user_name || call.user_id}</strong> <span style="color: #94a3b8;">(#${call.user_id})</span></div><div style="text-align: right; font-size: 12px; color: #94a3b8;">${date}</div></div><div style="margin-top: 8px; font-size: 14px;">⏱️ Süre: <span style="color: #22c55e;">${duration}</span> • 💳 Kredi: <span style="color: #ef4444;">${call.credits_used} dk</span> • 📊 Durum: <span style="color: #06b6d4;">${call.end_reason || 'normal'}</span></div></div>`;
                     });
                 }
-                
                 historyHtml += '</div>';
                 showModal(historyHtml);
-                
             } catch (error) {
                 showMessage('Arama geçmişi yükleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function refreshData() {
             showMessage('Veriler yenileniyor...', 'success');
             await loadData();
+            await loadAdminsForProfileManagement();
             showMessage('Veriler başarıyla yenilendi!', 'success');
         }
-        
         async function clearFailedLogins() {
-            if (!confirm('Tüm başarısız giriş kayıtlarını temizlemek istediğinizden emin misiniz?')) {
-                return;
-            }
-            
+            if (!confirm('Tüm başarısız giriş kayıtlarını temizlemek istediğinizden emin misiniz?')) return;
             try {
-                const response = await fetch('/api/clear-failed-logins', {
-                    method: 'POST'
-                });
-                
+                const response = await fetch('/api/clear-failed-logins', { method: 'POST' });
                 if (response.ok) {
                     showMessage('Başarısız giriş kayıtları temizlendi!', 'success');
                     loadSecurityStats();
@@ -1441,136 +1339,70 @@
                 showMessage('Rate limit temizleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function viewKVKKConsents() {
             try {
                 const response = await fetch('/api/kvkk-consents');
                 const consents = await response.json();
-                
                 let consentHtml = '<h3>📋 KVKK Onayları</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
                 if (consents.length === 0) {
                     consentHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Henüz KVKK onayı yok.</p>';
                 } else {
                     consents.forEach(consent => {
                         const date = new Date(consent.consent_date).toLocaleString('tr-TR');
-                        
-                        consentHtml += `
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #059669;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                    <div>
-                                        <strong style="color: #22c55e;">IP:</strong> ${consent.ip_address}<br>
-                                        <strong style="color: #22c55e;">Tarih:</strong> ${date}
-                                    </div>
-                                    <div>
-                                        <strong style="color: #22c55e;">Versiyon:</strong> ${consent.version}<br>
-                                        <small style="color: #94a3b8;">Hash: ${consent.consent_hash.substring(0, 16)}...</small>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
+                        consentHtml += `<div style="background: rgba(255,255,255,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #059669;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"><div><strong style="color: #22c55e;">IP:</strong> ${consent.ip_address}<br><strong style="color: #22c55e;">Tarih:</strong> ${date}</div><div><strong style="color: #22c55e;">Versiyon:</strong> ${consent.version}<br><small style="color: #94a3b8;">Hash: ${consent.consent_hash.substring(0, 16)}...</small></div></div></div>`;
                     });
                 }
-                
                 consentHtml += '</div>';
                 showModal(consentHtml);
-                
             } catch (error) {
                 showMessage('KVKK onayları yükleme hatası: ' + error.message, 'error');
             }
         }
-        
         async function viewFailedLogins() {
             try {
                 const response = await fetch('/api/failed-logins');
                 const failedLogins = await response.json();
-                
                 let loginHtml = '<h3>🛡️ Başarısız Giriş Denemeleri</h3><div style="max-height: 400px; overflow-y: auto;">';
-                
                 if (failedLogins.length === 0) {
                     loginHtml += '<p style="text-align: center; color: #94a3b8; padding: 20px;">Başarısız giriş kaydı yok.</p>';
                 } else {
-                    // IP'lere göre grupla
                     const groupedByIP = {};
                     failedLogins.forEach(login => {
-                        if (!groupedByIP[login.ip_address]) {
-                            groupedByIP[login.ip_address] = [];
-                        }
+                        if (!groupedByIP[login.ip_address]) groupedByIP[login.ip_address] = [];
                         groupedByIP[login.ip_address].push(login);
                     });
-                    
                     Object.entries(groupedByIP).forEach(([ip, attempts]) => {
                         const lastAttempt = new Date(Math.max(...attempts.map(a => new Date(a.attempt_time)))).toLocaleString('tr-TR');
                         const attemptCount = attempts.length;
                         const userTypes = [...new Set(attempts.map(a => a.user_type))].join(', ');
-                        
-                        loginHtml += `
-                            <div style="background: rgba(239,68,68,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #ef4444;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong style="color: #fca5a5;">🚫 IP:</strong> ${ip}<br>
-                                        <strong style="color: #fca5a5;">Tip:</strong> ${userTypes}
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <div style="color: #ef4444; font-weight: bold; font-size: 18px;">${attemptCount}</div>
-                                        <div style="color: #94a3b8; font-size: 12px;">deneme</div>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 8px; color: #94a3b8; font-size: 12px;">
-                                    Son deneme: ${lastAttempt}
-                                </div>
-                            </div>
-                        `;
+                        loginHtml += `<div style="background: rgba(239,68,68,0.1); padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #ef4444;"><div style="display: flex; justify-content: space-between; align-items: center;"><div><strong style="color: #fca5a5;">🚫 IP:</strong> ${ip}<br><strong style="color: #fca5a5;">Tip:</strong> ${userTypes}</div><div style="text-align: right;"><div style="color: #ef4444; font-weight: bold; font-size: 18px;">${attemptCount}</div><div style="color: #94a3b8; font-size: 12px;">deneme</div></div></div><div style="margin-top: 8px; color: #94a3b8; font-size: 12px;">Son deneme: ${lastAttempt}</div></div>`;
                     });
                 }
-                
                 loginHtml += '</div>';
                 showModal(loginHtml);
-                
             } catch (error) {
                 showMessage('Güvenlik logları yükleme hatası: ' + error.message, 'error');
             }
         }
-        
         function updateStats() {
             document.getElementById('totalUsers').textContent = users.length;
             document.getElementById('totalCredits').textContent = users.reduce((sum, u) => sum + u.credits, 0);
         }
-        
         function showMessage(message, type) {
-            // Önceki mesajları temizle
             const existingMessages = document.querySelectorAll('.success-message, .error-message');
             existingMessages.forEach(msg => msg.remove());
-            
             const messageDiv = document.createElement('div');
             messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
             messageDiv.textContent = message;
-            
             document.body.appendChild(messageDiv);
-            
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
-                }
-            }, 5000);
+            setTimeout(() => { if (messageDiv.parentNode) messageDiv.remove(); }, 5000);
         }
-        
         function showModal(content) {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal">
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                    ${content}
-                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="margin-top: 20px;">
-                        Kapat
-                    </button>
-                </div>
-            `;
-            
+            modal.innerHTML = `<div class="modal"><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>${content}<button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()" style="margin-top: 20px;">Kapat</button></div>`;
             document.body.appendChild(modal);
         }
-        
         async function logout() {
             if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
                 try {
@@ -1581,8 +1413,114 @@
                 }
             }
         }
-        // ================== ADMIN EARNINGS FUNCTIONS ==================
-        
+
+        // YENİ: Admin Profili Yönetim Fonksiyonları
+        // =======================================================
+        async function loadAdminsForProfileManagement() {
+            try {
+                const response = await fetch('/api/admins');
+                if (!response.ok) throw new Error('Admin listesi alınamadı');
+                const admins = await response.json();
+                renderAdminProfileList(admins.filter(a => a.role === 'normal')); // Sadece normal adminleri listele
+            } catch(error) {
+                console.error("Admin listesi yüklenemedi:", error);
+                document.getElementById('adminProfileList').innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><div>Admin listesi yüklenemedi.</div></div>`;
+            }
+        }
+
+        function renderAdminProfileList(admins) {
+            const container = document.getElementById('adminProfileList');
+            if (admins.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👨‍💼</div><div>Henüz normal admin bulunmuyor.</div></div>`;
+                return;
+            }
+
+            container.innerHTML = admins.map(admin => `
+                <div class="user-item admin-profile-item">
+                    <div class="user-info">
+                        <div class="user-name">${admin.username}</div>
+                        <div class="user-meta">
+                            Oluşturulma: ${new Date(admin.created_at).toLocaleDateString('tr-TR')}
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                         <button class="btn btn-primary" onclick="openAdminProfileModal('${admin.username}')" style="padding: 8px 16px; font-size: 14px;">
+                            ✏️ Profili Düzenle
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function openAdminProfileModal(username) {
+            const modal = document.getElementById('adminProfileModal');
+            const content = document.getElementById('adminProfileModalContent');
+            modal.classList.remove('hidden');
+            content.innerHTML = `<div class="empty-state">Profil bilgileri yükleniyor...</div>`;
+
+            try {
+                const response = await fetch(`/api/admins/${username}/profile`);
+                if (!response.ok) throw new Error('Profil bilgisi alınamadı.');
+
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error);
+
+                const profile = result.profile;
+                content.innerHTML = `
+                    <h3>✏️ ${username} Profilini Düzenle</h3>
+                    <div class="form-section" style="border: none; padding: 0;">
+                        <div style="display: grid; gap: 15px;">
+                            <div>
+                                <label class="form-label" style="display: block; margin-bottom: 5px;">Uzmanlık Alanı</label>
+                                <input type="text" id="editAdminSpecialization" class="form-input" placeholder="Örn: Yazılım, Donanım" value="${profile.specialization || ''}">
+                            </div>
+                            <div>
+                                <label class="form-label" style="display: block; margin-bottom: 5px;">Hakkında</label>
+                                <textarea id="editAdminBio" class="form-input" style="min-height: 80px;" placeholder="Kısa bir tanıtım yazısı...">${profile.bio || ''}</textarea>
+                            </div>
+                            <div>
+                                <label class="form-label" style="display: block; margin-bottom: 5px;">Profil Fotoğrafı URL</label>
+                                <input type="text" id="editAdminPicUrl" class="form-input" placeholder="https://ornek.com/resim.jpg" value="${profile.profile_picture_url || ''}">
+                            </div>
+                            <button class="btn btn-success" onclick="saveAdminProfile('${username}')">💾 Değişiklikleri Kaydet</button>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = `<div class="empty-state" style="color: #fca5a5;">${error.message}</div>`;
+            }
+        }
+
+        function closeAdminProfileModal() {
+            document.getElementById('adminProfileModal').classList.add('hidden');
+        }
+
+        async function saveAdminProfile(username) {
+            const specialization = document.getElementById('editAdminSpecialization').value;
+            const bio = document.getElementById('editAdminBio').value;
+            const profile_picture_url = document.getElementById('editAdminPicUrl').value;
+
+            try {
+                const response = await fetch(`/api/admins/${username}/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ specialization, bio, profile_picture_url })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage('Profil başarıyla güncellendi!', 'success');
+                    closeAdminProfileModal();
+                } else {
+                    throw new Error(result.error || 'Güncelleme başarısız.');
+                }
+            } catch (error) {
+                showMessage(`Hata: ${error.message}`, 'error');
+            }
+        }
+
+        // ... (Mevcut admin earnings fonksiyonları)
         async function loadAdminEarnings() {
             try {
                 const response = await fetch('/api/admin-earnings');
@@ -1597,72 +1535,35 @@
                 console.error('Admin kazanç yükleme hatası:', error);
             }
         }
-        
         function renderAdminEarnings(earnings) {
             const container = document.getElementById('adminEarningsList');
-            
             if (earnings.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: #94a3b8; padding: 40px;">
-                        <div style="font-size: 48px; margin-bottom: 15px;">💰</div>
-                        <div>Henüz kazanç kaydı yok</div>
-                    </div>`;
+                container.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 40px;"><div style="font-size: 48px; margin-bottom: 15px;">💰</div><div>Henüz kazanç kaydı yok</div></div>`;
                 return;
             }
-            
             container.innerHTML = earnings.map(admin => {
                 const lastUpdated = new Date(admin.last_updated).toLocaleString('tr-TR');
-                
-                return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; margin-bottom: 15px; background: rgba(255,255,255,0.05); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 700; color: #fbbf24; font-size: 18px; margin-bottom: 5px;">
-                                👤 ${admin.username}
-                            </div>
-                            <div style="color: #94a3b8; font-size: 12px;">
-                                Son güncelleme: ${lastUpdated}
-                            </div>
-                        </div>
-                        <div style="text-align: right; margin-right: 20px;">
-                            <div style="font-size: 24px; font-weight: 800; color: #22c55e; margin-bottom: 5px;">
-                                ${admin.total_earned} dk
-                            </div>
-                            <div style="font-size: 12px; color: #86efac;">
-                                Toplam Kazanç
-                            </div>
-                        </div>
-                        <button class="btn btn-danger btn-small" onclick="resetAdminEarnings('${admin.username}')" style="padding: 8px 16px; font-size: 12px;">
-                            💰 Sıfırla
-                        </button>
-                    </div>`;
+                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; margin-bottom: 15px; background: rgba(255,255,255,0.05); transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'"><div style="flex: 1;"><div style="font-weight: 700; color: #fbbf24; font-size: 18px; margin-bottom: 5px;">👤 ${admin.username}</div><div style="color: #94a3b8; font-size: 12px;">Son güncelleme: ${lastUpdated}</div></div><div style="text-align: right; margin-right: 20px;"><div style="font-size: 24px; font-weight: 800; color: #22c55e; margin-bottom: 5px;">${admin.total_earned} dk</div><div style="font-size: 12px; color: #86efac;">Toplam Kazanç</div></div><button class="btn btn-danger btn-small" onclick="resetAdminEarnings('${admin.username}')" style="padding: 8px 16px; font-size: 12px;">💰 Sıfırla</button></div>`;
             }).join('');
         }
-        
         function updateEarningsStats(earnings) {
             const totalEarnings = earnings.reduce((sum, admin) => sum + admin.total_earned, 0);
             const activeEarners = earnings.filter(admin => admin.total_earned > 0).length;
             const averageEarning = activeEarners > 0 ? Math.round(totalEarnings / activeEarners) : 0;
-            
             document.getElementById('totalEarnings').textContent = totalEarnings;
             document.getElementById('activeEarners').textContent = activeEarners;
             document.getElementById('averageEarning').textContent = averageEarning;
         }
-        
         async function resetAdminEarnings(username) {
             if (!confirm(`${username} admin'inin kazancını sıfırlamak istediğinizden emin misiniz?`)) {
                 return;
             }
-            
             try {
-                const response = await fetch(`/api/reset-admin-earnings/${username}`, {
-                    method: 'POST'
-                });
-                
+                const response = await fetch(`/api/reset-admin-earnings/${username}`, { method: 'POST' });
                 const result = await response.json();
-                
                 if (result.success) {
                     showMessage(`${username} admin kazancı sıfırlandı!`, 'success');
-                    loadAdminEarnings(); // Listeyi yenile
+                    loadAdminEarnings();
                 } else {
                     showMessage(result.error || 'Kazanç sıfırlanamadı!', 'error');
                 }
