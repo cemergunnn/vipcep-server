@@ -126,7 +126,7 @@ async function broadcastAdminListToCustomers() {
                     client.ws.send(message);
                     sentCount++;
                 } catch (error) {
-                    console.log(⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+                    console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);;
                 }
             }
         });
@@ -2129,4 +2129,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
