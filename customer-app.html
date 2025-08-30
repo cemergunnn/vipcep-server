@@ -1372,11 +1372,14 @@
                     console.log('❌ WebSocket bağlantısı kapandı');
                     updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected');
                     
-                    setTimeout(() => {
-                        if (!socket || socket.readyState === WebSocket.CLOSED) {
-                            connectToServer();
-                        }
-                    }, 3000);
+                    // Sadece gerçekten bağlantı koptuğunda yeniden bağlan
+                    if (!socket || socket.readyState === WebSocket.CLOSED) {
+                        setTimeout(() => {
+                            if (!socket || socket.readyState === WebSocket.CLOSED) {
+                                connectToServer();
+                            }
+                        }, 3000);
+                    }
                 };
                 
                 socket.onerror = function(error) {
@@ -2542,11 +2545,7 @@
                 endCall();
             }
             
-            if (socket) {
-                socket.close();
-                socket = null;
-            }
-            
+            // Sadece logout durumunu işaretle, socket'i kapatma
             isLoggedIn = false;
             userInfo = { id: '', name: '', credits: 0 };
             selectedAdminId = null;
@@ -2564,7 +2563,8 @@
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
             
-            connectToServer();
+            // Socket bağlantısını koru, sadece durumu güncelle
+            updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
         }
         
         // Language Support
@@ -2678,3 +2678,4 @@
     </script>
 </body>
 </html>
+
