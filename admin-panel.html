@@ -1033,18 +1033,23 @@
 
             switch (callState) {
                 case 'incoming':
-                    if (details.action === 'play') {
-                        console.log("🎧 Kulaklık tuşu ile arama kabul ediliyor...");
+                    // Gelen arama sırasında, tek tuşlu kulaklıklar genellikle 'pause' gönderir
+                    // çünkü biz durumu 'playing' olarak ayarladık. Bu yüzden 'pause' ve 'play' kabul etmeli.
+                    if (details.action === 'play' || details.action === 'pause') {
+                        console.log("🎧 Kulaklık tuşu ile arama KABUL EDİLİYOR...");
                         acceptIncomingCall();
-                    } else if (details.action === 'stop' || details.action === 'pause') {
-                        console.log("🎧 Kulaklık tuşu ile arama reddediliyor...");
+                    } 
+                    // 'stop' tuşu (eğer varsa) aramayı reddetmek için kullanılabilir.
+                    else if (details.action === 'stop') {
+                        console.log("🎧 Kulaklık tuşu (stop) ile arama REDDEDİLİYOR...");
                         rejectIncomingCall();
                     }
                     break;
 
                 case 'connected':
-                    if (details.action === 'stop' || details.action === 'pause') {
-                        console.log("🎧 Kulaklık tuşu ile görüşme sonlandırılıyor...");
+                    // Görüşme aktifken, herhangi bir tuşa basmak (genellikle yine 'pause' olur) görüşmeyi sonlandırmalı.
+                    if (details.action === 'pause' || details.action === 'stop') {
+                        console.log("🎧 Kulaklık tuşu ile görüşme SONLANDIRILIYOR...");
                         endCall();
                     }
                     break;
