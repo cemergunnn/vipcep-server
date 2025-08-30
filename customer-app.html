@@ -1372,14 +1372,11 @@
                     console.log('❌ WebSocket bağlantısı kapandı');
                     updateConnectionStatus(false, currentLanguage === 'tr' ? 'Bağlantı kesildi' : 'Disconnected');
                     
-                    // Sadece gerçekten bağlantı koptuğunda yeniden bağlan
-                    if (!socket || socket.readyState === WebSocket.CLOSED) {
-                        setTimeout(() => {
-                            if (!socket || socket.readyState === WebSocket.CLOSED) {
-                                connectToServer();
-                            }
-                        }, 3000);
-                    }
+                    setTimeout(() => {
+                        if (!socket || socket.readyState === WebSocket.CLOSED) {
+                            connectToServer();
+                        }
+                    }, 3000);
                 };
                 
                 socket.onerror = function(error) {
@@ -1675,7 +1672,6 @@
         
         // Admin Selection Functions
         function updateAdminList(admins) {
-            console.log('📊 Gelen admin listesi:', admins); // Debug için
             availableAdmins = admins || [];
             const container = document.getElementById('adminListContainer');
             
@@ -2546,7 +2542,11 @@
                 endCall();
             }
             
-            // Sadece logout durumunu işaretle, socket'i kapatma
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            
             isLoggedIn = false;
             userInfo = { id: '', name: '', credits: 0 };
             selectedAdminId = null;
@@ -2564,8 +2564,7 @@
             document.getElementById('mainApp').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
             
-            // Socket bağlantısını koru, sadece durumu güncelle
-            updateConnectionStatus(true, currentLanguage === 'tr' ? 'Bağlı' : 'Connected');
+            connectToServer();
         }
         
         // Language Support
@@ -2679,5 +2678,3 @@
     </script>
 </body>
 </html>
-
-
