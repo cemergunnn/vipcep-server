@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 8080;
 // Security configuration
 const SECURITY_CONFIG = {
     SUPER_ADMIN_PATH: '/panel-admin',
-    NORMAL_ADMIN_PATH: '/desk-admin', 
+    NORMAL_ADMIN_PATH: '/desk-admin',
     CUSTOMER_PATH: '/app-customer',
     SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     TOTP_ISSUER: 'VIPCEP System',
@@ -47,16 +47,13 @@ const wss = new WebSocket.Server({ server });
 const clients = new Map();
 const activeHeartbeats = new Map();
 const activeCallAdmins = new Map();
-// DEĞİŞİKLİK: activeCalls haritası artık görüşme verilerini (başlangıç zamanı, harcanan kredi vb.) tutacak.
 const activeCalls = new Map();
-const adminCallbacks = new Map(); // adminId -> [{customerId, customerName, timestamp}]
-const adminLocks = new Map(); // adminId -> { lockedBy, lockTime }
+const adminCallbacks = new Map();
+const adminLocks = new Map();
 let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
 
 // ================== HELPER FUNCTIONS ==================
-
-// YENİ: Aktif aramayı bulmak için yardımcı fonksiyon
 function findActiveCall(userId1, userId2) {
     if (!userId1 || !userId2) return null;
     const key1 = `${userId1}-${userId2}`;
@@ -76,64 +73,72 @@ function broadcastToCustomers(message) {
     });
 }
 
-function broadcastAdminListToCustomers() {
-    // DÜZELTME: Admin filtrelemesini iyileştir
-    const adminList = Array.from(clients.values())
-        .filter(c => {
-            return c.userType === 'admin' && 
-                   c.ws && 
-                   c.ws.readyState === WebSocket.OPEN &&
-                   c.online !== false; // Offline admin'leri dahil etme
-        })
-        .map(admin => {
-            const adminKey = admin.uniqueId || admin.id;
-            const isInCall = activeCallAdmins.has(adminKey);
+async function broadcastAdminListToCustomers() {
+    try {
+        // YENİ: Veritabanından admin profillerini ve ortalama puanlarını çek
+        const adminProfileResult = await pool.query(`
+            SELECT
+                a.username as id,
+                a.username as name,
+                p.specialization,
+                p.profile_picture_url,
+                COALESCE(AVG(r.rating), 0) as average_rating,
+                COUNT(r.id) as review_count
+            FROM admins a
+            LEFT JOIN admin_profiles p ON a.username = p.admin_username
+            LEFT JOIN admin_reviews r ON a.username = r.admin_username
+            WHERE a.role = 'normal' AND a.is_active = TRUE
+            GROUP BY a.username, p.specialization, p.profile_picture_url
+        `);
 
-            return {
-                id: adminKey,
-                name: admin.name,
-                status: (isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available'
-            };
+        const dbAdmins = adminProfileResult.rows;
+
+        // Online durumu WebSocket clients haritasından al
+        const onlineAdminIds = new Set();
+        clients.forEach(client => {
+            if (client.userType === 'admin' && client.ws && client.ws.readyState === WebSocket.OPEN && client.online !== false) {
+                onlineAdminIds.add(client.id);
+            }
         });
 
-// DÜZELTME: En son aktif admin'i tut
-const uniqueAdmins = [];
-const adminMap = new Map();
+        // Veritabanı verisi ile online durumunu birleştir
+        const combinedAdminList = dbAdmins.map(admin => {
+            const adminKey = admin.id;
+            const isOnline = onlineAdminIds.has(adminKey);
+            const isInCall = activeCallAdmins.has(adminKey);
+            
+            return {
+                ...admin,
+                status: isOnline ? ((isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available') : 'offline'
+            };
+        }).filter(admin => admin.status !== 'offline'); // Sadece online olanları gönder
 
-adminList.forEach(admin => {
-    const baseId = admin.id.split('_')[0]; // ADMIN001_123_abc -> ADMIN001
 
-    // Eğer bu base ID için admin yoksa veya mevcut admin daha yeni ise
-    if (!adminMap.has(baseId) || admin.id > adminMap.get(baseId).id) {
-        adminMap.set(baseId, admin);
-    }
-});
+        const message = JSON.stringify({
+            type: 'admin-list-update',
+            admins: combinedAdminList
+        });
 
-// Map'den array'e çevir
-adminMap.forEach(admin => uniqueAdmins.push(admin));
-
-    const message = JSON.stringify({
-        type: 'admin-list-update',
-        admins: uniqueAdmins // Unique admin listesi gönder
-    });
-
-    let sentCount = 0;
-    clients.forEach(client => {
-        if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
-            try {
-                client.ws.send(message);
-                sentCount++;
-            } catch (error) {
-                console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+        let sentCount = 0;
+        clients.forEach(client => {
+            if (client.userType === 'customer' && client.ws && client.ws.readyState === WebSocket.OPEN) {
+                try {
+                    client.ws.send(message);
+                    sentCount++;
+                } catch (error) {
+                    console.log(⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+                }
             }
-        }
-    });
+        });
 
-    console.log(`📡 Admin list sent to ${sentCount} customers: ${uniqueAdmins.length} unique admins`);
+        console.log(`📡 Admin list sent to ${sentCount} customers: ${combinedAdminList.length} unique admins`);
+    } catch (error) {
+        console.error('Error broadcasting admin list:', error);
+    }
 }
 function broadcastCallbacksToAdmin(adminId) {
-    const adminClient = Array.from(clients.values()).find(c => 
-        c.userType === 'admin' && 
+    const adminClient = Array.from(clients.values()).find(c =>
+        c.userType === 'admin' &&
         (c.uniqueId === adminId || c.id === adminId) &&
         c.ws && c.ws.readyState === WebSocket.OPEN
     );
@@ -237,6 +242,7 @@ function generateTOTPQR(username, secret) {
 
 async function initDatabase() {
     try {
+        // ... (Mevcut tablo oluşturma sorguları)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS approved_users (
                 id VARCHAR(10) PRIMARY KEY,
@@ -269,7 +275,6 @@ async function initDatabase() {
                 connection_lost BOOLEAN DEFAULT FALSE
             )
         `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS credit_transactions (
                 id SERIAL PRIMARY KEY,
@@ -281,7 +286,6 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS admins (
                 id SERIAL PRIMARY KEY,
@@ -294,7 +298,6 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS kvkk_consents (
                 id SERIAL PRIMARY KEY,
@@ -305,7 +308,6 @@ async function initDatabase() {
                 version VARCHAR(10) DEFAULT '1.0'
             )
         `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS failed_logins (
                 id SERIAL PRIMARY KEY,
@@ -315,13 +317,41 @@ async function initDatabase() {
             )
         `);
 
-        // Create super admin if not exists
+        // YENİ: Usta Profili Tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_profiles (
+                id SERIAL PRIMARY KEY,
+                admin_username VARCHAR(50) UNIQUE NOT NULL REFERENCES admins(username) ON DELETE CASCADE,
+                specialization TEXT,
+                bio TEXT,
+                profile_picture_url TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // YENİ: Usta Değerlendirme Tablosu
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_reviews (
+                id SERIAL PRIMARY KEY,
+                admin_username VARCHAR(50) NOT NULL REFERENCES admins(username) ON DELETE CASCADE,
+                customer_id VARCHAR(10) NOT NULL,
+                customer_name VARCHAR(255),
+                rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+                comment TEXT,
+                tip_amount INTEGER DEFAULT 0,
+                call_id VARCHAR(255), -- Hangi görüşme için yapıldığını saklamak için
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+
+        // ... (Mevcut super admin ve test kullanıcısı oluşturma kodları)
         const superAdminCheck = await pool.query('SELECT * FROM admins WHERE role = $1', ['super']);
         if (superAdminCheck.rows.length === 0) {
             const hashedPassword = crypto.createHash('sha256').update('admin123').digest('hex');
             const totpSecret = generateTOTPSecret();
             await pool.query(`
-                INSERT INTO admins (username, password_hash, role, totp_secret) 
+                INSERT INTO admins (username, password_hash, role, totp_secret)
                 VALUES ($1, $2, $3, $4)
             `, ['superadmin', hashedPassword, 'super', totpSecret]);
 
@@ -339,31 +369,26 @@ async function initDatabase() {
                 console.log(`   QR Code URL: ${generateTOTPQR(admin.username, admin.totp_secret)}`);
             }
         }
-
-        // Create test users
         const testUsers = [
             ['1234', 'Test Kullanıcı', 10],
             ['0005', 'VIP Müşteri', 25],
             ['0007', 'Cenk Zortu', 999],
             ['9999', 'Demo User', 5]
         ];
-
         for (const [id, name, credits] of testUsers) {
             const existingUser = await pool.query('SELECT * FROM approved_users WHERE id = $1', [id]);
             if (existingUser.rows.length === 0) {
                 await pool.query(`
-                    INSERT INTO approved_users (id, name, credits) 
+                    INSERT INTO approved_users (id, name, credits)
                     VALUES ($1, $2, $3)
                 `, [id, name, credits]);
             }
         }
-
-        // Create normal admin
         const normalAdminCheck = await pool.query('SELECT * FROM admins WHERE username = $1', ['admin1']);
         if (normalAdminCheck.rows.length === 0) {
             const hashedPassword = crypto.createHash('sha256').update('password123').digest('hex');
             await pool.query(`
-                INSERT INTO admins (username, password_hash, role) 
+                INSERT INTO admins (username, password_hash, role)
                 VALUES ($1, $2, $3)
             `, ['admin1', hashedPassword, 'normal']);
         }
@@ -373,6 +398,7 @@ async function initDatabase() {
     }
 }
 
+// ... (Mevcut authenticateAdmin ve isUserApproved fonksiyonları)
 async function authenticateAdmin(username, password) {
     try {
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
@@ -391,7 +417,6 @@ async function authenticateAdmin(username, password) {
         return null;
     }
 }
-
 async function isUserApproved(userId, userName) {
     try {
         const result = await pool.query('SELECT * FROM approved_users WHERE id = $1', [userId]);
@@ -420,33 +445,28 @@ async function isUserApproved(userId, userName) {
 
 // ================== HEARTBEAT FUNCTIONS ==================
 
+// ... (Mevcut heartbeat fonksiyonları)
 function startHeartbeat(userId, adminId, callKey) {
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
         clearInterval(activeHeartbeats.get(callKey));
         activeHeartbeats.delete(callKey);
     }
-
-    // YENİ: Aktif arama bilgilerini merkezi bir yerde sakla
     activeCalls.set(callKey, {
         startTime: Date.now(),
-        creditsUsed: 0, // İlk başta 0, ilk kredi hemen düşülecek
+        creditsUsed: 0,
         customerId: userId,
         adminId: adminId,
         callKey: callKey
     });
-
-    // Admin username'ini bul
     let adminUsername = adminId;
-    const adminClient = Array.from(clients.values()).find(c => 
+    const adminClient = Array.from(clients.values()).find(c =>
         c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
     );
     if (adminClient && adminClient.name) {
         adminUsername = adminClient.name;
     }
     console.log(`Admin earnings icin username: ${adminUsername}`);
-
-    // İlk dakika krediyi hemen düş (call başında)
     (async () => {
         try {
             console.log(`Initial credit deduction for ${userId}`);
@@ -455,30 +475,25 @@ function startHeartbeat(userId, adminId, callKey) {
                 const currentCredits = userResult.rows[0].credits;
                 if (currentCredits <= 0) {
                     console.log(`No credits available for ${userId}, ending call immediately`);
-                    await stopHeartbeat(callKey, 'no_credits'); // DEĞİŞİKLİK: async olduğu için await
+                    await stopHeartbeat(callKey, 'no_credits');
                     return;
                 }
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-                
-                // YENİ: Harcanan krediyi takip et
                 const callInfo = activeCalls.get(callKey);
                 if(callInfo) {
                     callInfo.creditsUsed = 1;
                 }
-                
                 await pool.query(`
                     INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                     VALUES ($1, $2, $3, $4, $5)
                 `, [userId, 'initial_call', -1, newCredits, `Arama baslangic kredisi`]);
-
-                // Initial admin kazancı
                 try {
                     await pool.query(`
-                        INSERT INTO admin_earnings (username, total_earned) 
+                        INSERT INTO admin_earnings (username, total_earned)
                         VALUES ($1, 1)
-                        ON CONFLICT (username) 
-                        DO UPDATE SET 
+                        ON CONFLICT (username)
+                        DO UPDATE SET
                             total_earned = admin_earnings.total_earned + 1,
                             last_updated = CURRENT_TIMESTAMP
                     `, [adminUsername]);
@@ -486,8 +501,6 @@ function startHeartbeat(userId, adminId, callKey) {
                 } catch (error) {
                     console.log(`Admin kazanc hatası: ${error.message}`);
                 }
-
-                // Customer'a kredi güncellemesi gönder
                 broadcastCreditUpdate(userId, newCredits, 1);
                 console.log(`Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
             }
@@ -503,23 +516,20 @@ function startHeartbeat(userId, adminId, callKey) {
         console.log(`Checking credits for user: ${userId}`);
 
         try {
-            // Admin hala aktif mi kontrol et
-            const adminClient = Array.from(clients.values()).find(c => 
-                c.uniqueId === adminId && 
-                c.userType === 'admin' && 
+            const adminClient = Array.from(clients.values()).find(c =>
+                c.uniqueId === adminId &&
+                c.userType === 'admin' &&
                 c.ws && c.ws.readyState === WebSocket.OPEN
             );
             if (!adminClient) {
                 console.log(`Admin ${adminId} disconnected, stopping heartbeat`);
-                await stopHeartbeat(callKey, 'admin_disconnected'); // DEĞİŞİKLİK: async olduğu için await
+                await stopHeartbeat(callKey, 'admin_disconnected');
                 return;
             }
-
-            // Customer hala bağlı mı?
             const customerClient = clients.get(userId);
             if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
                 console.log(`Customer ${userId} disconnected, stopping heartbeat`);
-                await stopHeartbeat(callKey, 'customer_disconnected'); // DEĞİŞİKLİK: async olduğu için await
+                await stopHeartbeat(callKey, 'customer_disconnected');
                 return;
             }
 
@@ -528,21 +538,16 @@ function startHeartbeat(userId, adminId, callKey) {
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
                 if (currentCredits <= 0) {
-                    await stopHeartbeat(callKey, 'no_credits'); // DEĞİŞİKLİK: async olduğu için await
+                    await stopHeartbeat(callKey, 'no_credits');
                     return;
                 }
 
                 const newCredits = Math.max(0, currentCredits - 1);
                 await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-
-                // YENİ: Harcanan krediyi artır
                 const callInfo = activeCalls.get(callKey);
                 if(callInfo) {
                     callInfo.creditsUsed += 1;
                 }
-
-                // ... (Admin kazancı ve transaction loglama kodları aynı)
-
                 broadcastCreditUpdate(userId, newCredits, 1);
                 console.log(`Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
             }
@@ -558,8 +563,6 @@ function startHeartbeat(userId, adminId, callKey) {
     });
     broadcastAdminListToCustomers();
 }
-
-// DEĞİŞİKLİK: Fonksiyon async yapıldı ve broadcastCallEnd'e ek veri gönderildi
 async function stopHeartbeat(callKey, reason = 'normal') {
     const heartbeat = activeHeartbeats.get(callKey);
     if (heartbeat) {
@@ -567,22 +570,16 @@ async function stopHeartbeat(callKey, reason = 'normal') {
         activeHeartbeats.delete(callKey);
 
         const [userId, adminId] = callKey.split('-');
-
-        // YENİ: Kesin verileri activeCalls haritasından al
         const callInfo = activeCalls.get(callKey);
         const duration = callInfo ? Math.floor((Date.now() - callInfo.startTime) / 1000) : 0;
         const creditsUsed = callInfo ? callInfo.creditsUsed : 0;
-
-        // Lock'u temizle
         adminLocks.delete(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
         activeCallAdmins.delete(adminId);
-        activeCalls.delete(callKey); // Aktif aramalardan temizle
+        activeCalls.delete(callKey);
 
         console.log(`💔 Heartbeat stopped: ${callKey} (${reason})`);
-
-        // YENİ: Müşteriye göndermeden önce son kredi bilgisini veritabanından al
         let remainingCredits = 0;
         try {
             const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
@@ -593,16 +590,14 @@ async function stopHeartbeat(callKey, reason = 'normal') {
             console.error('Kalan kredi alınamadı:', error);
         }
 
-        broadcastCallEnd(userId, adminId, reason, { duration, creditsUsed, remainingCredits });
+        broadcastCallEnd(userId, adminId, reason, { duration, creditsUsed, remainingCredits, callId: callKey });
 
-        // Admin listesini güncelle - ÖNEMLİ!
         broadcastAdminListToCustomers();
         setTimeout(() => {
             broadcastAdminListToCustomers();
         }, 1000);
     }
 }
-
 function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
     const customerClient = clients.get(userId);
     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
@@ -627,8 +622,6 @@ function broadcastCreditUpdate(userId, newCredits, creditsUsed) {
         }
     });
 }
-
-// DEĞİŞİKLİK: Fonksiyona opsiyonel "details" parametresi eklendi
 function broadcastCallEnd(userId, adminId, reason, details = {}) {
     const customerClient = clients.get(userId);
     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
@@ -636,11 +629,12 @@ function broadcastCallEnd(userId, adminId, reason, details = {}) {
             type: 'call-ended',
             reason: reason,
             endedBy: 'system',
-            ...details // YENİ: duration, creditsUsed, remainingCredits gibi bilgileri ekle
+            adminId: adminId, // YENİ: Müşteriye hangi admini değerlendireceğini bildirmek için
+            ...details
         }));
     }
 
-    const adminClient = Array.from(clients.values()).find(c => 
+    const adminClient = Array.from(clients.values()).find(c =>
         c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
     );
 
@@ -655,8 +649,10 @@ function broadcastCallEnd(userId, adminId, reason, details = {}) {
     }
 }
 
+
 // ================== ROUTES ==================
 
+// ... (Mevcut login ve ana sayfa route'ları)
 app.get('/', (req, res) => {
     if (req.session.superAdmin) {
         return res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
@@ -696,7 +692,7 @@ app.get('/', (req, res) => {
         <body>
             <div class="login-container">
                 <div class="title">🔐 VIPCEP</div>
-                
+
                 <div id="step1">
                     <div class="form-group">
                         <input type="text" id="username" class="form-input" placeholder="👤 Kullanıcı Adı">
@@ -708,7 +704,7 @@ app.get('/', (req, res) => {
                     <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
                     <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
                 </div>
-                
+
                 <div id="step2" class="twofa-section">
                     <div class="twofa-info">
                         🔐 İki faktörlü kimlik doğrulaması gerekli
@@ -719,21 +715,21 @@ app.get('/', (req, res) => {
                     <button class="btn" id="verify2FABtn" onclick="verify2FA()">🔐 DOĞ​RULA</button>
                     <button class="btn back-btn" onclick="goBackToStep1()">← GERİ</button>
                 </div>
-                
+
                 <div id="messageArea"></div>
             </div>
-            
+
             <script>
                 let currentStep = 1;
                 let currentUsername = '';
                 let currentPassword = '';
-                
+
                 function showMessage(message, type = 'error') {
                     const area = document.getElementById('messageArea');
                     area.innerHTML = \`<div class="\${type}-msg">\${message}</div>\`;
                     setTimeout(() => { area.innerHTML = ''; }, 5000);
                 }
-                
+
                 function setLoading(loading) {
                     const container = document.querySelector('.login-container');
                     if (loading) {
@@ -742,14 +738,14 @@ app.get('/', (req, res) => {
                         container.classList.remove('loading');
                     }
                 }
-                
+
                 function goToStep2() {
                     currentStep = 2;
                     document.getElementById('step1').style.display = 'none';
                     document.getElementById('step2').style.display = 'block';
                     document.getElementById('totpCode').focus();
                 }
-                
+
                 function goBackToStep1() {
                     currentStep = 1;
                     document.getElementById('step1').style.display = 'block';
@@ -757,29 +753,29 @@ app.get('/', (req, res) => {
                     document.getElementById('totpCode').value = '';
                     document.getElementById('messageArea').innerHTML = '';
                 }
-                
+
                 async function startSuperLogin() {
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
-                    
+
                     if (!username || !password) {
                         return showMessage('Kullanıcı adı ve şifre gerekli!');
                     }
-                    
+
                     currentUsername = username;
                     currentPassword = password;
-                    
+
                     setLoading(true);
-                    
+
                     try {
                         const response = await fetch('/auth/super-login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username, password, step: 'credentials' })
                         });
-                        
+
                         const result = await response.json();
-                        
+
                         if (result.success) {
                             window.location.href = '${SECURITY_CONFIG.SUPER_ADMIN_PATH}';
                         } else if (result.require2FA) {
@@ -791,33 +787,33 @@ app.get('/', (req, res) => {
                     } catch (error) {
                         showMessage('Bağlantı hatası!');
                     }
-                    
+
                     setLoading(false);
                 }
-                
+
                 async function verify2FA() {
                     const totpCode = document.getElementById('totpCode').value.trim();
-                    
+
                     if (!totpCode || totpCode.length !== 6 || !/^\\d{6}$/.test(totpCode)) {
                         return showMessage('6 haneli kod gerekli!');
                     }
-                    
+
                     setLoading(true);
-                    
+
                     try {
                         const response = await fetch('/auth/super-login', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                username: currentUsername, 
+                            body: JSON.stringify({
+                                username: currentUsername,
                                 password: currentPassword,
                                 totpCode: totpCode,
-                                step: '2fa' 
+                                step: '2fa'
                             })
                         });
-                        
+
                         const result = await response.json();
-                        
+
                         if (result.success) {
                             showMessage('Giriş başarılı! Yönlendiriliyor...', 'success');
                             setTimeout(() => {
@@ -831,17 +827,17 @@ app.get('/', (req, res) => {
                     } catch (error) {
                         showMessage('Bağlantı hatası!');
                     }
-                    
+
                     setLoading(false);
                 }
-                
+
                 async function normalAdminLogin() {
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
                     if (!username || !password) return showMessage('Kullanıcı adı ve şifre gerekli!');
-                    
+
                     setLoading(true);
-                    
+
                     try {
                         const response = await fetch('/auth/admin-login', {
                             method: 'POST',
@@ -860,10 +856,10 @@ app.get('/', (req, res) => {
                     } catch (error) {
                         showMessage('Bağlantı hatası!');
                     }
-                    
+
                     setLoading(false);
                 }
-                
+
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         if (currentStep === 1) {
@@ -873,7 +869,7 @@ app.get('/', (req, res) => {
                         }
                     }
                 });
-                
+
                 document.getElementById('totpCode').addEventListener('input', (e) => {
                     e.target.value = e.target.value.replace(/[^0-9]/g, '');
                 });
@@ -882,8 +878,6 @@ app.get('/', (req, res) => {
         </html>
     `);
 });
-
-// Auth endpoints
 app.post('/auth/super-login', async (req, res) => {
     const { username, password, totpCode, step } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
@@ -902,18 +896,18 @@ app.post('/auth/super-login', async (req, res) => {
 
         if (admin.totp_secret) {
             if (step !== '2fa') {
-                req.session.tempSuperAdmin = { 
-                    id: admin.id, 
+                req.session.tempSuperAdmin = {
+                    id: admin.id,
                     username: admin.username,
                     timestamp: Date.now()
                 };
-                return res.json({ 
-                    success: false, 
+                return res.json({
+                    success: false,
                     require2FA: true,
                     message: '2FA kodu gerekli'
                 });
             } else {
-                if (!req.session.tempSuperAdmin || 
+                if (!req.session.tempSuperAdmin ||
                     req.session.tempSuperAdmin.id !== admin.id ||
                     Date.now() - req.session.tempSuperAdmin.timestamp > 300000) {
                     return res.json({ success: false, error: 'Oturum süresi doldu, tekrar deneyin!' });
@@ -928,10 +922,10 @@ app.post('/auth/super-login', async (req, res) => {
             }
         }
 
-        req.session.superAdmin = { 
-            id: admin.id, 
-            username: admin.username, 
-            loginTime: new Date() 
+        req.session.superAdmin = {
+            id: admin.id,
+            username: admin.username,
+            loginTime: new Date()
         };
         res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
 
@@ -940,7 +934,6 @@ app.post('/auth/super-login', async (req, res) => {
         res.json({ success: false, error: 'Sistem hatası!' });
     }
 });
-
 app.post('/auth/admin-login', async (req, res) => {
     const { username, password } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
@@ -963,7 +956,6 @@ app.post('/auth/admin-login', async (req, res) => {
         res.json({ success: false, error: 'Sistem hatası!' });
     }
 });
-
 app.get('/auth/check-session', (req, res) => {
     if (req.session && req.session.superAdmin) {
         res.json({ authenticated: true, role: 'super', username: req.session.superAdmin.username });
@@ -973,7 +965,6 @@ app.get('/auth/check-session', (req, res) => {
         res.json({ authenticated: false });
     }
 });
-
 app.post('/auth/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
@@ -982,22 +973,20 @@ app.post('/auth/logout', (req, res) => {
         res.json({ success: true });
     });
 });
-
-// Route handlers
 app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
-
 app.get(SECURITY_CONFIG.NORMAL_ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
-
 app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'customer-app.html'));
 });
 
+
 // ================== API ROUTES ==================
 
+// ... (Mevcut /api/approved-users, /api/admins, /api/announcement, /api/stats vb. route'ları)
 app.post('/api/approved-users', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1016,8 +1005,8 @@ app.post('/api/approved-users', async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO approved_users (id, name, credits) 
-            VALUES ($1, $2, $3) 
+            INSERT INTO approved_users (id, name, credits)
+            VALUES ($1, $2, $3)
             RETURNING *
         `, [id, name, parseInt(credits)]);
 
@@ -1034,7 +1023,6 @@ app.post('/api/approved-users', async (req, res) => {
         res.json({ success: false, error: 'Kullanıcı oluşturulamadı!' });
     }
 });
-
 app.delete('/api/approved-users/:userId', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1058,7 +1046,6 @@ app.delete('/api/approved-users/:userId', async (req, res) => {
         res.json({ success: false, error: 'Kullanıcı silinemedi!' });
     }
 });
-
 app.post('/api/approved-users/:userId/credits', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1096,7 +1083,6 @@ app.post('/api/approved-users/:userId/credits', async (req, res) => {
         res.json({ success: false, error: 'Kredi güncellenemedi!' });
     }
 });
-
 app.post('/api/admins', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1122,8 +1108,8 @@ app.post('/api/admins', async (req, res) => {
         }
 
         const result = await pool.query(`
-            INSERT INTO admins (username, password_hash, role, totp_secret) 
-            VALUES ($1, $2, $3, $4) 
+            INSERT INTO admins (username, password_hash, role, totp_secret)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, username, role
         `, [username, hashedPassword, role, totpSecret]);
 
@@ -1141,7 +1127,6 @@ app.post('/api/admins', async (req, res) => {
         res.json({ success: false, error: 'Admin oluşturulamadı!' });
     }
 });
-
 app.post('/api/announcement', (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1163,7 +1148,6 @@ app.post('/api/announcement', (req, res) => {
 
     res.json({ success: true });
 });
-
 app.delete('/api/announcement', (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1177,18 +1161,16 @@ app.delete('/api/announcement', (req, res) => {
 
     res.json({ success: true });
 });
-
 app.get('/api/announcement', (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
     }
 
-    res.json({ 
-        success: true, 
-        announcement: currentAnnouncement 
+    res.json({
+        success: true,
+        announcement: currentAnnouncement
     });
 });
-
 app.get('/api/approved-users', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
@@ -1197,7 +1179,6 @@ app.get('/api/approved-users', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 app.get('/api/admins', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1210,7 +1191,6 @@ app.get('/api/admins', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 app.get('/api/calls', async (req, res) => {
     if (!req.session || (!req.session.superAdmin && !req.session.normalAdmin)) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1221,7 +1201,7 @@ app.get('/api/calls', async (req, res) => {
             SELECT ch.*, au.name as user_name
             FROM call_history ch
             LEFT JOIN approved_users au ON ch.user_id = au.id
-            ORDER BY call_time DESC 
+            ORDER BY call_time DESC
             LIMIT 100
         `);
         res.json(result.rows);
@@ -1229,7 +1209,6 @@ app.get('/api/calls', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
 app.get('/api/stats', async (req, res) => {
     try {
         const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
@@ -1250,26 +1229,22 @@ app.get('/api/stats', async (req, res) => {
                 res.status(500).json({ error: error.message });
             }
             });
+app.get('/api/admin-earnings', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erisim' });
+    }
 
-            // Admin kazanç API'ları
-            app.get('/api/admin-earnings', async (req, res) => {
-                if (!req.session || !req.session.superAdmin) {
-                    return res.status(401).json({ error: 'Yetkisiz erisim' });
-                }
-
-                try {
-                    const result = await pool.query(`
-                        SELECT username, total_earned, last_updated 
-                        FROM admin_earnings 
-                        ORDER BY total_earned DESC
-                    `);
-                    res.json(result.rows);
-                } catch (error) {
-                    res.status(500).json({ error: error.message });
-                }
-            });
-
-
+    try {
+        const result = await pool.query(`
+            SELECT username, total_earned, last_updated
+            FROM admin_earnings
+            ORDER BY total_earned DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 app.get('/api/my-earnings', async (req, res) => {
     if (!req.session || (!req.session.normalAdmin && !req.session.superAdmin)) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1307,11 +1282,9 @@ app.post('/api/reset-admin-earnings/:username', async (req, res) => {
         res.json({ success: false, error: error.message });
     }
 });
-
 app.get('/health', (req, res) => {
-
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         clients: clients.size,
@@ -1320,8 +1293,152 @@ app.get('/health', (req, res) => {
     });
 });
 
+
+// YENİ: Usta Profili ve Değerlendirme API Route'ları
+// -----------------------------------------------------------------------------
+
+// Bir ustanın profilini ve yorumlarını getir
+app.get('/api/admins/:username/profile', async (req, res) => {
+    const { username } = req.params;
+    try {
+        // Profil bilgilerini çek
+        const profileRes = await pool.query(`
+            SELECT a.username, p.specialization, p.bio, p.profile_picture_url
+            FROM admins a
+            LEFT JOIN admin_profiles p ON a.username = p.admin_username
+            WHERE a.username = $1
+        `, [username]);
+
+        if (profileRes.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Admin not found' });
+        }
+
+        // Yorumları ve ortalama puanı çek
+        const reviewsRes = await pool.query(`
+            SELECT 
+                customer_id, 
+                customer_name, 
+                rating, 
+                comment, 
+                tip_amount, 
+                created_at 
+            FROM admin_reviews 
+            WHERE admin_username = $1 
+            ORDER BY created_at DESC
+        `, [username]);
+
+        const averageRatingRes = await pool.query(`
+            SELECT AVG(rating) as average_rating 
+            FROM admin_reviews 
+            WHERE admin_username = $1
+        `, [username]);
+
+        const profile = profileRes.rows[0];
+        profile.reviews = reviewsRes.rows;
+        profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
+
+        res.json({ success: true, profile });
+    } catch (error) {
+        console.error(`Error fetching admin profile for ${username}:`, error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+// Super Admin: Usta profilini güncelle
+app.put('/api/admins/:username/profile', async (req, res) => {
+    if (!req.session || !req.session.superAdmin) {
+        return res.status(401).json({ success: false, error: 'Yetkisiz erişim' });
+    }
+    const { username } = req.params;
+    const { specialization, bio, profile_picture_url } = req.body;
+
+    try {
+        await pool.query(`
+            INSERT INTO admin_profiles (admin_username, specialization, bio, profile_picture_url, updated_at)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            ON CONFLICT (admin_username)
+            DO UPDATE SET
+                specialization = EXCLUDED.specialization,
+                bio = EXCLUDED.bio,
+                profile_picture_url = EXCLUDED.profile_picture_url,
+                updated_at = CURRENT_TIMESTAMP
+        `, [username, specialization, bio, profile_picture_url]);
+
+        res.json({ success: true, message: 'Profil güncellendi' });
+    } catch (error) {
+        console.error(`Error updating admin profile for ${username}:`, error);
+        res.status(500).json({ success: false, error: 'Profil güncellenemedi' });
+    }
+});
+
+// Müşteri: Usta için değerlendirme ve bahşiş gönder
+app.post('/api/admins/:adminUsername/review', async (req, res) => {
+    // Bu endpoint'i kimin çağırdığını doğrulamak için bir session veya token mekanizması gerekir.
+    // Şimdilik, gönderilen customerId'nin var olduğunu varsayıyoruz.
+    const { adminUsername } = req.params;
+    const { customerId, customerName, rating, comment, tipAmount, callId } = req.body;
+
+    if (!customerId || !rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ success: false, error: 'Geçersiz veri' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Eğer bahşiş varsa, müşterinin kredisini kontrol et ve düş
+        if (tipAmount && tipAmount > 0) {
+            const userRes = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [customerId]);
+            if (userRes.rows.length === 0 || userRes.rows[0].credits < tipAmount) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ success: false, error: 'Yetersiz kredi (bahşiş için)' });
+            }
+
+            const newCredits = userRes.rows[0].credits - tipAmount;
+            await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, customerId]);
+
+            // 2. Kredi işlemini logla
+            await client.query(`
+                INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                VALUES ($1, 'tip', $2, $3, $4)
+            `, [customerId, -tipAmount, newCredits, `${adminUsername} ustasına bahşiş`]);
+
+            // 3. Admin'in kazancına ekle
+            await client.query(`
+                INSERT INTO admin_earnings (username, total_earned, last_updated)
+                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                ON CONFLICT (username)
+                DO UPDATE SET
+                    total_earned = admin_earnings.total_earned + $2,
+                    last_updated = CURRENT_TIMESTAMP
+            `, [adminUsername, tipAmount]);
+
+             // Müşteriye ve adminlere kredi güncellemesini anlık bildir
+             broadcastCreditUpdate(customerId, newCredits, tipAmount);
+        }
+
+        // 4. Değerlendirmeyi kaydet
+        await client.query(`
+            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId]);
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error submitting review:', error);
+        res.status(500).json({ success: false, error: 'Değerlendirme gönderilemedi.' });
+    } finally {
+        client.release();
+    }
+});
+
+
 // ================== WEBSOCKET HANDLER ==================
 
+// ... (Mevcut WebSocket handler)
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
 
@@ -1347,9 +1464,8 @@ wss.on('connection', (ws, req) => {
                     console.log(`🔄 Registration request: ${message.name} (${message.userId}) as ${message.userType}`);
 
                         if (message.userType === 'admin') {
-                            // Eski admin bağlantılarını temizle
-                            const oldAdminEntries = Array.from(clients.entries()).filter(([clientId, clientData]) => 
-                                clientData.id === message.userId && 
+                            const oldAdminEntries = Array.from(clients.entries()).filter(([clientId, clientData]) =>
+                                clientData.id === message.userId &&
                                 clientData.userType === 'admin' &&
                                 (!clientData.ws || clientData.ws.readyState !== WebSocket.OPEN)
                             );
@@ -1358,8 +1474,6 @@ wss.on('connection', (ws, req) => {
                                 console.log(`🧹 Cleaning up dead admin connection: ${oldClientId}`);
                                 clients.delete(oldClientId);
                             });
-
-                            // Aktif call kontrol et - DÜZELTME: Base ID matching
                             let activeAdminId = null;
                             for (const [adminId, callInfo] of activeCallAdmins.entries()) {
                                 const baseAdminId = adminId.split('_')[0];
@@ -1371,22 +1485,15 @@ wss.on('connection', (ws, req) => {
                             }
 
                             let uniqueClientId;
-
-                            // RADIKAL DEĞİŞİKLİK: Admin ID'yi sabit tut
-                            // Admin ID kontrol et - her admin kendi ID'sini kullansın
                             console.log(`DEBUG: Admin registration - userId: ${message.userId}, name: ${message.name}`);
-
-                            // Mevcut clients'ta aynı isimde başka admin var mı?
-                            const sameNameAdmin = Array.from(clients.values()).find(c => 
+                            const sameNameAdmin = Array.from(clients.values()).find(c =>
                                 c.userType === 'admin' && c.name === message.name && c.id !== message.userId
                             );
 
                             if (sameNameAdmin) {
                                 console.log(`⚠️ SORUN: ${message.name} admin'i farklı ID ile kayıtlı: ${sameNameAdmin.id}`);
                             }
-                            uniqueClientId = message.userId; // Sadece ADMIN001, ADMIN002 vs.
-
-                            // Eski admin kayıtlarını temizle
+                            uniqueClientId = message.userId;
                             clients.delete(uniqueClientId);
 
                             console.log(`👤 Admin connection: ${message.name} as ${uniqueClientId}`);
@@ -1487,7 +1594,6 @@ wss.on('connection', (ws, req) => {
 
                 case 'direct-call-request':
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
-                    // Admin lock kontrolü
                     if (adminLocks.has(message.targetAdminId)) {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
@@ -1495,8 +1601,6 @@ wss.on('connection', (ws, req) => {
                         }));
                         break;
                     }
-
-                    // Admin'i kilitle
                     adminLocks.set(message.targetAdminId, {
                         lockedBy: message.userId,
                         lockTime: Date.now()
@@ -1513,8 +1617,8 @@ wss.on('connection', (ws, req) => {
                     }
                     console.log('🔍 Admin aranıyor:', message.targetAdminId);
                     console.log('🔍 Mevcut adminler:', Array.from(clients.values()).filter(c => c.userType === 'admin').map(a => ({id: a.id, uniqueId: a.uniqueId, name: a.name})));
-                    const targetAdmin = Array.from(clients.values()).find(c => 
-                        c.userType === 'admin' && 
+                    const targetAdmin = Array.from(clients.values()).find(c =>
+                        c.userType === 'admin' &&
                         (c.uniqueId === message.targetAdminId || c.id === message.targetAdminId) &&
                         c.ws && c.ws.readyState === WebSocket.OPEN
                     );
@@ -1553,8 +1657,8 @@ wss.on('connection', (ws, req) => {
                 case 'callback-request':
                     console.log(`📝 Callback request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
 
-                    const callbackTargetAdmin = Array.from(clients.values()).find(c => 
-                        c.userType === 'admin' && 
+                    const callbackTargetAdmin = Array.from(clients.values()).find(c =>
+                        c.userType === 'admin' &&
                         (c.uniqueId === message.targetAdminId || c.id === message.targetAdminId)
                     );
 
@@ -1631,8 +1735,8 @@ wss.on('connection', (ws, req) => {
                 case 'accept-incoming-call':
                     console.log(`✅ Customer ${senderId} accepting call from admin ${message.adminId}`);
 
-                    const acceptingAdmin = Array.from(clients.values()).find(c => 
-                        c.userType === 'admin' && 
+                    const acceptingAdmin = Array.from(clients.values()).find(c =>
+                        c.userType === 'admin' &&
                         (c.uniqueId === message.adminId || c.id === message.adminId) &&
                         c.ws && c.ws.readyState === WebSocket.OPEN
                     );
@@ -1664,7 +1768,6 @@ wss.on('connection', (ws, req) => {
                     broadcastCallbacksToAdmin(acceptingAdmin.uniqueId);
 
                     broadcastAdminListToCustomers();
-                    // Doğru customer ID'sini bul - incomingCallInfo'dan al
                     const customerClient = clients.get(message.userId || message.customerId);
                     if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
                         customerClient.ws.send(JSON.stringify({
@@ -1679,8 +1782,6 @@ wss.on('connection', (ws, req) => {
                 case 'reject-incoming-call':
                  case 'reject-incoming-call':
                     console.log(`❌ Admin tarafından arama reddedildi`);
-
-                    // Lock bilgisinden customer ID'yi al
                     const lockInfo = adminLocks.get(message.adminId);
                     if (lockInfo) {
                         const rejectedCustomer = clients.get(lockInfo.lockedBy);
@@ -1691,13 +1792,9 @@ wss.on('connection', (ws, req) => {
                             }));
                         }
                     }
-                    
-                    // Admin reddederse kilidi kaldır
                     adminLocks.delete(message.adminId);
                     broadcastAdminListToCustomers();
                     console.log(`🔓 Admin ${message.adminId} lock kaldırıldı - red`);
-                    
-                    // Müşteriye bildir
                     const rejectedCustomer = clients.get(message.customerId || 'unknown');
                     if (rejectedCustomer && rejectedCustomer.ws.readyState === WebSocket.OPEN) {
                         rejectedCustomer.ws.send(JSON.stringify({
@@ -1752,33 +1849,26 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
-                // DEĞİŞİKLİK: 'end-call' case'i modal verilerini gönderecek şekilde güncellendi
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
-                    
+
                     const targetId = message.targetId;
                     const callInfoToEnd = findActiveCall(senderId, targetId);
-                    
+
                     if (!callInfoToEnd) {
                         console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
                         const endTargetFallback = findWebRTCTarget(targetId, senderType);
                         if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
-                        return; 
+                        return;
                     }
-                    
+
                     const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
-
-                    // Merkezi stopHeartbeat'i çağır, o zaten broadcast yapacak.
-                    // Bu fonksiyon artık async olduğu için await kullanıyoruz.
                     await stopHeartbeat(callInfoToEnd.callKey, 'user_ended');
-
-                    // stopHeartbeat zaten bir bitiş mesajı gönderiyor, ama biz manuel bitişte daha zengin veri gönderebiliriz.
-                    // Bu, DB sorgusu bitmeden kullanıcıya anında geri bildirim sağlar.
                     let remainingCredits = 0;
                     try {
                         const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [customerId]);
@@ -1788,8 +1878,6 @@ wss.on('connection', (ws, req) => {
                     } catch (error) {
                         console.error('Kalan kredi alınamadı (end-call):', error);
                     }
-                    
-                    // Hem admin'e hem customer'a zenginleştirilmiş bilgiyi gönder
                     const finalCustomerTarget = clients.get(customerId);
                     if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
                         finalCustomerTarget.ws.send(JSON.stringify({
@@ -1801,7 +1889,7 @@ wss.on('connection', (ws, req) => {
                             endedBy: senderType || 'unknown'
                         }));
                     }
-                    
+
                     const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId || c.id === adminId);
                     if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
                         finalAdminTarget.ws.send(JSON.stringify({
@@ -1813,7 +1901,7 @@ wss.on('connection', (ws, req) => {
                             endedBy: senderType || 'unknown'
                         }));
                     }
-                    
+
                     try {
                         await pool.query(`
                             INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
@@ -1848,8 +1936,6 @@ ws.on('close', () => {
 
         if (adminCallInfo) {
             console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
-
-            // Admin'i clients'tan SILME, sadece ws'i null yap
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws && clientData.userType === 'admin') {
                     clientData.ws = null;
@@ -1858,28 +1944,22 @@ ws.on('close', () => {
                 }
             }
 
-            setTimeout(async () => { // DEĞİŞİKLİK: async yapıldı
-                const currentClient = Array.from(clients.values()).find(c => 
+            setTimeout(async () => {
+                const currentClient = Array.from(clients.values()).find(c =>
                     c.uniqueId === adminKey && c.userType === 'admin'
                 );
-
-                // Admin hala var ama bağlantısı yok mu kontrol et
                 if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
                     console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
                     const callKey = `${adminCallInfo.customerId}-${adminKey}`;
-                    await stopHeartbeat(callKey, 'admin_permanently_disconnected'); // DEĞİŞİKLİK: await eklendi
+                    await stopHeartbeat(callKey, 'admin_permanently_disconnected');
                     activeCallAdmins.delete(adminKey);
-                    // Admin müsait oldu, listesi güncelle  
                     broadcastAdminListToCustomers();
-
-                    // Admin'i tamamen temizle
                     clients.delete(adminKey);
                 } else {
                     console.log(`✅ Admin ${adminKey} successfully maintained connection`);
                 }
             }, 15000);
         } else {
-            // Call'da olmayan admin'i normal şekilde temizle
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws) {
                     clients.delete(key);
@@ -1889,7 +1969,6 @@ ws.on('close', () => {
             }
         }
     } else {
-        // Customer cleanup - normal
         for (const [key, clientData] of clients.entries()) {
             if (clientData.ws === ws) {
                 clients.delete(key);
@@ -1898,8 +1977,6 @@ ws.on('close', () => {
             }
         }
     }
-
-    // Her durumda broadcast yap
     setTimeout(() => {
         broadcastAdminListToCustomers();
     }, 100);
@@ -1931,8 +2008,6 @@ function findWebRTCTarget(targetId, sourceType) {
     if (targetClient) {
         return targetClient;
     }
-
-    // uniqueId ile arama (ADMIN123_456_abc formatı)
     if (targetId.includes('_')) {
         const normalId = targetId.split('_')[0];
         for (const [clientId, clientData] of clients.entries()) {
@@ -1941,7 +2016,6 @@ function findWebRTCTarget(targetId, sourceType) {
             }
         }
     } else {
-        // Normal ID ile arama (ADMIN123 formatı)
         for (const [clientId, clientData] of clients.entries()) {
             if ((clientId.startsWith && clientId.startsWith(targetId + '_')) && clientData.userType === 'admin') {
                 return clientData;
@@ -2055,3 +2129,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
