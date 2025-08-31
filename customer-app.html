@@ -271,8 +271,13 @@
             font-size: 12px;
             color: var(--warning-color);
         }
+        .admin-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
         .admin-actions button {
-            padding: 8px 16px;
+            padding: 8px 12px;
             font-size: 13px;
             min-width: 90px;
         }
@@ -283,6 +288,13 @@
         .btn-callback {
             background: linear-gradient(135deg, #fbbf24, var(--warning-color));
             color: #92400e;
+        }
+         .btn-details {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            font-size: 12px;
+            padding: 6px 12px;
+            border: 1px solid var(--gray-200);
         }
 
         .call-status {
@@ -336,7 +348,7 @@
         .rating-stars span:hover, .rating-stars span.active { color: var(--warning-color); }
         
         #reviewComment { min-height: 80px; margin-top: 10px; }
-        #tipAmount { width: 100px; text-align: center; margin: 10px auto; }
+        #tipAmount { width: 100%; text-align: center; margin: 10px auto; }
 
         .error-message {
             background: #fef2f2;
@@ -397,7 +409,7 @@
             </div>
 
             <div id="mainApp" class="hidden">
-                <div class="user-info">
+                <div class="user-info" id="userInfoBox">
                     <div class="info-grid">
                         <div class="info-item">
                             <div class="info-label">Kullanıcı</div>
@@ -589,7 +601,6 @@
         function updateAdminList(admins) {
             availableAdmins = admins;
             const container = document.getElementById('adminListContainer');
-            const placeholder = document.getElementById('adminListPlaceholder');
             if (admins && admins.length > 0) {
                 container.innerHTML = admins.map(admin => `
                     <div class="admin-card ${admin.status}">
@@ -600,6 +611,7 @@
                             <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
                         </div>
                         <div class="admin-actions">
+                            <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
                             ${admin.status === 'available' ? `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>` : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}')">📝 Çağrı Bırak</button>`}
                         </div>
                     </div>
@@ -629,12 +641,20 @@
 
         function setState(newState) {
             callState = newState;
-            ['idleState', 'connectingState', 'connectedState', 'incomingCallState'].forEach(s => {
+            const states = ['idleState', 'connectingState', 'connectedState', 'incomingCallState'];
+            states.forEach(s => {
                 const el = document.getElementById(s);
                 if(el) el.classList.add('hidden');
             });
-            const stateEl = document.getElementById(newState);
-            if(stateEl) stateEl.classList.remove('hidden');
+            const activeStateEl = document.getElementById(newState);
+            if(activeStateEl) activeStateEl.classList.remove('hidden');
+
+            const userInfoBox = document.getElementById('userInfoBox');
+            if (newState === 'connected' || newState === 'connecting') {
+                userInfoBox.classList.add('hidden');
+            } else {
+                userInfoBox.classList.remove('hidden');
+            }
 
             document.getElementById('displayUserStatus').textContent = {
                 idle: 'Hazır',
@@ -756,8 +776,9 @@
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                        <input type="number" id="tipAmount" class="form-input" placeholder="Bahşiş (kredi)" min="0" max="${userInfo.credits}">
-                        <button class="btn btn-login" onclick="submitReview()">Gönder</button>
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
+                        <button id="submitReviewBtn" class="btn btn-login" onclick="submitReview()">Gönder</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
@@ -775,9 +796,14 @@
             });
 
             window.submitReview = async () => {
+                const submitBtn = document.getElementById('submitReviewBtn');
+                submitBtn.disabled = true;
+
                 const tipAmount = parseInt(document.getElementById('tipAmount').value) || 0;
                 if (tipAmount > userInfo.credits) {
-                    return alert("Bahşiş için yeterli krediniz yok!");
+                    alert("Bahşiş için yeterli krediniz yok!");
+                    submitBtn.disabled = false;
+                    return;
                 }
                 
                 const reviewData = {
@@ -789,14 +815,71 @@
                     callId: lastCallInfo.callId
                 };
 
-                await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(reviewData)
-                });
-                
-                document.getElementById('reviewOverlay').remove();
+                try {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reviewData)
+                    });
+                } catch(e) {
+                    console.error("Review submission failed", e);
+                } finally {
+                    document.getElementById('reviewOverlay').remove();
+                }
             };
+        }
+
+        async function showAdminDetails(adminId) {
+            const admin = availableAdmins.find(a => a.id === adminId);
+            if (!admin) return;
+
+            const modalHTML = `
+                <div id="detailsModalOverlay" class="modal-overlay">
+                    <div class="modal-content" style="text-align: left; max-width: 380px;">
+                        <button onclick="this.closest('.modal-overlay').remove()" style="float: right; border: none; background: none; font-size: 24px; cursor: pointer;">&times;</button>
+                        <div id="detailsModalBody"><p style="text-align:center;">Detaylar yükleniyor...</p></div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            try {
+                const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
+
+                const profile = result.profile;
+                const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
+                    <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                        <p><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
+                        <p style="font-style: italic; color: #555;">"${review.comment || 'Yorum yok.'}"</p>
+                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                        <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
+
+                document.getElementById('detailsModalBody').innerHTML = `
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
+                        <h3 style="margin-top: 10px; margin-bottom: 5px;">${profile.username}</h3>
+                        <p style="color: #555;">${profile.specialization || 'Genel Teknik Servis'}</p>
+                        <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
+                    </div>
+                    <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Değerlendirmeler (${profile.reviews.length})</h4>
+                    <div style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
+                        ${reviewsHtml}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('detailsModalBody').innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
+            }
+        }
+
+        function generateStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += i <= rating ? '★' : '☆';
+            }
+            return stars;
         }
     </script>
 </body>
