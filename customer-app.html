@@ -438,14 +438,25 @@
                 </div>
 
                 <div id="connectingState" class="hidden call-status">
-                    <div></div>
-                    <button class="btn btn-end" onclick="endCall()">İptal Et</button>
+                    <div id="connectingAdminInfo" style="margin-bottom: 25px;">
+                        <div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">📞 Usta Aranıyor...</div>
+                        <p style="margin-top: 10px; font-size: 16px; color: var(--gray-700);">Lütfen bekleyiniz.</p>
+                    </div>
+                    <button class="btn btn-end" onclick="endCall()">Aramayı İptal Et</button>
                 </div>
-                
+
                 <div id="connectedState" class="hidden call-status">
-                    <div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">Görüşme Aktif</div>
-                    <div id="callTimer" style="font-size: 32px; font-weight: 800; color: var(--primary-color); margin: 20px 0; font-family: monospace;">00:00</div>
-                    <div><span id="currentAdminName">Usta</span> ile görüşüyorsunuz</div>
+                    <div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">GÖRÜŞME AKTİF</div>
+                    
+                    <div style="margin: 15px 0;">
+                        <img id="connectedAdminPic" src="https://placehold.co/100x100/EBF4FF/768498?text=Usta" alt="Usta" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
+                        <p style="margin-top: 10px; font-weight: 600; font-size: 18px;">
+                            <span id="currentAdminName">Usta</span> ile görüşüyorsunuz
+                        </p>
+                    </div>
+
+                    <div id="callTimer" style="font-size: 32px; font-weight: 800; color: var(--gray-800); margin: 10px 0 25px 0; font-family: monospace; background: var(--gray-100); padding: 10px; border-radius: 8px;">00:00</div>
+                    
                     <button class="btn btn-end" onclick="endCall()">Görüşmeyi Sonlandır</button>
                 </div>
                 
@@ -625,9 +636,13 @@
             if (userInfo.credits <= 0) return alert('Arama yapmak için krediniz yetersiz.');
             
             const admin = availableAdmins.find(a => a.id === adminId);
-            const connectingDiv = document.querySelector('#connectingState > div');
-            if(connectingDiv) {
-                connectingDiv.innerHTML = `<div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">📞 ${admin?.name || 'Usta'} aranıyor...</div>`;
+            const connectingDiv = document.getElementById('connectingAdminInfo');
+            if(connectingDiv && admin) {
+                connectingDiv.innerHTML = `
+                    <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" style="width: 80px; height: 80px; border-radius: 50%;">
+                    <div style="color: var(--primary-color); font-weight: 700; font-size: 18px; margin-top:10px;">📞 ${admin.name || 'Usta'} aranıyor...</div>
+                    <p style="margin-top: 5px; font-size: 14px; color: var(--gray-500);">Lütfen bekleyiniz.</p>
+                `;
             }
 
             setState('connecting');
@@ -675,12 +690,18 @@
         }
         function handleCallAccepted(message) {
             lastCallInfo.adminId = message.adminId;
-            document.getElementById('currentAdminName').textContent = message.adminName || 'Usta';
+            const admin = availableAdmins.find(a => a.id === message.adminId);
+            
+            document.getElementById('currentAdminName').textContent = admin?.name || 'Usta';
+            const adminPic = document.getElementById('connectedAdminPic');
+            if (adminPic && admin) {
+                adminPic.src = admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta';
+            }
+            
             const connectingDiv = document.querySelector('#connectingState > div');
             if(connectingDiv) {
                 connectingDiv.innerHTML = `<div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">🔗 Bağlantı kuruluyor...</div>`;
             }
-            // setState('connecting'); // Bu satır kaldırıldı çünkü zaten connecting state'indeyiz.
             setupPeerConnection(true);
         }
         
@@ -884,4 +905,3 @@
     </script>
 </body>
 </html>
-
