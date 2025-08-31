@@ -1835,24 +1835,39 @@ wss.on('connection', (ws, req) => {
                     const targetId = message.targetId;
                     const callInfoToEnd = findActiveCall(senderId, targetId);
                 
+                    if (message.reason === 'cancelled') {
+                        const adminToNotify = Array.from(clients.values()).find(c => c.uniqueId === targetId && c.userType === 'admin');
+                        if (adminToNotify && adminToNotify.ws.readyState === WebSocket.OPEN) {
+                            adminToNotify.ws.send(JSON.stringify({
+                                type: 'call-ended',
+                                userId: senderId,
+                                reason: 'cancelled'
+                            }));
+                            console.log(`✅ İptal bildirimi admin ${targetId} tarafına gönderildi.`);
+                        }
+                        // İptal edilen çağrılar için kilitleri kaldır ve listeleri güncelle
+                        adminLocks.delete(targetId);
+                        activeCallAdmins.delete(targetId);
+                        broadcastAdminListToCustomers();
+                        return; // İptal olduğu için diğer işlemlere gerek yok
+                    }
+                
                     if (!callInfoToEnd) {
-                        // ... mevcut kod
-                        // Eğer aktif arama yoksa, kilidi kaldır ve çık.
+                        console.warn(`⚠️ Biten aktif arama bulunamadı: ${senderId} to ${targetId}`);
                         adminLocks.delete(senderId);
                         broadcastAdminListToCustomers();
                         return;
                     }
-                
+                    
                     const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
                     const endedBy = senderType;
-                    
+                
                     // Heartbeat durdurulduktan sonra kalan kredi bilgisi alınıyor
                     await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
-                    
-                    // Kalan krediyi tekrar al, zira heartbeat durunca son güncel kredi bilgisi elinde oluyor.
+                
                     let remainingCredits = 0;
                     try {
                         const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [customerId]);
@@ -1869,22 +1884,22 @@ wss.on('connection', (ws, req) => {
                         adminId: adminId,
                         duration: finalDuration,
                         creditsUsed: finalCreditsUsed,
-                        remainingCredits: remainingCredits, // Burası önemli
+                        remainingCredits: remainingCredits,
                         endedBy: endedBy,
                         reason: message.reason || 'user_ended',
-                        callId: callInfoToEnd.callKey // Değerlendirme modalı için callId eklenmeli
+                        callId: callInfoToEnd.callKey
                     };
-                
+                    
                     const finalCustomerTarget = clients.get(customerId);
                     if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
                         finalCustomerTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-                
+                    
                     const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId);
                     if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
                         finalAdminTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-                
+                    
                     try {
                         await pool.query(`
                             INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
@@ -2105,4 +2120,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
