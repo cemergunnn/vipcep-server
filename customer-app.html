@@ -1616,7 +1616,19 @@
                 document.getElementById('mainApp').classList.remove('hidden');
                 
                 updateUserDisplay();
-                registerUser();
+                
+                // Register user with a small delay to ensure connection is stable
+                setTimeout(() => {
+                    registerUser();
+                    // Request admin list after registration
+                    setTimeout(() => {
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({
+                                type: 'request-admin-list'
+                            }));
+                        }
+                    }, 500);
+                }, 100);
                 
             } else {
                 console.log('❌ Giriş başarısız:', message.reason);
@@ -2678,3 +2690,4 @@
     </script>
 </body>
 </html>
+
