@@ -1012,7 +1012,7 @@
     </div>
 
     <script>
-        // ... (Mevcut global değişkenler)
+        // ================== GLOBAL DEĞİŞKENLER (TEMİZLENMİŞ) ==================
         let socket = null;
         let peerConnection = null;
         let localStream = null;
@@ -1030,23 +1030,8 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         let adminUniqueId = null;
-
+        
         console.log('👤 Admin oturumu hazırlanıyor...');
-        let myCallbacks = [];
-
-        let micEnabled = true;
-        let speakerEnabled = true;
-        let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100);
-
-        const savedAdminId = localStorage.getItem('vipcep_admin_id');
-        if (savedAdminId) {
-            originalAdminId = savedAdminId;
-        } else {
-            originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100);
-            localStorage.setItem('vipcep_admin_id', originalAdminId);
-        }
-
-        console.log('👤 Admin ID:', originalAdminId);
         let myCallbacks = [];
 
         let micEnabled = true;
@@ -1064,7 +1049,6 @@
 
 
         // ================== INITIALIZATION ==================
-        // ... (Mevcut init, auth ve media session kodları)
         window.onload = function() {
             console.log('🎯 VIPCEP Admin Panel başlatılıyor...');
             if (isInitializing) return;
@@ -1102,7 +1086,6 @@
                     else if (incomingCallInfo) rejectIncomingCall();
                     else if (currentCall && confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) endCall();
                     
-                    // Close profile modal if open
                     if (!document.getElementById('profileModal').classList.contains('hidden')) {
                         closeProfileModal();
                     }
@@ -1124,7 +1107,6 @@
                 }
             }, { once: true });
 
-            // YENİ: Modal'ı dışarı tıklayarak kapat
             document.getElementById('profileModal').addEventListener('click', (e) => {
                 if (e.target.id === 'profileModal') {
                     closeProfileModal();
@@ -1232,7 +1214,6 @@
             window.location.href = baseUrl;
         }
 
-        // ... (Mevcut server connection, message handling, call management vb. kodları)
         function connectToServer() {
             if (!isLoggedIn) {
                 console.log('❌ Giriş yapmadan sunucuya bağlanılamaz');
@@ -1281,7 +1262,7 @@
             }
         }
         function registerAdmin() {
-             if (socket && socket.readyState === WebSocket.OPEN && currentAdmin) {
+            if (socket && socket.readyState === WebSocket.OPEN && currentAdmin) {
                 const registerMessage = { 
                     type: 'register', 
                     userId: currentAdmin.username, 
@@ -1333,7 +1314,7 @@
                     if (currentCall || outgoingCallInfo || callState !== 'idle') {
                         console.log('⚠️ Meşgul durumda, arama reddediliyor');
                         if (socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: adminUniqueId || originalAdminId, reason: 'Admin meşgul' }));
+                            socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: adminUniqueId || currentAdmin.username, reason: 'Admin meşgul' }));
                         }
                         return;
                     }
@@ -1437,7 +1418,7 @@
             if (!outgoingCallInfo) return;
             console.log('❌ Giden arama iptal edildi:', outgoingCallInfo.userName);
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'end-call', targetId: outgoingCallInfo.userId, userId: adminUniqueId || originalAdminId, userType: 'admin', endedBy: 'admin', reason: 'cancelled' }));
+                socket.send(JSON.stringify({ type: 'end-call', targetId: outgoingCallInfo.userId, userId: adminUniqueId || currentAdmin.username, userType: 'admin', endedBy: 'admin', reason: 'cancelled' }));
             }
             resetCallState();
         }
@@ -1445,7 +1426,7 @@
             if (!incomingCallInfo) return;
             console.log('✅ Gelen arama kabul edildi:', incomingCallInfo.userName);
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: adminUniqueId || originalAdminId, userId: incomingCallInfo.userId }));
+                socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: adminUniqueId || currentAdmin.username, userId: incomingCallInfo.userId }));
             }
             const incomingCallEl = document.getElementById('incomingCall');
             if (incomingCallEl) incomingCallEl.classList.add('hidden');
@@ -1455,14 +1436,14 @@
             updateAdminStatus('busy');
             console.log('🔗 Admin kabul etti, WebRTC kurulması için offer bekleniyor...');
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: currentCall.userId, adminId: adminUniqueId || originalAdminId }));
+                socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: currentCall.userId, adminId: adminUniqueId || currentAdmin.username }));
             }
         }
         function rejectIncomingCall() {
             if (!incomingCallInfo) return;
             console.log('❌ Gelen arama reddedildi:', incomingCallInfo.userName);
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: adminUniqueId || originalAdminId, reason: 'Admin tarafından reddedildi' }));
+                socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: adminUniqueId || currentAdmin.username, reason: 'Admin tarafından reddedildi' }));
             }
             resetCallState();
         }
@@ -1498,7 +1479,7 @@
             console.log('📞 Görüşme sonlandırılıyor:', currentCall.userName);
             const duration = callDuration;
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'end-call', userId: adminUniqueId || originalAdminId, targetId: currentCall.userId, duration: duration, userType: 'admin', endedBy: 'admin' }));
+                socket.send(JSON.stringify({ type: 'end-call', userId: adminUniqueId || currentAdmin.username, targetId: currentCall.userId, duration: duration, userType: 'admin', endedBy: 'admin' }));
             }
             cleanupCall();
             resetCallState();
@@ -1847,8 +1828,6 @@
         
         
         // YENİ: Profil Modal Fonksiyonları
-        // ================================================
-
         function openProfileModal() {
             if (!currentAdmin || !currentAdmin.username) {
                 showNotification('Profil bilgileri için önce giriş yapılmalı.', 'error');
