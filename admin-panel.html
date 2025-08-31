@@ -1389,6 +1389,7 @@
             }
             console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
             outgoingCallInfo = { userId: customerId, userName: customerName };
+            currentCall = { userId: customerId, userName: customerName }; // Arama bilgilerini sakla
             callState = 'outgoing';
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
