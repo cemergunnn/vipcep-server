@@ -75,6 +75,7 @@ function broadcastToCustomers(message) {
 
 async function broadcastAdminListToCustomers() {
     try {
+        console.log('📡 Broadcasting admin list to customers...');
         // YENİ: Veritabanından admin profillerini ve ortalama puanlarını çek
         const adminProfileResult = await pool.query(`
             SELECT
@@ -98,9 +99,10 @@ async function broadcastAdminListToCustomers() {
         clients.forEach(client => {
             if (client.userType === 'admin' && client.ws && client.ws.readyState === WebSocket.OPEN && client.online !== false) {
                 onlineAdminIds.add(client.id);
+                console.log(`✅ Online admin found: ${client.id} (${client.name})`);
             }
         });
-
+        console.log(`📊 Database admins: ${dbAdmins.length}, Online admins: ${onlineAdminIds.size}`);
         // Veritabanı verisi ile online durumunu birleştir
         const combinedAdminList = dbAdmins.map(admin => {
             const adminKey = admin.id;
@@ -111,8 +113,14 @@ async function broadcastAdminListToCustomers() {
                 ...admin,
                 status: isOnline ? ((isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available') : 'offline'
             };
-        }).filter(admin => admin.status !== 'offline'); // Sadece online olanları gönder
-
+        }).
+                // Sadece online olanları filtrele
+        const onlineAdmins = combinedAdminList.filter(admin => admin.status !== 'offline');
+        
+        console.log(`📋 Final admin list: ${onlineAdmins.length} admins available`);
+        onlineAdmins.forEach(admin => {
+            console.log(`  - ${admin.name} (${admin.id}): ${admin.status}`);
+        });
 
         const message = JSON.stringify({
             type: 'admin-list-update',
@@ -130,11 +138,24 @@ async function broadcastAdminListToCustomers() {
                 }
             }
         });
-
+        
         console.log(`📡 Admin list sent to ${sentCount} customers: ${combinedAdminList.length} unique admins`);
     } catch (error) {
         console.error('Error broadcasting admin list:', error);
     }
+       // Eğer hiç admin yoksa, bu durumu logla
+        if (onlineAdmins.length === 0) {
+            console.log('⚠️ NO ONLINE ADMINS FOUND! Possible issues:');
+            console.log(`   - Database admins count: ${dbAdmins.length}`);
+            console.log(`   - WebSocket admin connections: ${onlineAdminIds.size}`);
+            console.log('   - Check if admins are properly logged in and registered');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error broadcasting admin list:', error);
+    }
+}
+    
 }
 function broadcastCallbacksToAdmin(adminId) {
     const adminClient = Array.from(clients.values()).find(c =>
@@ -1549,12 +1570,20 @@ wss.on('connection', (ws, req) => {
                                 announcement: currentAnnouncement
                             }));
                         }
+                        setTimeout(() => {
+                            broadcastAdminListToCustomers();
+                        }, 500);
+                    }
+                
+                    broadcastUserList();
                     }
 
                     broadcastUserList();
-                    broadcastAdminListToCustomers();
+                    // EKLEME: Bir kez daha admin listesini broadcast et (güvenlik için)
+                    setTimeout(() => {
+                        broadcastAdminListToCustomers();
+                    }, 1000);
                     break;
-
                 case 'login-request':
                     const rateLimit = await checkRateLimit(clientIP);
                     if (!rateLimit.allowed) {
@@ -1579,6 +1608,9 @@ wss.on('connection', (ws, req) => {
                             credits: approval.credits,
                             user: approval.user
                         }));
+                        setTimeout(() => {
+                            broadcastAdminListToCustomers();
+                        }, 1000);
                     } else {
                         const newRateStatus = await recordFailedLogin(clientIP);
                         ws.send(JSON.stringify({
@@ -2129,4 +2161,5 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
