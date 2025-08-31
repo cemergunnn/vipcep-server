@@ -75,7 +75,6 @@ function broadcastToCustomers(message) {
 
 async function broadcastAdminListToCustomers() {
     try {
-        // YENİ: Veritabanından admin profillerini ve ortalama puanlarını çek
         const adminProfileResult = await pool.query(`
             SELECT
                 a.username as id,
@@ -92,8 +91,6 @@ async function broadcastAdminListToCustomers() {
         `);
 
         const dbAdmins = adminProfileResult.rows;
-
-        // Online durumu WebSocket clients haritasından al
         const onlineAdminIds = new Set();
         clients.forEach(client => {
             if (client.userType === 'admin' && client.ws && client.ws.readyState === WebSocket.OPEN && client.online !== false) {
@@ -101,7 +98,6 @@ async function broadcastAdminListToCustomers() {
             }
         });
 
-        // Veritabanı verisi ile online durumunu birleştir
         const combinedAdminList = dbAdmins.map(admin => {
             const adminKey = admin.id;
             const isOnline = onlineAdminIds.has(adminKey);
@@ -111,7 +107,7 @@ async function broadcastAdminListToCustomers() {
                 ...admin,
                 status: isOnline ? ((isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available') : 'offline'
             };
-        }).filter(admin => admin.status !== 'offline'); // Sadece online olanları gönder
+        }).filter(admin => admin.status !== 'offline');
 
 
         const message = JSON.stringify({
@@ -153,6 +149,7 @@ function broadcastCallbacksToAdmin(adminId) {
     }
 }
 
+// ... (Authentication, Database, Heartbeat, and Route functions remain unchanged)
 // ================== AUTHENTICATION FUNCTIONS ==================
 
 async function checkRateLimit(ip, userType = 'customer') {
@@ -398,7 +395,6 @@ async function initDatabase() {
     }
 }
 
-// ... (Mevcut authenticateAdmin ve isUserApproved fonksiyonları)
 async function authenticateAdmin(username, password) {
     try {
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
@@ -445,7 +441,6 @@ async function isUserApproved(userId, userName) {
 
 // ================== HEARTBEAT FUNCTIONS ==================
 
-// ... (Mevcut heartbeat fonksiyonları)
 function startHeartbeat(userId, adminId, callKey) {
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
@@ -652,7 +647,6 @@ function broadcastCallEnd(userId, adminId, reason, details = {}) {
 
 // ================== ROUTES ==================
 
-// ... (Mevcut login ve ana sayfa route'ları)
 app.get('/', (req, res) => {
     if (req.session.superAdmin) {
         return res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
@@ -986,7 +980,6 @@ app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
 
 // ================== API ROUTES ==================
 
-// ... (Mevcut /api/approved-users, /api/admins, /api/announcement, /api/stats vb. route'ları)
 app.post('/api/approved-users', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ error: 'Yetkisiz erişim' });
@@ -1297,11 +1290,9 @@ app.get('/health', (req, res) => {
 // YENİ: Usta Profili ve Değerlendirme API Route'ları
 // -----------------------------------------------------------------------------
 
-// Bir ustanın profilini ve yorumlarını getir
 app.get('/api/admins/:username/profile', async (req, res) => {
     const { username } = req.params;
     try {
-        // Profil bilgilerini çek
         const profileRes = await pool.query(`
             SELECT a.username, p.specialization, p.bio, p.profile_picture_url
             FROM admins a
@@ -1313,7 +1304,6 @@ app.get('/api/admins/:username/profile', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Admin not found' });
         }
 
-        // Yorumları ve ortalama puanı çek
         const reviewsRes = await pool.query(`
             SELECT 
                 customer_id, 
@@ -1344,7 +1334,6 @@ app.get('/api/admins/:username/profile', async (req, res) => {
     }
 });
 
-// Super Admin: Usta profilini güncelle
 app.put('/api/admins/:username/profile', async (req, res) => {
     if (!req.session || !req.session.superAdmin) {
         return res.status(401).json({ success: false, error: 'Yetkisiz erişim' });
@@ -1371,10 +1360,7 @@ app.put('/api/admins/:username/profile', async (req, res) => {
     }
 });
 
-// Müşteri: Usta için değerlendirme ve bahşiş gönder
 app.post('/api/admins/:adminUsername/review', async (req, res) => {
-    // Bu endpoint'i kimin çağırdığını doğrulamak için bir session veya token mekanizması gerekir.
-    // Şimdilik, gönderilen customerId'nin var olduğunu varsayıyoruz.
     const { adminUsername } = req.params;
     const { customerId, customerName, rating, comment, tipAmount, callId } = req.body;
 
@@ -1386,7 +1372,6 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 1. Eğer bahşiş varsa, müşterinin kredisini kontrol et ve düş
         if (tipAmount && tipAmount > 0) {
             const userRes = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [customerId]);
             if (userRes.rows.length === 0 || userRes.rows[0].credits < tipAmount) {
@@ -1397,13 +1382,11 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
             const newCredits = userRes.rows[0].credits - tipAmount;
             await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, customerId]);
 
-            // 2. Kredi işlemini logla
             await client.query(`
                 INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
                 VALUES ($1, 'tip', $2, $3, $4)
             `, [customerId, -tipAmount, newCredits, `${adminUsername} ustasına bahşiş`]);
 
-            // 3. Admin'in kazancına ekle
             await client.query(`
                 INSERT INTO admin_earnings (username, total_earned, last_updated)
                 VALUES ($1, $2, CURRENT_TIMESTAMP)
@@ -1413,11 +1396,9 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
                     last_updated = CURRENT_TIMESTAMP
             `, [adminUsername, tipAmount]);
 
-             // Müşteriye ve adminlere kredi güncellemesini anlık bildir
              broadcastCreditUpdate(customerId, newCredits, tipAmount);
         }
 
-        // 4. Değerlendirmeyi kaydet
         await client.query(`
             INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1437,8 +1418,6 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
 
 
 // ================== WEBSOCKET HANDLER ==================
-
-// ... (Mevcut WebSocket handler)
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
 
@@ -1461,6 +1440,7 @@ wss.on('connection', (ws, req) => {
 
             switch (message.type) {
                 case 'register':
+                    // ... (register logic is unchanged)
                     console.log(`🔄 Registration request: ${message.name} (${message.userId}) as ${message.userType}`);
 
                         if (message.userType === 'admin') {
@@ -1554,8 +1534,9 @@ wss.on('connection', (ws, req) => {
                     broadcastUserList();
                     broadcastAdminListToCustomers();
                     break;
-
+                
                 case 'login-request':
+                    // ... (login-request logic is unchanged)
                     const rateLimit = await checkRateLimit(clientIP);
                     if (!rateLimit.allowed) {
                         ws.send(JSON.stringify({
@@ -1593,6 +1574,7 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'direct-call-request':
+                    // ... (direct-call-request logic is unchanged)
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
                     if (adminLocks.has(message.targetAdminId)) {
                         ws.send(JSON.stringify({
@@ -1653,8 +1635,9 @@ wss.on('connection', (ws, req) => {
 
                     console.log(`📡 Call request sent to admin ${targetAdmin.name}`);
                     break;
-
+                
                 case 'callback-request':
+                    // ... (callback-request logic is unchanged)
                     console.log(`📝 Callback request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
 
                     const callbackTargetAdmin = Array.from(clients.values()).find(c =>
@@ -1698,8 +1681,9 @@ wss.on('connection', (ws, req) => {
 
                     console.log(`📝 Callback added for admin ${callbackTargetAdmin.name}: ${message.userName}`);
                     break;
-
+                
                 case 'admin-call-customer':
+                    // ... (admin-call-customer logic is unchanged)
                     console.log(`📞 Admin ${senderId} calling customer ${message.targetCustomerId}`);
 
                     const targetCustomer = clients.get(message.targetCustomerId);
@@ -1732,54 +1716,53 @@ wss.on('connection', (ws, req) => {
                     console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
                     break;
 
-                case 'accept-incoming-call':
-                    console.log(`✅ Customer ${senderId} accepting call from admin ${message.adminId}`);
+                // ------------------- DÜZELTİLMİŞ BLOK -------------------
+                case 'accept-incoming-call': {
+                    const adminClient = senderInfo;
+                    const customerClient = clients.get(message.userId);
 
-                    const acceptingAdmin = Array.from(clients.values()).find(c =>
-                        c.userType === 'admin' &&
-                        (c.uniqueId === message.adminId || c.id === message.adminId) &&
-                        c.ws && c.ws.readyState === WebSocket.OPEN
-                    );
+                    if (!adminClient) {
+                        console.error(`CRITICAL: 'accept-incoming-call' from unknown sender.`, message);
+                        break;
+                    }
+                    
+                    console.log(`✅ Admin '${adminClient.name}' accepted call from customer '${message.userId}'`);
 
-                    if (!acceptingAdmin) {
-                        ws.send(JSON.stringify({
+                    if (!customerClient || !customerClient.ws || customerClient.ws.readyState !== WebSocket.OPEN) {
+                        console.log(`❌ Customer '${message.userId}' is no longer online. Informing admin.`);
+                        adminClient.ws.send(JSON.stringify({
                             type: 'call-failed',
-                            reason: 'Usta artık bağlı değil!'
-
-
+                            reason: 'Müşteri artık çevrimiçi değil!'
                         }));
+                        adminLocks.delete(adminClient.uniqueId);
+                        broadcastAdminListToCustomers();
                         break;
                     }
 
-                    acceptingAdmin.ws.send(JSON.stringify({
+                    customerClient.ws.send(JSON.stringify({
                         type: 'call-accepted',
-                        customerId: senderId,
-                        customerName: senderInfo?.name || 'Müşteri'
+                        adminId: adminClient.uniqueId,
+                        adminName: adminClient.name
                     }));
+                    console.log(`📤 Sent 'call-accepted' to customer '${customerClient.id}'`);
 
-                    const acceptCallKey = `${message.userId || senderId}-${acceptingAdmin.uniqueId}`;
-                    startHeartbeat(message.userId || senderId, acceptingAdmin.uniqueId, acceptCallKey);
+                    const callKey = `${customerClient.id}-${adminClient.uniqueId}`;
+                    startHeartbeat(customerClient.id, adminClient.uniqueId, callKey);
+                    console.log(`💓 Heartbeat started for call: ${callKey}`);
 
-                    console.log(`💓 Heartbeat started for call: ${acceptCallKey}`);
-
-                    const adminCallbacks2 = adminCallbacks.get(acceptingAdmin.uniqueId) || [];
-                    const filteredCallbacks = adminCallbacks2.filter(cb => cb.customerId !== senderId);
-                    adminCallbacks.set(acceptingAdmin.uniqueId, filteredCallbacks);
-                    broadcastCallbacksToAdmin(acceptingAdmin.uniqueId);
-
-                    broadcastAdminListToCustomers();
-                    const customerClient = clients.get(message.userId || message.customerId);
-                    if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-                        customerClient.ws.send(JSON.stringify({
-                            type: 'call-accepted',
-                            adminId: message.adminId,
-                            adminName: acceptingAdmin.name || 'Admin'
-                        }));
-                        console.log('📤 call-accepted mesajı gönderildi customer a');
+                    const adminCallbackListUpdated = adminCallbacks.get(adminClient.uniqueId) || [];
+                    const filteredCallbacks = adminCallbackListUpdated.filter(cb => cb.customerId !== customerClient.id);
+                    if (adminCallbackListUpdated.length > filteredCallbacks.length) {
+                        adminCallbacks.set(adminClient.uniqueId, filteredCallbacks);
+                        broadcastCallbacksToAdmin(adminClient.uniqueId);
+                        console.log(`📝 Cleared callback request for customer '${customerClient.id}'`);
                     }
                     break;
+                }
+                // ------------------- DÜZELTİLMİŞ BLOK SONU -------------------
 
                 case 'reject-incoming-call':
+                 // ... (reject-incoming-call logic is unchanged)
                  case 'reject-incoming-call':
                     console.log(`❌ Admin tarafından arama reddedildi`);
                     const lockInfo = adminLocks.get(message.adminId);
@@ -1803,8 +1786,9 @@ wss.on('connection', (ws, req) => {
                         }));
                     }
                     break;
-
+                
                 case 'remove-callback':
+                    // ... (remove-callback logic is unchanged)
                     console.log(`🗑️ Admin ${senderId} removing callback for customer ${message.customerId}`);
 
                     const adminCallbackList2 = adminCallbacks.get(senderId) || [];
@@ -1813,7 +1797,8 @@ wss.on('connection', (ws, req) => {
 
                     broadcastCallbacksToAdmin(senderId);
                     break;
-                    case 'admin-ready-for-webrtc':
+                case 'admin-ready-for-webrtc':
+                        // ... (admin-ready-for-webrtc logic is unchanged)
                         console.log(`🔗 Admin ${senderId} WebRTC için hazır, customer ${message.userId} bilgilendiriliyor`);
 
                         const readyCustomer = clients.get(message.userId);
@@ -1830,6 +1815,7 @@ wss.on('connection', (ws, req) => {
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
+                    // ... (WebRTC forwarding logic is unchanged)
                     const targetClient = findWebRTCTarget(message.targetId, senderType);
                     if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
                         const forwardMessage = {
@@ -1850,6 +1836,7 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'end-call':
+                    // ... (end-call logic is unchanged)
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
 
                     const targetId = message.targetId;
@@ -1924,8 +1911,9 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-ws.on('close', () => {
-    const client = findClientById(ws);
+    ws.on('close', () => {
+        // ... (ws.on('close') logic is unchanged)
+        const client = findClientById(ws);
     console.log(`👋 WebSocket closed: ${client?.name || 'Unknown'} (${client?.userType || 'unknown'})`);
 
     if (client && client.userType === 'admin') {
@@ -1980,7 +1968,7 @@ ws.on('close', () => {
     setTimeout(() => {
         broadcastAdminListToCustomers();
     }, 100);
-});
+    });
 
     ws.on('error', (error) => {
         console.log('WebSocket error:', error.message);
@@ -2129,4 +2117,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
