@@ -659,7 +659,7 @@
             if(connectingDiv) {
                 connectingDiv.innerHTML = `<div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">🔗 Bağlantı kuruluyor...</div>`;
             }
-            setState('connecting');
+            // setState('connecting'); // Bu satır kaldırıldı çünkü zaten connecting state'indeyiz.
             setupPeerConnection(true);
         }
         
@@ -682,8 +682,7 @@
             
             peerConnection.ontrack = event => {
                 document.getElementById('remoteAudio').srcObject = event.streams[0];
-                setState('connected');
-                startCallTimer();
+                // setState('connected'); // Bu satır ontrack'ten handleWebRTCMessage içindeki 'answer' kısmına taşındı.
             };
             
             peerConnection.onicecandidate = event => {
@@ -709,8 +708,14 @@
                 socket.send(JSON.stringify({ type: 'answer', answer, targetId: lastCallInfo.adminId }));
             } else if (message.answer) {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                setState('connected'); // Bağlantı tamamlandığında arayüzü güncelle
+                startCallTimer();
             } else if (message.candidate) {
-                await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                } catch (e) {
+                    console.error('Error adding received ice candidate', e);
+                }
             }
         }
 
