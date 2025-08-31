@@ -1067,8 +1067,9 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
+            // Temizleme işlemini sunucuya mesaj göndermeden önce yap
             cleanupCall();
-
+        
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1076,8 +1077,12 @@
                     userId: userInfo.id, 
                     reason: reason 
                 }));
-            } else {
-                setState('idle');
+            }
+            
+            // Arayüz durumunu her koşulda sıfırla
+            setState('idle');
+        
+            if (!target) {
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
@@ -1248,3 +1253,4 @@
     </script>
 </body>
 </html>
+
