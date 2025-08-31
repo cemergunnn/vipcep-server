@@ -115,7 +115,9 @@ async function broadcastAdminListToCustomers() {
             };
         }).
                 // Sadece online olanları filtrele
-        const onlineAdmins = combinedAdminList.filter(admin => admin.status !== 'offline');
+               const onlineAdmins = combinedAdminList.filter(function(admin) {
+            return admin.status !== 'offline';
+        });
         
         console.log(`📋 Final admin list: ${onlineAdmins.length} admins available`);
         onlineAdmins.forEach(admin => {
@@ -2161,5 +2163,6 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
