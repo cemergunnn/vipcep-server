@@ -555,7 +555,6 @@
             };
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
-                // console.log('📨 Sunucudan mesaj:', message); // Hata ayıklama için geçici olarak kapatıldı
                 handleServerMessage(message);
             };
             socket.onclose = () => {
@@ -828,6 +827,7 @@
         }
 
         function showReviewModal(callData) {
+            // YENİ: Dinamik butonlu modal HTML'i
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
@@ -841,13 +841,35 @@
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
                         <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
-                        <button id="submitReviewBtn" class="btn btn-login" onclick="submitReview()">Gönder</button>
+                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
 
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
+            const commentInput = document.getElementById('reviewComment');
+            const tipInput = document.getElementById('tipAmount');
+            const actionBtn = document.getElementById('reviewActionBtn');
+            
+            // YENİ: Buton durumunu güncelleyen fonksiyon
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasComment = commentInput.value.trim() !== '';
+                const hasTip = (parseInt(tipInput.value) || 0) > 0;
+
+                if (hasRating || hasComment || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = ''; // Orijinal btn-login stilini kullan
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
+            
+            // YENİ: Etkileşim dinleyicileri
             stars.forEach(star => {
                 star.addEventListener('click', () => {
                     currentRating = star.dataset.value;
@@ -855,27 +877,30 @@
                         s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
                         s.classList.toggle('active', s.dataset.value <= currentRating);
                     });
+                    updateReviewButtonState();
                 });
             });
+            commentInput.addEventListener('input', updateReviewButtonState);
+            tipInput.addEventListener('input', updateReviewButtonState);
+            
+            // YENİ: Modal kapatma ve gönderme fonksiyonları
+            window.closeReviewModal = () => {
+                const overlay = document.getElementById('reviewOverlay');
+                if(overlay) overlay.remove();
+            };
 
             window.submitReview = async () => {
-                const submitBtn = document.getElementById('submitReviewBtn');
-                submitBtn.disabled = true;
-
-                const tipAmount = parseInt(document.getElementById('tipAmount').value) || 0;
+                actionBtn.disabled = true;
+                const tipAmount = parseInt(tipInput.value) || 0;
                 if (tipAmount > userInfo.credits) {
                     alert("Bahşiş için yeterli krediniz yok!");
-                    submitBtn.disabled = false;
+                    actionBtn.disabled = false;
                     return;
                 }
                 
                 const reviewData = {
-                    customerId: userInfo.id,
-                    customerName: userInfo.name,
-                    rating: currentRating,
-                    comment: document.getElementById('reviewComment').value,
-                    tipAmount: tipAmount,
-                    callId: lastCallInfo.callId
+                    customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
+                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
                 };
 
                 try {
@@ -887,10 +912,12 @@
                 } catch(e) {
                     console.error("Review submission failed", e);
                 } finally {
-                    const overlay = document.getElementById('reviewOverlay');
-                    if(overlay) overlay.remove();
+                    closeReviewModal();
                 }
             };
+
+            // İlk durumu ayarla
+            updateReviewButtonState();
         }
 
         async function showAdminDetails(adminId) {
@@ -948,3 +975,4 @@
     </script>
 </body>
 </html>
+
