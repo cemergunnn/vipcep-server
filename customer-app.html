@@ -108,31 +108,19 @@
             padding: 25px;
         }
 
-        .kvkk-screen {
+        .kvkk-screen, #loginScreen {
             padding: 20px;
-            max-height: 80vh;
-            overflow-y: auto;
         }
 
-        .kvkk-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .kvkk-content {
-            background: var(--gray-100);
-            padding: 20px;
-            border-radius: 12px;
-            border-left: 4px solid var(--primary-color);
-            margin-bottom: 20px;
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
             font-size: 13px;
-            line-height: 1.5;
-            color: var(--gray-700);
-            max-height: 450px;
-            overflow-y: auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
         }
         
         .form-input {
@@ -349,6 +337,17 @@
         
         #reviewComment { min-height: 80px; margin-top: 10px; }
         #tipAmount { width: 100px; text-align: center; margin: 10px auto; }
+
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 15px;
+            border-left: 4px solid #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -368,6 +367,35 @@
         </div>
         
         <div class="app-content">
+            <div id="kvkkScreen" class="hidden">
+                 <div style="font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 15px; text-align: center;">Kişisel Verilerin Korunması</div>
+                <div style="background: var(--gray-100); padding: 20px; border-radius: 12px; border-left: 4px solid var(--primary-color); margin-bottom: 20px; font-size: 13px; line-height: 1.5; color: var(--gray-700); max-height: 250px; overflow-y: auto;">
+                    <p>Bu hizmet kapsamında sesli görüşmeleriniz kayıt altına alınmamaktadır ve 3. kişilerle paylaşılmaz. Sistem, kimlik tespiti yapmaz, tamamen anonimdir. Görüşme sırasında kendi rızanızla paylaştığınız bilgilerden siz sorumlusunuz.</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                    <input type="checkbox" id="kvkkCheckbox">
+                    <label for="kvkkCheckbox">Okudum, anladım ve onaylıyorum.</label>
+                </div>
+                <button id="kvkkAcceptBtn" class="btn btn-login" disabled>Onayla ve Devam Et</button>
+            </div>
+            
+            <div id="loginScreen" class="hidden">
+                <div class="form-group">
+                    <label class="form-label">4 Haneli ID Kodunuz</label>
+                    <input type="text" class="form-input" id="userIdInput" placeholder="0000" maxlength="4">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ad Soyad</label>
+                    <input type="text" class="form-input" id="userNameInput" placeholder="Adınızı ve Soyadınızı">
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="rememberMe">
+                    <label for="rememberMe" style="margin:0; font-size:14px;">Beni Hatırla</label>
+                </div>
+                <button class="btn btn-login" onclick="loginUser()">Giriş Yap</button>
+                <div id="loginMessage"></div>
+            </div>
+
             <div id="mainApp" class="hidden">
                 <div class="user-info">
                     <div class="info-grid">
@@ -390,7 +418,7 @@
                     </div>
                 </div>
 
-                <div id="adminSelectionScreen">
+                <div id="idleState">
                     <label class="form-label" style="font-size: 16px; margin-bottom: 10px;">🎯 Müsait Ustalar</label>
                     <div id="adminListContainer" class="admin-list-container">
                         <p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Müsait ustalar yükleniyor...</p>
@@ -449,72 +477,41 @@
         
         window.onload = function() {
             if (localStorage.getItem('vipcep_kvkk_approved') !== 'true') {
-                showKvkkModal();
+                document.getElementById('kvkkScreen').classList.remove('hidden');
+                const checkbox = document.getElementById('kvkkCheckbox');
+                const acceptBtn = document.getElementById('kvkkAcceptBtn');
+                checkbox.addEventListener('change', () => { acceptBtn.disabled = !checkbox.checked; });
+                acceptBtn.addEventListener('click', () => {
+                    localStorage.setItem('vipcep_kvkk_approved', 'true');
+                    document.getElementById('kvkkScreen').classList.add('hidden');
+                    initApp();
+                });
             } else {
                 initApp();
             }
         };
-
-        function showKvkkModal() {
-            const kvkkModal = `
-                <div id="kvkkOverlay" class="modal-overlay">
-                    <div class="modal-content" style="text-align: left; max-width: 400px;">
-                        <div class="kvkk-screen">
-                            <div class="kvkk-title">Kişisel Verilerin Korunması</div>
-                            <div class="kvkk-content">
-                                <p>Bu hizmet kapsamında sesli görüşmeleriniz kayıt altına alınmamaktadır ve 3. kişilerle paylaşılmaz. Sistem, kimlik tespiti yapmaz, tamamen anonimdir. Görüşme sırasında kendi rızanızla paylaştığınız bilgilerden siz sorumlusunuz.</p>
-                            </div>
-                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-                                <input type="checkbox" id="kvkkCheckbox">
-                                <label for="kvkkCheckbox">Okudum, anladım ve onaylıyorum.</label>
-                            </div>
-                            <button id="kvkkAcceptBtn" class="btn btn-login" disabled>Onayla ve Devam Et</button>
-                        </div>
-                    </div>
-                </div>`;
-            document.body.insertAdjacentHTML('beforeend', kvkkModal);
-            
-            const checkbox = document.getElementById('kvkkCheckbox');
-            const acceptBtn = document.getElementById('kvkkAcceptBtn');
-            checkbox.addEventListener('change', () => { acceptBtn.disabled = !checkbox.checked; });
-            acceptBtn.addEventListener('click', () => {
-                localStorage.setItem('vipcep_kvkk_approved', 'true');
-                document.getElementById('kvkkOverlay').remove();
-                initApp();
-            });
-        }
         
         function initApp() {
+            document.getElementById('loginScreen').classList.remove('hidden');
             if (localStorage.getItem('vipcep_remember_me') === 'true' && localStorage.getItem('vipcep_user_id')) {
-                userInfo.id = localStorage.getItem('vipcep_user_id');
-                userInfo.name = localStorage.getItem('vipcep_user_name');
-                connectAndLogin();
-            } else {
-                showLoginModal();
+                document.getElementById('userIdInput').value = localStorage.getItem('vipcep_user_id');
+                document.getElementById('userNameInput').value = localStorage.getItem('vipcep_user_name');
+                document.getElementById('rememberMe').checked = true;
             }
-        }
-
-        function showLoginModal() {
-            const loginModal = `
-                <div id="loginOverlay" class="modal-overlay">
-                    <div class="modal-content">
-                        <h3>Giriş Yap</h3>
-                        <input type="text" id="userIdInput" class="form-input" placeholder="4 Haneli ID" maxlength="4" style="margin-bottom:10px;">
-                        <input type="text" id="userNameInput" class="form-input" placeholder="Ad Soyad" style="margin-bottom:10px;">
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; justify-content:center;">
-                            <input type="checkbox" id="rememberMe">
-                            <label for="rememberMe">Beni Hatırla</label>
-                        </div>
-                        <button class="btn btn-login" onclick="loginUser()">Giriş Yap</button>
-                    </div>
-                </div>`;
-            document.body.insertAdjacentHTML('beforeend', loginModal);
+            connectToServer();
         }
 
         function loginUser() {
-            userInfo.id = document.getElementById('userIdInput').value;
-            userInfo.name = document.getElementById('userNameInput').value;
-            if(document.getElementById('rememberMe').checked) {
+            const userId = document.getElementById('userIdInput').value;
+            const userName = document.getElementById('userNameInput').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            if(!userId || !userName) return alert('Lütfen tüm alanları doldurun.');
+
+            userInfo.id = userId;
+            userInfo.name = userName;
+
+            if(rememberMe) {
                 localStorage.setItem('vipcep_remember_me', 'true');
                 localStorage.setItem('vipcep_user_id', userInfo.id);
                 localStorage.setItem('vipcep_user_name', userInfo.name);
@@ -523,22 +520,15 @@
                 localStorage.removeItem('vipcep_user_id');
                 localStorage.removeItem('vipcep_user_name');
             }
-            document.getElementById('loginOverlay').remove();
-            connectAndLogin();
+            
+            socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
         }
         
-        function connectAndLogin() {
-            document.getElementById('mainApp').classList.remove('hidden');
-            updateUserDisplay();
-            connectToServer();
-        }
-
         function connectToServer() {
             socket = new WebSocket(serverUrl);
             socket.onopen = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
-                socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
             };
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
@@ -556,13 +546,15 @@
             switch (message.type) {
                 case 'login-response':
                     if(message.success) {
+                        isLoggedIn = true;
+                        document.getElementById('loginScreen').classList.add('hidden');
+                        document.getElementById('mainApp').classList.remove('hidden');
                         userInfo.credits = message.credits;
                         updateUserDisplay();
                         socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
-                        alert(`Giriş başarısız: ${message.reason}`);
-                        localStorage.clear();
-                        window.location.reload();
+                        const loginMessage = document.getElementById('loginMessage');
+                        loginMessage.innerHTML = `<div class="error-message">${message.reason}</div>`;
                     }
                     break;
                 case 'admin-list-update': updateAdminList(message.admins); break;
@@ -598,8 +590,7 @@
             availableAdmins = admins;
             const container = document.getElementById('adminListContainer');
             const placeholder = document.getElementById('adminListPlaceholder');
-            if (admins.length > 0) {
-                placeholder.classList.add('hidden');
+            if (admins && admins.length > 0) {
                 container.innerHTML = admins.map(admin => `
                     <div class="admin-card ${admin.status}">
                         <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
@@ -614,14 +605,12 @@
                     </div>
                 `).join('');
             } else {
-                placeholder.textContent = 'Şu anda müsait usta bulunmuyor.';
-                placeholder.classList.remove('hidden');
-                container.innerHTML = ''; 
+                container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
             }
         }
 
         function makeCall(adminId) {
-            if (userInfo.credits <= 0) return showMessage('Arama yapmak için krediniz yetersiz.', 'error');
+            if (userInfo.credits <= 0) return alert('Arama yapmak için krediniz yetersiz.');
             
             const admin = availableAdmins.find(a => a.id === adminId);
             const connectingDiv = document.querySelector('#connectingState > div');
@@ -635,14 +624,18 @@
         }
         function makeCallbackRequest(adminId) {
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
+            alert('Geri arama talebiniz alındı. Usta müsait olduğunda sizi arayacak.');
         }
 
         function setState(newState) {
             callState = newState;
-            ['adminSelectionScreen', 'connectingState', 'connectedState', 'incomingCallState'].forEach(s => {
-                document.getElementById(s).classList.add('hidden');
+            ['idleState', 'connectingState', 'connectedState', 'incomingCallState'].forEach(s => {
+                const el = document.getElementById(s);
+                if(el) el.classList.add('hidden');
             });
-            document.getElementById(newState).classList.remove('hidden');
+            const stateEl = document.getElementById(newState);
+            if(stateEl) stateEl.classList.remove('hidden');
+
             document.getElementById('displayUserStatus').textContent = {
                 idle: 'Hazır',
                 connecting: 'Aranıyor...',
@@ -673,7 +666,7 @@
         function handleCallEnded(message, rejected = false) {
             cleanupCall();
             setState('idle');
-            if (!rejected) {
+            if (!rejected && message.reason !== 'cancelled') {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
             } else {
@@ -741,7 +734,7 @@
         }
 
         function endCall() {
-            socket.send(JSON.stringify({ type: 'end-call', targetId: lastCallInfo.adminId }));
+            socket.send(JSON.stringify({ type: 'end-call', targetId: lastCallInfo.adminId, userId: userInfo.id }));
             cleanupCall();
             setState('idle');
         }
@@ -751,9 +744,9 @@
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
                         <h3>Görüşmeyi Değerlendir</h3>
-                        <p>Süre: ${Math.floor(callData.duration/60)} dk ${callData.duration%60} sn</p>
-                        <p>Harcanan Kredi: ${callData.creditsUsed} dk</p>
-                        <p>Kalan Kredi: <strong>${callData.remainingCredits} dk</strong></p>
+                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
                         <div class="rating-stars" id="ratingStars">
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
