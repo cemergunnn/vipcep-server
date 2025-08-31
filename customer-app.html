@@ -402,7 +402,7 @@
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
         .call-overlay {
-            position: absolute;
+            position: fixed; /* Tam ekran olması için fixed yapıldı */
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(29, 41, 59, 0.95);
             backdrop-filter: blur(8px);
@@ -524,46 +524,44 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
-        
-        <div id="callOverlay" class="call-overlay hidden">
-            <div class="call-ui-container">
-                <!-- Usta Aranıyor Ekranı -->
-                <div id="connectingStateView" class="hidden">
-                    <img id="connectingAdminPic" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
-                    <div class="call-status-text connecting-text" id="connectingAdminName">Usta Aranıyor...</div>
-                    <p class="call-sub-text">Lütfen bekleyiniz, usta birazdan cevap verecektir.</p>
-                    <div class="ringing-animation">
-                        <span></span><span></span><span></span>
-                    </div>
-                    <button class="btn btn-end call-action-btn" onclick="endCall()">Aramayı İptal Et</button>
+    <div id="callOverlay" class="call-overlay hidden">
+        <div class="call-ui-container">
+            <!-- Usta Aranıyor Ekranı -->
+            <div id="connectingStateView" class="hidden">
+                <img id="connectingAdminPic" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
+                <div class="call-status-text connecting-text" id="connectingAdminName">Usta Aranıyor...</div>
+                <p class="call-sub-text">Lütfen bekleyiniz, usta birazdan cevap verecektir.</p>
+                <div class="ringing-animation">
+                    <span></span><span></span><span></span>
                 </div>
+                <button class="btn btn-end call-action-btn" onclick="endCall(true)">Aramayı İptal Et</button>
+            </div>
 
-                <!-- Görüşme Aktif Ekranı -->
-                <div id="connectedStateView" class="hidden">
-                    <img id="connectedAdminPicOverlay" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
-                    <p class="call-sub-text"><span id="currentAdminNameOverlay">Usta</span> ile görüşüyorsunuz</p>
-                    <div class="call-status-text" id="callTimerOverlay">00:00</div>
-                    <button class="btn btn-end call-action-btn" onclick="endCall()">Görüşmeyi Sonlandır</button>
-                </div>
-                
-                <!-- Gelen Arama Ekranı -->
-                <div id="incomingCallView" class="hidden">
-                    <img id="incomingAdminPic" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
-                    <div class="call-status-text" id="incomingAdminNameOverlay">Usta Arıyor...</div>
-                    <p class="call-sub-text">Gelen aramayı cevaplamak için dokunun.</p>
-                    <div class="incoming-call-actions">
-                        <button class="btn-reject-icon" onclick="rejectIncomingCall()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path><line x1="23" y1="1" x2="1" y2="23"></line></svg>
-                        </button>
-                        <button class="btn-accept-icon" onclick="acceptIncomingCall()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                        </button>
-                    </div>
+            <!-- Görüşme Aktif Ekranı -->
+            <div id="connectedStateView" class="hidden">
+                <img id="connectedAdminPicOverlay" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
+                <p class="call-sub-text"><span id="currentAdminNameOverlay">Usta</span> ile görüşüyorsunuz</p>
+                <div class="call-status-text" id="callTimerOverlay">00:00</div>
+                <button class="btn btn-end call-action-btn" onclick="endCall(false)">Görüşmeyi Sonlandır</button>
+            </div>
+            
+            <!-- Gelen Arama Ekranı -->
+            <div id="incomingCallView" class="hidden">
+                <img id="incomingAdminPic" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
+                <div class="call-status-text" id="incomingAdminNameOverlay">Usta Arıyor...</div>
+                <p class="call-sub-text">Gelen aramayı cevaplamak için dokunun.</p>
+                <div class="incoming-call-actions">
+                    <button class="btn-reject-icon" onclick="rejectIncomingCall()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+                    </button>
+                    <button class="btn-accept-icon" onclick="acceptIncomingCall()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </button>
                 </div>
             </div>
         </div>
-        
+    </div>
+    <div class="app-container">
         <div class="app-header">
             <div class="connection-status">
                 <div class="status-dot" id="connectionDot"></div>
@@ -676,7 +674,7 @@
         let callDuration = 0;
         let isLoggedIn = false;
         let userInfo = { id: '', name: '', credits: 0 };
-        let lastCallInfo = { adminId: null, callId: null };
+        let lastCallInfo = { adminId: null, callId: null, adminName: '', adminPic: '' };
         let availableAdmins = [];
         let pendingIceCandidates = [];
 
@@ -777,8 +775,11 @@
                     }
                     lastCallInfo.adminId = message.adminId;
                     const admin = availableAdmins.find(a => a.id === message.adminId);
-                    document.getElementById('incomingAdminPic').src = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-                    document.getElementById('incomingAdminNameOverlay').textContent = `${message.adminName} Arıyor...`;
+                    lastCallInfo.adminName = message.adminName;
+                    lastCallInfo.adminPic = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
+                    document.getElementById('incomingAdminPic').src = lastCallInfo.adminPic;
+                    document.getElementById('incomingAdminNameOverlay').textContent = `${lastCallInfo.adminName} Arıyor...`;
                     
                     setState('incoming');
                     playSound(ringingSound);
@@ -854,13 +855,16 @@
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
 
-            document.getElementById('connectingAdminPic').src = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-            document.getElementById('connectingAdminName').textContent = `${admin.name || 'Usta'} Aranıyor...`;
+            lastCallInfo.adminId = admin.id;
+            lastCallInfo.adminName = admin.name || 'Usta';
+            lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
+            document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
+            document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
 
             setState('connecting');
             playSound(ringingSound);
             
-            lastCallInfo.adminId = adminId;
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
         }
 
@@ -909,14 +913,13 @@
         async function acceptIncomingCall() {
             stopAllSounds();
             playSound(connectedSound);
-
-            const admin = availableAdmins.find(a => a.id === lastCallInfo.adminId);
-            document.getElementById('connectingAdminPic').src = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+            
+            document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
             document.getElementById('connectingAdminName').textContent = `Bağlanıyor...`;
 
             setState('connecting');
 
-            await setupPeerConnection(true); // Müşteri initiator olur ve offer gönderir
+            await setupPeerConnection(true); // Gelen aramayı kabul eden müşteri, WebRTC'de initiator (teklif gönderen) olur.
         }
 
         function rejectIncomingCall() {
@@ -932,13 +935,13 @@
             lastCallInfo.adminId = message.adminId;
             const admin = availableAdmins.find(a => a.id === message.adminId);
             
-            document.getElementById('currentAdminNameOverlay').textContent = admin?.name || 'Usta';
-            document.getElementById('connectedAdminPicOverlay').src = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-            
+            lastCallInfo.adminName = admin?.name || 'Usta';
+            lastCallInfo.adminPic = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
             stopAllSounds();
             playSound(connectedSound);
 
-            setupPeerConnection(true);
+            setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
         }
         
         function handleCallEnded(message, rejected = false) {
@@ -948,11 +951,13 @@
             cleanupCall();
             setState('idle');
             
-            if (rejected || message.reason === 'cancelled' || message.reason === 'Reddedildi') {
-                showNotification(message.reason || "Arama sonlandırıldı.", "info");
-            } else {
+            const isNormalEnd = !rejected && !['cancelled', 'Reddedildi', 'busy', 'no_credits'].includes(message.reason);
+
+            if (isNormalEnd) {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
+            } else {
+                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
             }
         }
 
@@ -977,15 +982,15 @@
                 
                 peerConnection.onconnectionstatechange = () => {
                     if (peerConnection?.connectionState === 'connected') {
-                        const admin = availableAdmins.find(a => a.id === lastCallInfo.adminId);
-                        document.getElementById('connectedAdminPicOverlay').src = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-                        document.getElementById('currentAdminNameOverlay').textContent = admin?.name || 'Usta';
+                        document.getElementById('connectedAdminPicOverlay').src = lastCallInfo.adminPic;
+                        document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
                         setState('connected');
                         startCallTimer();
                     }
                 };
 
                 if (isInitiator) {
+                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -995,7 +1000,7 @@
             } catch (err) {
                 console.error("PeerConnection veya mikrofon hatası:", err);
                 showNotification("Mikrofon hatası veya izni reddedildi.", "error");
-                endCall();
+                endCall(true);
             }
         }
 
@@ -1056,10 +1061,11 @@
             callTimer = null;
         }
 
-        function endCall() {
+        function endCall(isCancel = false) {
+            const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             if (target && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id, reason: 'cancelled' }));
+                socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id, reason: reason }));
             }
             cleanupCall();
             setState('idle');
