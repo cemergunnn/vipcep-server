@@ -996,7 +996,7 @@
             setTimeout(() => {
                 notif.classList.remove('show');
                 setTimeout(() => {
-                    container.removeChild(notif);
+                    if(notif.parentNode) container.removeChild(notif);
                 }, 500);
             }, duration);
         }
