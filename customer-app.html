@@ -588,7 +588,9 @@
                     setState('incoming');
                     break;
                 case 'call-ended': handleCallEnded(message); break;
-                case 'call-rejected': handleCallEnded(message, true); break;
+                case 'call-rejected': 
+                    handleCallEnded(message, true); 
+                    break;
                 case 'credit-update':
                     userInfo.credits = message.credits;
                     updateUserDisplay();
@@ -632,19 +634,31 @@
             }
         }
 
+        // ***** ÖNEMLİ DÜZELTME BU FONKSİYONDA *****
         function makeCall(adminId) {
+            // Kontrol 1: Kredi var mı?
             if (userInfo.credits <= 0) {
                 alert('Arama yapmak için krediniz yetersiz.');
                 return;
             }
+            // Kontrol 2: Sunucu bağlantısı aktif mi?
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 alert('Sunucu bağlantısı hazır değil, lütfen birkaç saniye sonra tekrar deneyin.');
                 return;
             }
-            
+
+            // Adım 1: Önce aranan adminin bilgilerini bul.
             const admin = availableAdmins.find(a => a.id === adminId);
+
+            // Adım 2: Eğer admin bilgisi bulunamazsa, hata ver ve işlemi durdur. EKRAN BOŞ KALMASIN.
+            if (!admin) {
+                alert('Bir hata oluştu: Usta bilgileri bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
+                return; 
+            }
+
+            // Adım 3: Admin bilgisi bulunduysa, "Aranıyor..." ekranını hazırla.
             const connectingDiv = document.getElementById('connectingAdminInfo');
-            if(connectingDiv && admin) {
+            if (connectingDiv) {
                 connectingDiv.innerHTML = `
                     <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" style="width: 80px; height: 80px; border-radius: 50%;">
                     <div style="color: var(--primary-color); font-weight: 700; font-size: 18px; margin-top:10px;">📞 ${admin.name || 'Usta'} aranıyor...</div>
@@ -652,6 +666,7 @@
                 `;
             }
 
+            // Adım 4: Ekranı değiştir ve arama isteğini sunucuya gönder.
             setState('connecting');
             lastCallInfo.adminId = adminId;
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
@@ -716,11 +731,12 @@
         function handleCallEnded(message, rejected = false) {
             cleanupCall();
             setState('idle');
-            if (!rejected && message.reason !== 'cancelled') {
+            
+            if (rejected || message.reason === 'cancelled') {
+                alert(message.reason || "Arama sonlandırıldı.");
+            } else {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
-            } else {
-                alert(message.reason || "Arama sonlandırıldı.");
             }
         }
 
@@ -788,7 +804,11 @@
         }
 
         function endCall() {
-            socket.send(JSON.stringify({ type: 'end-call', targetId: lastCallInfo.adminId, userId: userInfo.id }));
+            // "İptal Et" butonuna basıldığında arama henüz başlamadığı için targetId'yi lastCallInfo'dan almalıyız.
+            const target = lastCallInfo.adminId;
+            if (target) {
+                socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id }));
+            }
             cleanupCall();
             setState('idle');
         }
