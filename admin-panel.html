@@ -670,7 +670,6 @@
             box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
         }
 
-        /* YENİ: Profile Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -864,7 +863,6 @@
                         <span>Müsait</span>
                     </div>
                 </div>
-                <!-- YENİ: Profilim Butonu -->
                 <button class="btn btn-secondary btn-small" onclick="openProfileModal()" style="padding: 8px 16px; font-size: 14px;">
                     👤 Profilim
                 </button>
@@ -873,11 +871,8 @@
         </div>
 
         <div class="main-content">
-            <!-- Arama Yönetimi Panel -->
             <div class="panel call-management-panel">
                 <h3>📞 Arama Yönetimi</h3>
-
-                <!-- Audio Controls -->
                 <div class="audio-controls">
                     <h4>🔊 Ses Kontrolleri</h4>
                     <div class="volume-control">
@@ -892,7 +887,6 @@
                     </div>
                 </div>
 
-                <!-- Gelen Arama Status -->
                 <div id="incomingCall" class="call-status-card incoming-call hidden">
                     <div class="call-status-title">📞 GELEN ARAMA</div>
                     <div class="call-status-details">
@@ -906,7 +900,6 @@
                     </div>
                 </div>
 
-                <!-- Giden Arama Status -->
                 <div id="outgoingCall" class="call-status-card outgoing-call hidden">
                     <div class="call-status-title">📞 GİDEN ARAMA</div>
                     <div class="call-status-details">
@@ -919,7 +912,6 @@
                     </div>
                 </div>
 
-                <!-- Aktif Görüşme Status -->
                 <div id="activeCall" class="call-status-card active-call hidden">
                     <div class="call-status-title">🔊 GÖRÜŞME AKTİF</div>
                     <div class="call-status-details">
@@ -942,7 +934,6 @@
                 </div>
             </div>
 
-            <!-- Online Kullanıcılar Panel -->
             <div class="panel users-panel hidden">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
@@ -961,7 +952,6 @@
                 </div>
             </div>
 
-            <!-- Geri Dönüş Bekleyenler Panel -->
             <div class="callback-panel">
                 <div class="callback-container" id="callbackContainer">
                     <div class="callback-header">
@@ -979,7 +969,6 @@
                 </div>
             </div>
 
-            <!-- Aktif Bağlantılar Panel -->
             <div class="panel connections-panel">
                 <h3>👥 Aktif Bağlantılar</h3>
                 <div id="userList" style="margin-top: 15px;">
@@ -1001,18 +990,14 @@
     <audio id="localAudio" muted></audio>
     <audio id="mediaSessionAudio" loop></audio>
 
-    <!-- YENİ: Profile Modal HTML -->
     <div id="profileModal" class="modal-overlay hidden">
         <div class="modal">
             <button class="modal-close" onclick="closeProfileModal()">×</button>
-            <div id="profileModalContent">
-                <!-- Profil içeriği JavaScript ile buraya yüklenecek -->
-            </div>
+            <div id="profileModalContent"></div>
         </div>
     </div>
 
     <script>
-        // ================== GLOBAL DEĞİŞKENLER (TEMİZLENMİŞ) ==================
         let socket = null;
         let peerConnection = null;
         let localStream = null;
@@ -1030,8 +1015,6 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         let adminUniqueId = null;
-        
-        console.log('👤 Admin oturumu hazırlanıyor...');
         let myCallbacks = [];
 
         let micEnabled = true;
@@ -1048,7 +1031,6 @@
             'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
 
 
-        // ================== INITIALIZATION ==================
         window.onload = function() {
             console.log('🎯 VIPCEP Admin Panel başlatılıyor...');
             if (isInitializing) return;
@@ -1334,6 +1316,10 @@
                 case 'call-connecting': handleCallConnecting(message); break;
                 case 'call-accepted': handleCallAccepted(message); break;
                 case 'call-rejected': handleCallRejected(message); break;
+                case 'call-failed': 
+                    showNotification(message.reason || 'Arama başarısız oldu!', 'error');
+                    resetCallState();
+                    break;
                 case 'call-ended': handleCallEnded(message); break;
                 case 'offer': case 'answer': case 'ice-candidate': handleWebRTCMessage(message); break;
                 case 'auto-credit-update':
@@ -1425,19 +1411,30 @@
         function acceptIncomingCall() {
             if (!incomingCallInfo) return;
             console.log('✅ Gelen arama kabul edildi:', incomingCallInfo.userName);
+            
+            const incomingCallEl = document.getElementById('incomingCall');
+            if (incomingCallEl) incomingCallEl.classList.add('hidden');
+            
+            const connectingCard = `
+                <div id="tempConnectingCard" class="call-status-card outgoing-call" style="animation: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    <div class="call-status-title">BAĞLANTI BEKLENİYOR</div>
+                    <div class="call-status-details">
+                        <p style="opacity: 0.9;">Müşteri ile sesli bağlantı kuruluyor...</p>
+                        <p style="font-size: 18px; font-weight: 600; margin-top: 10px;">${incomingCallInfo.userName}</p>
+                    </div>
+                </div>
+            `;
+            document.querySelector('.call-management-panel').insertAdjacentHTML('beforeend', connectingCard);
+
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: adminUniqueId || currentAdmin.username, userId: incomingCallInfo.userId }));
             }
-            const incomingCallEl = document.getElementById('incomingCall');
-            if (incomingCallEl) incomingCallEl.classList.add('hidden');
+            
             currentCall = incomingCallInfo;
             incomingCallInfo = null;
             callState = 'connecting';
             updateAdminStatus('busy');
-            console.log('🔗 Admin kabul etti, WebRTC kurulması için offer bekleniyor...');
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: currentCall.userId, adminId: adminUniqueId || currentAdmin.username }));
-            }
+            console.log('🔗 Admin kabul etti, müşteriden WebRTC offer bekleniyor...');
         }
         function rejectIncomingCall() {
             if (!incomingCallInfo) return;
@@ -1489,6 +1486,9 @@
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
+            const tempCard = document.getElementById('tempConnectingCard');
+            if (tempCard) tempCard.remove();
+
             currentCall = null;
             outgoingCallInfo = null;
             incomingCallInfo = null;
@@ -1534,6 +1534,8 @@
                     console.log('🔗 Bağlantı durumu:', state);
                     updateConnectionQuality(state);
                     if (state === 'connected') {
+                        const tempCard = document.getElementById('tempConnectingCard');
+                        if (tempCard) tempCard.remove();
                         const activeCallerEl = document.getElementById('activeCaller');
                         const activeCallEl = document.getElementById('activeCall');
                         const outgoingCallEl = document.getElementById('outgoingCall');
@@ -1826,8 +1828,6 @@
             if (!isInitializing) showNotification('Promise hatası oluştu!', 'error');
         });
         
-        
-        // YENİ: Profil Modal Fonksiyonları
         function openProfileModal() {
             if (!currentAdmin || !currentAdmin.username) {
                 showNotification('Profil bilgileri için önce giriş yapılmalı.', 'error');
@@ -1924,8 +1924,6 @@
             }
             return stars;
         }
-
-        // ================== ADMIN EARNINGS FUNCTION ==================
         
         async function loadMyEarnings() {
             try {
@@ -1950,7 +1948,6 @@
                 earningsElement.textContent = earnings || 0;
             }
         }
-        // ================== FINAL INITIALIZATION ==================
         
         console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
         console.log('✅ Infinite loop koruması aktif');
