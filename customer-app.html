@@ -241,7 +241,8 @@
                 <div id="adminSelectionScreen">
                     <label class="form-label" style="font-size: 16px; margin-bottom: 10px;">🎯 Müsait Ustalar</label>
                     <div id="adminListContainer" class="admin-list-container">
-                        <!-- Admin kartları buraya yüklenecek -->
+                        <!-- DEĞİŞİKLİK: Yükleniyor durumu eklendi -->
+                        <p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Müsait ustalar yükleniyor...</p>
                     </div>
                 </div>
 
@@ -477,6 +478,11 @@
         function updateAdminList(admins) {
             availableAdmins = admins.filter(a => a.status !== 'offline') || [];
             const container = document.getElementById('adminListContainer');
+            
+            // DEĞİŞİKLİK: Yükleniyor durumu kaldırılıyor
+            const placeholder = document.getElementById('adminListPlaceholder');
+            if(placeholder) placeholder.remove();
+
             if (availableAdmins.length === 0) {
                 container.innerHTML = '<p style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
                 return;
@@ -566,7 +572,10 @@
             selectedRating = 0;
             selectedTip = 0;
             document.getElementById('reviewComment').value = '';
-            Array.from(document.getElementById('ratingStars').children).forEach(star => star.innerHTML = '☆');
+            Array.from(document.getElementById('ratingStars').children).forEach(star => {
+                star.innerHTML = '☆';
+                star.classList.remove('selected');
+            });
             Array.from(document.getElementById('tipButtons').children).forEach(btn => btn.classList.remove('selected'));
         }
         async function submitReview() {
@@ -733,3 +742,4 @@
     </script>
 </body>
 </html>
+
