@@ -1805,7 +1805,7 @@
             console.log('🔄 Veriler yenileniyor...');
             if (!isInitializing) loadOnlineUsers();
             if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'refresh-data' }));
-            showNotification('Veriler yenilendi!', 'success', 2000);
+            showNotification('Veriler başarıyla yenilendi!', 'success', 2000);
         }
         window.addEventListener('error', (event) => {
             console.error('❌ Global hata:', event.error);
