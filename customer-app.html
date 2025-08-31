@@ -642,7 +642,6 @@
                 </div>
             </div>
         </div>
-    </div>
     
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
@@ -883,17 +882,17 @@
             const connectingView = document.getElementById('connectingStateView');
             const connectedView = document.getElementById('connectedStateView');
             const incomingView = document.getElementById('incomingCallView');
-            const idleStateElements = [document.getElementById('idleState'), document.getElementById('userInfoBox')];
+            
+            const mainApp = document.getElementById('mainApp');
 
-            callOverlay.classList.add('hidden');
+            // Hide all overlay views first
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
-            idleStateElements.forEach(el => el.classList.remove('hidden'));
-
+            
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                idleStateElements.forEach(el => el.classList.add('hidden'));
+                mainApp.classList.add('hidden'); // Hide main content
 
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
@@ -902,6 +901,9 @@
                 } else if (newState === 'incoming') {
                     incomingView.classList.remove('hidden');
                 }
+            } else { // idle state
+                 callOverlay.classList.add('hidden');
+                 mainApp.classList.remove('hidden');
             }
             
             document.getElementById('displayUserStatus').textContent = {
@@ -1070,9 +1072,11 @@
             const target = lastCallInfo.adminId;
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id, reason: reason }));
+            } else {
+                // Eğer soket bağlantısı yoksa, arayüzü yerel olarak temizle
+                cleanupCall();
+                setState('idle');
             }
-            cleanupCall();
-            setState('idle');
         }
 
         function showReviewModal(callData) {
