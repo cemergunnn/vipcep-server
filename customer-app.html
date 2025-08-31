@@ -680,7 +680,7 @@
             if(connectingDiv) {
                 connectingDiv.innerHTML = `<div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">🔗 Bağlantı kuruluyor...</div>`;
             }
-            setState('connecting');
+            // setState('connecting'); // Bu satır kaldırıldı çünkü zaten connecting state'indeyiz.
             setupPeerConnection(true);
         }
         
