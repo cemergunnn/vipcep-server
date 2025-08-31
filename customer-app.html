@@ -633,7 +633,14 @@
         }
 
         function makeCall(adminId) {
-            if (userInfo.credits <= 0) return alert('Arama yapmak için krediniz yetersiz.');
+            if (userInfo.credits <= 0) {
+                alert('Arama yapmak için krediniz yetersiz.');
+                return;
+            }
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                alert('Sunucu bağlantısı hazır değil, lütfen birkaç saniye sonra tekrar deneyin.');
+                return;
+            }
             
             const admin = availableAdmins.find(a => a.id === adminId);
             const connectingDiv = document.getElementById('connectingAdminInfo');
@@ -649,6 +656,7 @@
             lastCallInfo.adminId = adminId;
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
         }
+
         function makeCallbackRequest(adminId) {
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
             alert('Geri arama talebiniz alındı. Usta müsait olduğunda sizi arayacak.');
