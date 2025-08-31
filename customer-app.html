@@ -951,15 +951,16 @@
             playSound(endedSound);
 
             cleanupCall();
-            setState('idle');
             
-            const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
+            const isReviewable = message.endedBy === 'customer' && !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
             if (isReviewable) {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
             } else {
-                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                // Değerlendirme yoksa arayüzü sıfırla
+                setState('idle');
             }
         }
 
@@ -1069,7 +1070,7 @@
             
             // Temizleme işlemini sunucuya mesaj göndermeden önce yap
             cleanupCall();
-        
+
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1077,12 +1078,9 @@
                     userId: userInfo.id, 
                     reason: reason 
                 }));
-            }
-            
-            // Arayüz durumunu her koşulda sıfırla
-            setState('idle');
-        
-            if (!target) {
+            } else {
+                // Eğer sunucuya bağlantı yoksa, yerel olarak temizle
+                setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
@@ -1253,4 +1251,3 @@
     </script>
 </body>
 </html>
-
