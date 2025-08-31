@@ -1030,6 +1030,12 @@
         let isLoggedIn = false;
         let currentAdmin = null;
         let adminUniqueId = null;
+
+        console.log('👤 Admin oturumu hazırlanıyor...');
+        let myCallbacks = [];
+
+        let micEnabled = true;
+        let speakerEnabled = true;
         let originalAdminId = "ADMIN" + Math.floor(Math.random() * 900 + 100);
 
         const savedAdminId = localStorage.getItem('vipcep_admin_id');
@@ -1275,10 +1281,10 @@
             }
         }
         function registerAdmin() {
-            if (socket && socket.readyState === WebSocket.OPEN && currentAdmin) {
+             if (socket && socket.readyState === WebSocket.OPEN && currentAdmin) {
                 const registerMessage = { 
                     type: 'register', 
-                    userId: originalAdminId, 
+                    userId: currentAdmin.username, 
                     name: currentAdmin.username || 'Admin', 
                     userType: 'admin' 
                 };
@@ -1978,3 +1984,4 @@
     </script>
 </body>
 </html>
+
