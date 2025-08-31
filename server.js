@@ -75,8 +75,6 @@ function broadcastToCustomers(message) {
 
 async function broadcastAdminListToCustomers() {
     try {
-        console.log('📡 Broadcasting admin list to customers...');
-        // YENİ: Veritabanından admin profillerini ve ortalama puanlarını çek
         const adminProfileResult = await pool.query(`
             SELECT
                 a.username as id,
@@ -94,16 +92,13 @@ async function broadcastAdminListToCustomers() {
 
         const dbAdmins = adminProfileResult.rows;
 
-        // Online durumu WebSocket clients haritasından al
         const onlineAdminIds = new Set();
         clients.forEach(client => {
             if (client.userType === 'admin' && client.ws && client.ws.readyState === WebSocket.OPEN && client.online !== false) {
                 onlineAdminIds.add(client.id);
-                console.log(`✅ Online admin found: ${client.id} (${client.name})`);
             }
         });
-        console.log(`📊 Database admins: ${dbAdmins.length}, Online admins: ${onlineAdminIds.size}`);
-        // Veritabanı verisi ile online durumunu birleştir
+
         const combinedAdminList = dbAdmins.map(admin => {
             const adminKey = admin.id;
             const isOnline = onlineAdminIds.has(adminKey);
@@ -113,20 +108,13 @@ async function broadcastAdminListToCustomers() {
                 ...admin,
                 status: isOnline ? ((isInCall || adminLocks.has(adminKey)) ? 'busy' : 'available') : 'offline'
             };
-        }).
-                // Sadece online olanları filtrele
-               const onlineAdmins = combinedAdminList.filter(function(admin) {
-            return admin.status !== 'offline';
         });
-        
-        console.log(`📋 Final admin list: ${onlineAdmins.length} admins available`);
-        onlineAdmins.forEach(admin => {
-            console.log(`  - ${admin.name} (${admin.id}): ${admin.status}`);
-        });
+
+        const onlineAdmins = combinedAdminList.filter(admin => admin.status !== "offline");
 
         const message = JSON.stringify({
             type: 'admin-list-update',
-            admins: combinedAdminList
+            admins: onlineAdmins
         });
 
         let sentCount = 0;
@@ -136,9 +124,16 @@ async function broadcastAdminListToCustomers() {
                     client.ws.send(message);
                     sentCount++;
                 } catch (error) {
-                    console.log(`⚠️ Admin list broadcast error to ${client.id}:`, error.message);
+                    console.log(`Admin list broadcast error to ${client.id}:`, error.message);
                 }
             }
+        });
+
+        console.log(`Admin list sent to ${sentCount} customers: ${onlineAdmins.length} unique admins`);
+    } catch (error) {
+        console.error('Error broadcasting admin list:', error);
+    }
+}
         });
         
         console.log(`📡 Admin list sent to ${sentCount} customers: ${combinedAdminList.length} unique admins`);
@@ -2163,6 +2158,7 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
 
 
 
