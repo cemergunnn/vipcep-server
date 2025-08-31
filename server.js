@@ -999,7 +999,7 @@ app.post('/api/approved-users', async (req, res) => {
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1, 'initial', $3, $3, 'İlk kredi ataması')
         `, [id, 'initial', credits, credits, 'İlk kredi ataması']);
 
         res.json({ success: true, user: newUser });
@@ -1699,6 +1699,13 @@ wss.on('connection', (ws, req) => {
                     ws.send(JSON.stringify({
                         type: 'call-connecting'
                     }));
+
+                    // Geri dönüş talebini listeden kaldır
+                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
+                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
+                    adminCallbacks.set(senderId, updatedCallbacks);
+                    broadcastCallbacksToAdmin(senderId);
+
 
                     console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
                     break;
