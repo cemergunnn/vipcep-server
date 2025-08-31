@@ -1887,7 +1887,7 @@ wss.on('connection', (ws, req) => {
                         remainingCredits: remainingCredits,
                         endedBy: endedBy,
                         reason: message.reason || 'user_ended',
-                        callId: callInfoToEnd.callKey
+                        callId: callInfoToEnd.callKey // Değerlendirme modalı için callId eklenmeli
                     };
                     
                     const finalCustomerTarget = clients.get(customerId);
@@ -2120,3 +2120,4 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
+
