@@ -555,7 +555,7 @@
             };
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
-                console.log('📨 Sunucudan mesaj:', message);
+                // console.log('📨 Sunucudan mesaj:', message); // Hata ayıklama için geçici olarak kapatıldı
                 handleServerMessage(message);
             };
             socket.onclose = () => {
@@ -635,27 +635,22 @@
         }
 
         function makeCall(adminId) {
-            // Kontrol 1: Kredi var mı?
             if (userInfo.credits <= 0) {
                 alert('Arama yapmak için krediniz yetersiz.');
                 return;
             }
-            // Kontrol 2: Sunucu bağlantısı aktif mi?
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 alert('Sunucu bağlantısı hazır değil, lütfen birkaç saniye sonra tekrar deneyin.');
                 return;
             }
 
-            // Adım 1: Önce aranan adminin bilgilerini bul.
             const admin = availableAdmins.find(a => a.id === adminId);
 
-            // Adım 2: Eğer admin bilgisi bulunamazsa, hata ver ve işlemi durdur.
             if (!admin) {
                 alert('Bir hata oluştu: Usta bilgileri bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
                 return; 
             }
 
-            // Adım 3: Admin bilgisi bulunduysa, "Aranıyor..." ekranını hazırla.
             const connectingDiv = document.getElementById('connectingAdminInfo');
             if (connectingDiv) {
                 connectingDiv.innerHTML = `
@@ -665,7 +660,6 @@
                 `;
             }
 
-            // Adım 4: Ekranı değiştir ve arama isteğini sunucuya gönder.
             setState('connecting');
             lastCallInfo.adminId = adminId;
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
@@ -706,10 +700,12 @@
             socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: lastCallInfo.adminId, userId: userInfo.id }));
             setupPeerConnection(false);
         }
+
         function rejectIncomingCall() {
             socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: lastCallInfo.adminId, userId: userInfo.id }));
             setState('idle');
         }
+
         function handleCallAccepted(message) {
             lastCallInfo.adminId = message.adminId;
             const admin = availableAdmins.find(a => a.id === message.adminId);
@@ -747,11 +743,14 @@
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = event => {
-                    document.getElementById('remoteAudio').srcObject = event.streams[0];
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (remoteAudio) {
+                        remoteAudio.srcObject = event.streams[0];
+                    }
                 };
                 
                 peerConnection.onicecandidate = event => {
-                    if (event.candidate) {
+                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: lastCallInfo.adminId }));
                     }
                 };
@@ -759,33 +758,37 @@
                 if (isInitiator) {
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
-                    socket.send(JSON.stringify({ type: 'offer', offer, targetId: lastCallInfo.adminId }));
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'offer', offer, targetId: lastCallInfo.adminId }));
+                    }
                 }
             } catch (err) {
                 console.error("PeerConnection veya mikrofon hatası:", err);
                 alert("Mikrofon erişimi reddedildi veya bir bağlantı hatası oluştu. Lütfen sayfa izinlerini kontrol edip tekrar deneyin.");
-                endCall(); // Aramayı hemen sonlandır
+                endCall();
             }
         }
 
         async function handleWebRTCMessage(message) {
-            if (!peerConnection) await setupPeerConnection(false);
+            try {
+                if (!peerConnection) await setupPeerConnection(false);
 
-            if (message.offer) {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                socket.send(JSON.stringify({ type: 'answer', answer, targetId: lastCallInfo.adminId }));
-            } else if (message.answer) {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                setState('connected');
-                startCallTimer();
-            } else if (message.candidate) {
-                try {
+                if (message.offer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'answer', answer, targetId: message.userId }));
+                    }
+                } else if (message.answer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                    setState('connected');
+                    startCallTimer();
+                } else if (message.candidate) {
                     await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                } catch(e) {
-                    console.error("Error adding received ice candidate", e);
                 }
+            } catch (e) {
+                console.error("WebRTC Mesaj Hatası:", e);
             }
         }
 
@@ -804,17 +807,21 @@
 
         function cleanupCall() {
             if (callTimer) clearInterval(callTimer);
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-            if (peerConnection) peerConnection.close();
-            peerConnection = null;
-            localStream = null;
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
             callTimer = null;
         }
 
         function endCall() {
             const target = lastCallInfo.adminId;
             if (target && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id }));
+                socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id, reason: 'cancelled' }));
             }
             cleanupCall();
             setState('idle');
@@ -880,7 +887,8 @@
                 } catch(e) {
                     console.error("Review submission failed", e);
                 } finally {
-                    document.getElementById('reviewOverlay').remove();
+                    const overlay = document.getElementById('reviewOverlay');
+                    if(overlay) overlay.remove();
                 }
             };
         }
