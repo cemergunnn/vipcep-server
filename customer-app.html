@@ -347,10 +347,6 @@
         }
         .rating-stars span:hover, .rating-stars span.active { color: var(--warning-color); }
         
-        .review-input-group {
-            position: relative;
-        }
-
         #reviewComment { 
             min-height: 80px; 
             margin-top: 10px; 
@@ -380,18 +376,35 @@
             letter-spacing: 1px;
         }
 
-        #generateReviewBtn {
-            font-size: 12px;
-            padding: 6px 10px;
-            background: linear-gradient(135deg, #a78bfa, #7c3aed);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 8px;
-            margin-bottom: 0;
-            width: auto;
+        #notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
+        .notification {
+            background: white;
+            color: var(--gray-800);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 4px solid;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .notification.success { border-color: var(--secondary-color); }
+        .notification.error { border-color: var(--danger-color); }
+        .notification.info { border-color: var(--primary-color); }
+
     </style>
 </head>
 <body>
@@ -509,6 +522,7 @@
         </div>
     </div>
     
+    <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
     
@@ -523,6 +537,7 @@
         let userInfo = { id: '', name: '', credits: 0 };
         let lastCallInfo = { adminId: null, callId: null };
         let availableAdmins = [];
+        let pendingIceCandidates = [];
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -614,9 +629,16 @@
                 case 'admin-list-update': updateAdminList(message.admins); break;
                 case 'call-accepted': handleCallAccepted(message); break;
                 case 'admin-call-request':
+                    if (callState !== 'idle') return; // Zaten bir arama durumundaysa yenisini kabul etme
                     lastCallInfo.adminId = message.adminId;
                     document.getElementById('incomingAdminName').textContent = message.adminName;
                     setState('incoming');
+                    break;
+                case 'callback-success':
+                    showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
+                    break;
+                case 'callback-failed':
+                    showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
                     break;
                 case 'call-ended': handleCallEnded(message); break;
                 case 'call-rejected': 
@@ -667,19 +689,16 @@
 
         function makeCall(adminId) {
             if (userInfo.credits <= 0) {
-                alert('Arama yapmak için krediniz yetersiz.');
-                return;
+                return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
             }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
-                alert('Sunucu bağlantısı hazır değil, lütfen birkaç saniye sonra tekrar deneyin.');
-                return;
+                return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
             }
 
             const admin = availableAdmins.find(a => a.id === adminId);
 
             if (!admin) {
-                alert('Bir hata oluştu: Usta bilgileri bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
-                return; 
+                return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
 
             const connectingDiv = document.getElementById('connectingAdminInfo');
@@ -697,8 +716,10 @@
         }
 
         function makeCallbackRequest(adminId) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return showNotification('Sunucu bağlantısı hazır değil.', 'error');
+            }
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
-            alert('Geri arama talebiniz alındı. Usta müsait olduğunda sizi arayacak.');
         }
 
         function setState(newState) {
@@ -729,7 +750,7 @@
         function acceptIncomingCall() {
             setState('connecting');
             socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: lastCallInfo.adminId, userId: userInfo.id }));
-            setupPeerConnection(false);
+            setupPeerConnection(false); // Gelen aramayı kabul eden taraf initiator değildir.
         }
 
         function rejectIncomingCall() {
@@ -751,7 +772,7 @@
             if(connectingDiv) {
                 connectingDiv.innerHTML = `<div style="color: var(--primary-color); font-weight: 700; font-size: 18px;">🔗 Bağlantı kuruluyor...</div>`;
             }
-            setupPeerConnection(true);
+            setupPeerConnection(true); // Aramayı başlatan taraf initiator'dır.
         }
         
         function handleCallEnded(message, rejected = false) {
@@ -759,7 +780,7 @@
             setState('idle');
             
             if (rejected || message.reason === 'cancelled') {
-                alert(message.reason || "Arama sonlandırıldı.");
+                showNotification(message.reason || "Arama sonlandırıldı.", "info");
             } else {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
@@ -769,15 +790,14 @@
         async function setupPeerConnection(isInitiator) {
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
+                pendingIceCandidates = [];
                 
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = event => {
                     const remoteAudio = document.getElementById('remoteAudio');
-                    if (remoteAudio) {
-                        remoteAudio.srcObject = event.streams[0];
-                    }
+                    if (remoteAudio) remoteAudio.srcObject = event.streams[0];
                 };
                 
                 peerConnection.onicecandidate = event => {
@@ -786,6 +806,13 @@
                     }
                 };
                 
+                peerConnection.onconnectionstatechange = () => {
+                    if (peerConnection?.connectionState === 'connected') {
+                        setState('connected');
+                        startCallTimer();
+                    }
+                };
+
                 if (isInitiator) {
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -795,18 +822,20 @@
                 }
             } catch (err) {
                 console.error("PeerConnection veya mikrofon hatası:", err);
-                alert("Mikrofon erişimi reddedildi veya bir bağlantı hatası oluştu. Lütfen sayfa izinlerini kontrol edip tekrar deneyin.");
+                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
                 endCall();
             }
         }
 
         async function handleWebRTCMessage(message) {
             try {
-                if (!peerConnection && message.type !== 'offer') {
-                    return;
-                }
-                if(message.type === 'offer') {
+                if (!peerConnection && message.type === 'offer') {
                     await setupPeerConnection(false);
+                } else if (!peerConnection) {
+                    return; // Offer gelmeden diğer mesajları işleme
+                }
+
+                if (message.offer) {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
@@ -814,15 +843,10 @@
                         socket.send(JSON.stringify({ type: 'answer', answer, targetId: message.userId }));
                     }
                 } else if (message.answer) {
-                    if (peerConnection.signalingState !== "have-local-offer") {
-                        return;
-                    }
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                    setState('connected');
-                    startCallTimer();
                 } else if (message.candidate) {
                     if (peerConnection.remoteDescription) {
-                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
                     }
                 }
             } catch (e) {
@@ -831,6 +855,7 @@
         }
 
         function startCallTimer() {
+            if (callTimer) clearInterval(callTimer);
             callDuration = 0;
             const timerEl = document.getElementById('callTimer');
             if(!timerEl) return;
@@ -876,10 +901,7 @@
                         <div class="rating-stars" id="ratingStars">
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
-                        <div class="review-input-group">
-                            <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                            <button id="generateReviewBtn">✨ Yorum Oluştur</button>
-                        </div>
+                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
                         <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
@@ -892,7 +914,6 @@
             const commentInput = document.getElementById('reviewComment');
             const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
-            const generateBtn = document.getElementById('generateReviewBtn');
             
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
@@ -954,55 +975,30 @@
             });
             commentInput.addEventListener('input', updateReviewButtonState);
             tipInput.addEventListener('input', updateReviewButtonState);
-
-            generateBtn.onclick = async () => {
-                if (currentRating === 0) {
-                    alert("Yorum oluşturmak için lütfen önce yıldıza tıklayarak puan verin.");
-                    return;
-                }
-                generateBtn.disabled = true;
-                generateBtn.textContent = "Oluşturuluyor...";
-
-                const sentiment = currentRating >= 4 ? "olumlu" : currentRating <= 2 ? "olumsuz" : "nötr";
-                const prompt = `Bir teknik servis hizmeti için verilen ${currentRating} yıldızlık puana uygun, kısa ve ${sentiment} bir müşteri yorumu yaz. Yorum Türkçe olsun.`;
-
-                try {
-                    const apiKey = ""; // API anahtarını boş bırakın
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-                    
-                    const payload = {
-                        contents: [{ parts: [{ text: prompt }] }],
-                    };
-
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`API call failed with status ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                    if (generatedText) {
-                        commentInput.value = generatedText.trim().replace(/^"|"$/g, ''); // Tırnak işaretlerini temizle
-                        updateReviewButtonState();
-                    } else {
-                        throw new Error("API'den geçerli bir metin alınamadı.");
-                    }
-                } catch (error) {
-                    console.error("Gemini API hatası:", error);
-                    alert("Yorum oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-                } finally {
-                    generateBtn.disabled = false;
-                    generateBtn.textContent = "✨ Yorum Oluştur";
-                }
-            };
             
             updateReviewButtonState();
+        }
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('notification-container');
+            if (!container) return;
+
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            
+            container.appendChild(notif);
+
+            setTimeout(() => {
+                notif.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                notif.classList.remove('show');
+                setTimeout(() => {
+                    container.removeChild(notif);
+                }, 500);
+            }, duration);
         }
 
         async function showAdminDetails(adminId) {
