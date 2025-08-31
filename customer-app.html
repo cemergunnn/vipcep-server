@@ -710,3 +710,541 @@
         function loginUser() {
             const userId = document.getElementById('userIdInput').value;
             const userName = document.getElementById('userNameInput').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            if(!userId || !userName) return alert('Lütfen tüm alanları doldurun.');
+
+            userInfo.id = userId;
+            userInfo.name = userName;
+
+            if(rememberMe) {
+                localStorage.setItem('vipcep_remember_me', 'true');
+                localStorage.setItem('vipcep_user_id', userInfo.id);
+                localStorage.setItem('vipcep_user_name', userInfo.name);
+            } else {
+                localStorage.removeItem('vipcep_remember_me');
+                localStorage.removeItem('vipcep_user_id');
+                localStorage.removeItem('vipcep_user_name');
+            }
+            
+            socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
+        }
+        
+        function connectToServer() {
+            socket = new WebSocket(serverUrl);
+            socket.onopen = () => {
+                document.getElementById('connectionDot').className = 'status-dot status-connected';
+                document.getElementById('connectionText').textContent = 'Bağlı';
+            };
+            socket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleServerMessage(message);
+            };
+            socket.onclose = () => {
+                document.getElementById('connectionDot').className = 'status-dot status-disconnected';
+                document.getElementById('connectionText').textContent = 'Bağlantı Kesildi';
+                setTimeout(connectToServer, 3000);
+            };
+        }
+
+        function handleServerMessage(message) {
+            switch (message.type) {
+                case 'login-response':
+                    if(message.success) {
+                        isLoggedIn = true;
+                        document.getElementById('loginScreen').classList.add('hidden');
+                        document.getElementById('mainApp').classList.remove('hidden');
+                        userInfo.credits = message.credits;
+                        updateUserDisplay();
+                        socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
+                    } else {
+                        const loginMessage = document.getElementById('loginMessage');
+                        loginMessage.innerHTML = `<div class="error-message">${message.reason}</div>`;
+                    }
+                    break;
+                case 'admin-list-update': 
+                    updateAdminList(message.admins); 
+                    break;
+                case 'admin-call-request':
+                    if (callState !== 'idle') {
+                        socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: message.adminId, userId: userInfo.id, reason: 'busy' }));
+                        return;
+                    }
+                    lastCallInfo.adminId = message.adminId;
+                    const admin = availableAdmins.find(a => a.id === message.adminId);
+                    lastCallInfo.adminName = message.adminName;
+                    lastCallInfo.adminPic = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
+                    document.getElementById('incomingAdminPic').src = lastCallInfo.adminPic;
+                    document.getElementById('incomingAdminNameOverlay').textContent = `${lastCallInfo.adminName} Arıyor...`;
+                    
+                    setState('incoming');
+                    playSound(ringingSound);
+                    break;
+                case 'call-accepted': 
+                    handleCallAccepted(message); 
+                    break;
+                case 'callback-success':
+                    showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
+                    break;
+                case 'callback-failed':
+                    showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
+                    break;
+                case 'call-ended': 
+                    handleCallEnded(message); 
+                    break;
+                case 'call-rejected': 
+                    handleCallEnded({ reason: message.reason || 'Reddedildi' }, true); 
+                    break;
+                case 'credit-update':
+                    userInfo.credits = message.credits;
+                    updateUserDisplay();
+                    break;
+                case 'offer':
+                case 'answer':
+                case 'ice-candidate':
+                    handleWebRTCMessage(message);
+                    break;
+            }
+        }
+        
+        function updateUserDisplay() {
+            document.getElementById('displayUserName').textContent = userInfo.name;
+            document.getElementById('displayUserId').textContent = userInfo.id;
+            const creditsEl = document.getElementById('displayUserCredits');
+            creditsEl.textContent = `${userInfo.credits} dk`;
+            creditsEl.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
+        }
+
+        function updateAdminList(admins) {
+            availableAdmins = admins;
+            const container = document.getElementById('adminListContainer');
+            if (admins && admins.length > 0) {
+                container.innerHTML = admins.map(admin => `
+                    <div class="admin-card ${admin.status}">
+                        <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
+                        <div class="admin-details">
+                            <div class="admin-name">${admin.name}</div>
+                            <div class="admin-specialization">${admin.specialization || 'Genel Teknik Servis'}</div>
+                            <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
+                        </div>
+                        <div class="admin-actions">
+                            <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
+                            ${admin.status === 'available' ? `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>` : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}')">📝 Çağrı Bırak</button>`}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
+            }
+        }
+
+        function makeCall(adminId) {
+            if (userInfo.credits <= 0) {
+                return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
+            }
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
+            }
+
+            const admin = availableAdmins.find(a => a.id === adminId);
+            if (!admin) {
+                return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
+            }
+
+            lastCallInfo.adminId = admin.id;
+            lastCallInfo.adminName = admin.name || 'Usta';
+            lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
+            document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
+            document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
+
+            setState('connecting');
+            playSound(ringingSound);
+            
+            socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
+        }
+
+        function makeCallbackRequest(adminId) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return showNotification('Sunucu bağlantısı hazır değil.', 'error');
+            }
+            socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
+        }
+
+        function setState(newState) {
+            callState = newState;
+            const callOverlay = document.getElementById('callOverlay');
+            const connectingView = document.getElementById('connectingStateView');
+            const connectedView = document.getElementById('connectedStateView');
+            const incomingView = document.getElementById('incomingCallView');
+            
+            const mainApp = document.getElementById('mainApp');
+
+            // Hide all overlay views first
+            connectingView.classList.add('hidden');
+            connectedView.classList.add('hidden');
+            incomingView.classList.add('hidden');
+            
+            if (['connecting', 'connected', 'incoming'].includes(newState)) {
+                callOverlay.classList.remove('hidden');
+                mainApp.classList.add('hidden'); // Hide main content
+
+                if (newState === 'connecting') {
+                    connectingView.classList.remove('hidden');
+                } else if (newState === 'connected') {
+                    connectedView.classList.remove('hidden');
+                } else if (newState === 'incoming') {
+                    incomingView.classList.remove('hidden');
+                }
+            } else { // idle state
+                 callOverlay.classList.add('hidden');
+                 mainApp.classList.remove('hidden');
+            }
+            
+            document.getElementById('displayUserStatus').textContent = {
+                idle: 'Hazır',
+                connecting: 'Bağlanıyor...',
+                connected: 'Görüşmede',
+                incoming: 'Gelen Arama'
+            }[newState] || 'Hazır';
+        }
+        
+        async function acceptIncomingCall() {
+            stopAllSounds();
+            playSound(connectedSound);
+            
+            document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
+            document.getElementById('connectingAdminName').textContent = `Bağlanıyor...`;
+
+            setState('connecting');
+
+            await setupPeerConnection(true); // Gelen aramayı kabul eden müşteri, WebRTC'de initiator (teklif gönderen) olur.
+        }
+
+        function rejectIncomingCall() {
+            stopAllSounds();
+            playSound(endedSound);
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'reject-incoming-call', adminId: lastCallInfo.adminId, userId: userInfo.id, reason: 'rejected' }));
+            }
+            setState('idle');
+        }
+
+        function handleCallAccepted(message) {
+            lastCallInfo.adminId = message.adminId;
+            const admin = availableAdmins.find(a => a.id === message.adminId);
+            
+            lastCallInfo.adminName = admin?.name || 'Usta';
+            lastCallInfo.adminPic = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+
+            stopAllSounds();
+            playSound(connectedSound);
+
+            setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
+        }
+        
+        function handleCallEnded(message, rejected = false) {
+            if (callState === 'idle') return; // Çağrı zaten bittiyse tekrar işlem yapma
+
+            stopAllSounds();
+            playSound(endedSound);
+
+            cleanupCall();
+            setState('idle');
+            
+            const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
+
+            if (isReviewable) {
+                lastCallInfo.callId = message.callId;
+                showReviewModal(message);
+            } else {
+                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
+            }
+        }
+
+        async function setupPeerConnection(isInitiator) {
+            try {
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                pendingIceCandidates = [];
+                
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
+                peerConnection.ontrack = event => {
+                    const remoteAudio = document.getElementById('remoteAudio');
+                    if (remoteAudio) remoteAudio.srcObject = event.streams[0];
+                };
+                
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: lastCallInfo.adminId }));
+                    }
+                };
+                
+                peerConnection.onconnectionstatechange = () => {
+                    if (peerConnection?.connectionState === 'connected') {
+                        document.getElementById('connectedAdminPicOverlay').src = lastCallInfo.adminPic;
+                        document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
+                        setState('connected');
+                        startCallTimer();
+                    }
+                };
+
+                if (isInitiator) {
+                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'offer', offer, targetId: lastCallInfo.adminId }));
+                    }
+                }
+            } catch (err) {
+                console.error("PeerConnection veya mikrofon hatası:", err);
+                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
+                endCall(true);
+            }
+        }
+
+        async function handleWebRTCMessage(message) {
+            try {
+                if (!peerConnection && message.type === 'offer') {
+                    await setupPeerConnection(false);
+                } else if (!peerConnection) {
+                    return;
+                }
+
+                if (message.offer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'answer', answer, targetId: message.userId }));
+                    }
+                } else if (message.answer) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                } else if (message.candidate) {
+                    if (peerConnection.remoteDescription) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    } else {
+                        pendingIceCandidates.push(message.candidate);
+                    }
+                }
+            } catch (e) {
+                console.error("WebRTC Mesaj Hatası:", e);
+            }
+        }
+
+        function startCallTimer() {
+            if (callTimer) clearInterval(callTimer);
+            callDuration = 0;
+            const timerEl = document.getElementById('callTimerOverlay');
+            if(!timerEl) return;
+
+            callTimer = setInterval(() => {
+                callDuration++;
+                const minutes = Math.floor(callDuration / 60).toString().padStart(2, '0');
+                const seconds = (callDuration % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function cleanupCall() {
+            stopAllSounds();
+            if (callTimer) clearInterval(callTimer);
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            callTimer = null;
+        }
+
+        function endCall(isCancel = false) {
+            const reason = isCancel ? 'cancelled' : 'user_ended';
+            const target = lastCallInfo.adminId;
+            
+            cleanupCall();
+
+            if (target && socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ 
+                    type: 'end-call', 
+                    targetId: target, 
+                    userId: userInfo.id, 
+                    reason: reason 
+                }));
+            } else {
+                setState('idle');
+                showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
+            }
+        }
+
+        function showReviewModal(callData) {
+            const reviewModalHTML = `
+                <div id="reviewOverlay" class="modal-overlay">
+                    <div class="modal-content">
+                        <h3>Görüşmeyi Değerlendir</h3>
+                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                        <div class="rating-stars" id="ratingStars">
+                            ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
+                        </div>
+                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
+                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
+
+            let currentRating = 0;
+            const stars = document.querySelectorAll('#ratingStars span');
+            const commentInput = document.getElementById('reviewComment');
+            const tipInput = document.getElementById('tipAmount');
+            const actionBtn = document.getElementById('reviewActionBtn');
+            
+            const closeReviewModal = () => {
+                const overlay = document.getElementById('reviewOverlay');
+                if(overlay) overlay.remove();
+            };
+
+            const submitReview = async () => {
+                actionBtn.disabled = true;
+                const tipAmount = parseInt(tipInput.value) || 0;
+                if (tipAmount > userInfo.credits) {
+                    alert("Bahşiş için yeterli krediniz yok!");
+                    actionBtn.disabled = false;
+                    return;
+                }
+                
+                const reviewData = {
+                    customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
+                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
+                };
+
+                try {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reviewData)
+                    });
+                } catch(e) {
+                    console.error("Review submission failed", e);
+                } finally {
+                    closeReviewModal();
+                }
+            };
+
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasComment = commentInput.value.trim() !== '';
+                const hasTip = (parseInt(tipInput.value) || 0) > 0;
+
+                if (hasRating || hasComment || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = '';
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
+            
+            stars.forEach(star => {
+                star.addEventListener('click', (e) => {
+                    currentRating = e.target.dataset.value;
+                    stars.forEach(s => {
+                        s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
+                        s.classList.toggle('active', s.dataset.value <= currentRating);
+                    });
+                    updateReviewButtonState();
+                });
+            });
+            commentInput.addEventListener('input', updateReviewButtonState);
+            tipInput.addEventListener('input', updateReviewButtonState);
+            
+            updateReviewButtonState();
+        }
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('notification-container');
+            if (!container) return;
+
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            
+            container.appendChild(notif);
+
+            setTimeout(() => {
+                notif.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                notif.classList.remove('show');
+                setTimeout(() => {
+                    if(notif.parentNode) container.removeChild(notif);
+                }, 500);
+            }, duration);
+        }
+
+        async function showAdminDetails(adminId) {
+            const admin = availableAdmins.find(a => a.id === adminId);
+            if (!admin) return;
+
+            const modalHTML = `
+                <div id="detailsModalOverlay" class="modal-overlay">
+                    <div class="modal-content" style="text-align: left; max-width: 380px;">
+                        <button onclick="this.closest('.modal-overlay').remove()" style="float: right; border: none; background: none; font-size: 24px; cursor: pointer;">&times;</button>
+                        <div id="detailsModalBody"><p style="text-align:center;">Detaylar yükleniyor...</p></div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+            try {
+                const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
+
+                const profile = result.profile;
+                const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
+                    <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+                        <p><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
+                        <p style="font-style: italic; color: #555;">"${review.comment || 'Yorum yok.'}"</p>
+                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                        <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
+
+                document.getElementById('detailsModalBody').innerHTML = `
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
+                        <h3 style="margin-top: 10px; margin-bottom: 5px;">${profile.username}</h3>
+                        <p style="color: #555;">${profile.specialization || 'Genel Teknik Servis'}</p>
+                        <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
+                    </div>
+                    <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Değerlendirmeler (${profile.reviews.length})</h4>
+                    <div style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
+                        ${reviewsHtml}
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('detailsModalBody').innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
+            }
+        }
+
+        function generateStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                stars += i <= rating ? '★' : '☆';
+            }
+            return stars;
+        }
+    </script>
+</body>
+</html>
