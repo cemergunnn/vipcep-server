@@ -1835,35 +1835,24 @@ wss.on('connection', (ws, req) => {
                     const targetId = message.targetId;
                     const callInfoToEnd = findActiveCall(senderId, targetId);
 
-                    if (message.reason === 'cancelled') {
-                        const adminToNotify = Array.from(clients.values()).find(c => c.uniqueId === targetId && c.userType === 'admin');
-                        if (adminToNotify && adminToNotify.ws.readyState === WebSocket.OPEN) {
-                            adminToNotify.ws.send(JSON.stringify({
-                                type: 'call-ended',
-                                userId: senderId,
-                                reason: 'cancelled'
-                            }));
-                            console.log(`✅ İptal bildirimi admin ${targetId} tarafına gönderildi.`);
-                        }
-                        adminLocks.delete(targetId);
-                        activeCallAdmins.delete(targetId);
-                        broadcastAdminListToCustomers();
-                        return;
-                    }
-
                     if (!callInfoToEnd) {
-                        console.warn(`⚠️ Biten aktif arama bulunamadı: ${senderId} to ${targetId}`);
+                        console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
+                        const endTargetFallback = findWebRTCTarget(targetId);
+                        if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
+                             endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
+                        }
+                        // Gerekli sıfırlamaları yapalım ki "meşgul" kalmasın
                         adminLocks.delete(senderId);
                         broadcastAdminListToCustomers();
                         return;
                     }
-                    
+
                     const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
                     const endedBy = senderType;
-
+                    
                     await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
 
                     let remainingCredits = 0;
@@ -1884,20 +1873,19 @@ wss.on('connection', (ws, req) => {
                         creditsUsed: finalCreditsUsed,
                         remainingCredits: remainingCredits,
                         endedBy: endedBy,
-                        reason: message.reason || 'user_ended',
-                        callId: callInfoToEnd.callKey
+                        reason: message.reason || 'user_ended'
                     };
-                    
+
                     const finalCustomerTarget = clients.get(customerId);
                     if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
                         finalCustomerTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-                    
+
                     const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId);
                     if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
                         finalAdminTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-                    
+
                     try {
                         await pool.query(`
                             INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
@@ -1915,6 +1903,7 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
             }
+
         } catch (error) {
             console.log('Message processing error:', error.message);
         }
