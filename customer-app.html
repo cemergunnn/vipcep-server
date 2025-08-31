@@ -948,7 +948,7 @@
             cleanupCall();
             setState('idle');
             
-            if (rejected || message.reason === 'cancelled') {
+            if (rejected || message.reason === 'cancelled' || message.reason === 'Reddedildi') {
                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
             } else {
                 lastCallInfo.callId = message.callId;
@@ -977,6 +977,9 @@
                 
                 peerConnection.onconnectionstatechange = () => {
                     if (peerConnection?.connectionState === 'connected') {
+                        const admin = availableAdmins.find(a => a.id === lastCallInfo.adminId);
+                        document.getElementById('connectedAdminPicOverlay').src = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+                        document.getElementById('currentAdminNameOverlay').textContent = admin?.name || 'Usta';
                         setState('connected');
                         startCallTimer();
                     }
@@ -1228,3 +1231,4 @@
     </script>
 </body>
 </html>
+
