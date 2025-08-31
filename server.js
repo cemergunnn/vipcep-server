@@ -1803,7 +1803,7 @@ wss.on('connection', (ws, req) => {
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
-                    const targetClient = findWebRTCTarget(message.targetId, senderType);
+                    const targetClient = findWebRTCTarget(message.targetId);
                     if (targetClient && targetClient.ws.readyState === WebSocket.OPEN) {
                         const forwardMessage = {
                             type: message.type,
@@ -1830,10 +1830,13 @@ wss.on('connection', (ws, req) => {
 
                     if (!callInfoToEnd) {
                         console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
-                        const endTargetFallback = findWebRTCTarget(targetId, senderType);
+                        const endTargetFallback = findWebRTCTarget(targetId);
                         if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
+                        // Gerekli sıfırlamaları yapalım ki "meşgul" kalmasın
+                        adminLocks.delete(senderId);
+                        broadcastAdminListToCustomers();
                         return;
                     }
 
@@ -1841,7 +1844,10 @@ wss.on('connection', (ws, req) => {
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
-                    await stopHeartbeat(callInfoToEnd.callKey, 'user_ended');
+                    const endedBy = senderType;
+                    
+                    await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
+
                     let remainingCredits = 0;
                     try {
                         const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [customerId]);
@@ -1851,28 +1857,26 @@ wss.on('connection', (ws, req) => {
                     } catch (error) {
                         console.error('Kalan kredi alınamadı (end-call):', error);
                     }
+                    
+                    const callEndMessage = {
+                        type: 'call-ended',
+                        userId: customerId,
+                        adminId: adminId,
+                        duration: finalDuration,
+                        creditsUsed: finalCreditsUsed,
+                        remainingCredits: remainingCredits,
+                        endedBy: endedBy,
+                        reason: message.reason || 'user_ended'
+                    };
+
                     const finalCustomerTarget = clients.get(customerId);
                     if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
-                        finalCustomerTarget.ws.send(JSON.stringify({
-                            type: 'call-ended',
-                            userId: senderId,
-                            duration: finalDuration,
-                            creditsUsed: finalCreditsUsed,
-                            remainingCredits: remainingCredits,
-                            endedBy: senderType || 'unknown'
-                        }));
+                        finalCustomerTarget.ws.send(JSON.stringify(callEndMessage));
                     }
 
-                    const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId || c.id === adminId);
+                    const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId);
                     if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
-                        finalAdminTarget.ws.send(JSON.stringify({
-                            type: 'call-ended',
-                            userId: senderId,
-                            duration: finalDuration,
-                            creditsUsed: finalCreditsUsed,
-                            remainingCredits: remainingCredits,
-                            endedBy: senderType || 'unknown'
-                        }));
+                        finalAdminTarget.ws.send(JSON.stringify(callEndMessage));
                     }
 
                     try {
@@ -1884,8 +1888,9 @@ wss.on('connection', (ws, req) => {
                             adminId,
                             finalDuration,
                             finalCreditsUsed,
-                            'normal'
+                            message.reason || 'normal'
                         ]);
+                        console.log(`✅ Arama kaydı veritabanına eklendi: ${callInfoToEnd.callKey}`);
                     } catch (error) {
                         console.log('Call history save error:', error);
                     }
@@ -1971,7 +1976,7 @@ function findClientById(ws) {
     return null;
 }
 
-function findWebRTCTarget(targetId, sourceType) {
+function findWebRTCTarget(targetId) {
     if (!targetId) {
         console.log('⚠️ targetId is null or undefined');
         return null;
@@ -1981,21 +1986,13 @@ function findWebRTCTarget(targetId, sourceType) {
     if (targetClient) {
         return targetClient;
     }
-    if (targetId.includes('_')) {
-        const normalId = targetId.split('_')[0];
-        for (const [clientId, clientData] of clients.entries()) {
-            if (clientData.id === normalId && clientData.userType === 'admin') {
-                return clientData;
-            }
-        }
-    } else {
-        for (const [clientId, clientData] of clients.entries()) {
-            if ((clientId.startsWith && clientId.startsWith(targetId + '_')) && clientData.userType === 'admin') {
-                return clientData;
-            }
+    
+    for (const client of clients.values()) {
+        if (client.id === targetId && client.userType === 'admin') {
+            return client;
         }
     }
-
+    
     console.log(`⚠️ WebRTC target not found: ${targetId}`);
     return null;
 }
@@ -2102,4 +2099,3 @@ startServer().catch(error => {
     console.log('❌ Server başlatma hatası:', error.message);
     process.exit(1);
 });
-
