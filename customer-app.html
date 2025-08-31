@@ -944,23 +944,25 @@
             setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
         }
         
-            function handleCallEnded(message, rejected = false) {
-                if (callState === 'idle') return;
+        function handleCallEnded(message, rejected = false) {
+            if (callState === 'idle') return; // Çağrı zaten bittiyse tekrar işlem yapma
+
+            stopAllSounds();
+            playSound(endedSound);
+
+            cleanupCall();
             
-                stopAllSounds();
-                playSound(endedSound);
-                cleanupCall();
-                
-                const isReviewable = message.endedBy === 'customer' && !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
-            
-                if (isReviewable) {
-                    lastCallInfo.callId = message.callId;
-                    showReviewModal(message); // Mesaj objesini olduğu gibi gönderiyoruz
-                } else {
-                    showNotification(message.reason || "Arama sonlandırıldı.", "info");
-                    setState('idle');
-                }
+            const isReviewable = message.endedBy === 'customer' && !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
+
+            if (isReviewable) {
+                lastCallInfo.callId = message.callId;
+                showReviewModal(message);
+            } else {
+                showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                // Değerlendirme yoksa arayüzü sıfırla
+                setState('idle');
             }
+        }
 
         async function setupPeerConnection(isInitiator) {
             try {
@@ -1101,7 +1103,7 @@
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
-        
+
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
@@ -1114,7 +1116,7 @@
                 // Modal kapandığında ana arayüze geri dön
                 setState('idle');
             };
-        
+
             const submitReview = async () => {
                 actionBtn.disabled = true;
                 const tipAmount = parseInt(tipInput.value) || 0;
@@ -1128,7 +1130,7 @@
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
                     comment: commentInput.value, tipAmount: tipAmount, callId: callData.callId
                 };
-        
+
                 try {
                     await fetch(`${baseUrl}/api/admins/${callData.adminId}/review`, {
                         method: 'POST',
@@ -1141,12 +1143,12 @@
                     closeReviewModal();
                 }
             };
-        
+
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasComment = commentInput.value.trim() !== '';
                 const hasTip = (parseInt(tipInput.value) || 0) > 0;
-        
+
                 if (hasRating || hasComment || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
@@ -1173,6 +1175,7 @@
             
             updateReviewButtonState();
         }
+
         function showNotification(message, type = 'info', duration = 3000) {
             const container = document.getElementById('notification-container');
             if (!container) return;
@@ -1250,4 +1253,3 @@
     </script>
 </body>
 </html>
-
