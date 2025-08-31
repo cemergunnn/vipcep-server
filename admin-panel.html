@@ -1016,6 +1016,7 @@
         let currentAdmin = null;
         let adminUniqueId = null;
         let myCallbacks = [];
+        let pendingIceCandidates = [];
 
         let micEnabled = true;
         let speakerEnabled = true;
@@ -1509,6 +1510,7 @@
                 localStream = stream;
                 console.log('🎤 Mikrofon erişimi alındı');
                 peerConnection = new RTCPeerConnection(rtcConfig);
+                pendingIceCandidates = []; // Yeni görüşme için bekleyenleri temizle
                 const audioTrack = stream.getAudioTracks()[0];
                 if (audioTrack) audioTrack.enabled = micEnabled;
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -1552,15 +1554,7 @@
                         handleCallEnded({ reason: 'connection_lost' });
                     }
                 };
-                if (callState === 'connected') {
-                    console.log('📤 WebRTC offer oluşturuluyor...');
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'offer', offer: offer, targetId: callInfo.userId }));
-                        console.log('📤 Offer gönderildi');
-                    }
-                }
+                
             } catch (error) {
                 console.error('❌ WebRTC kurulum hatası:', error);
                 showNotification('Mikrofon erişimi gerekli!', 'error');
@@ -1569,25 +1563,17 @@
         }
         async function handleWebRTCMessage(message) {
             console.log('📨 WebRTC mesajı:', message.type, 'from', message.userId);
-            if (!peerConnection) {
-                console.log('⚠️ PeerConnection yok, kurulacak...');
-                if (callState === 'accepted') {
-                    callState = 'connecting';
-                    console.log('✅ CallState accepted->connecting değiştirildi');
-                }
-                if (!currentCall) currentCall = { userId: message.userId, userName: incomingCallInfo?.userName || 'Müşteri' };
-                await setupPeerConnection(currentCall);
-                if (message.type === 'ice-candidate') {
-                    setTimeout(() => handleWebRTCMessage(message), 100);
-                    return;
-                }
+            if (!peerConnection && message.type !== 'offer') {
+                console.log('⚠️ PeerConnection yok ve mesaj offer değil, bekleniyor...');
+                return;
             }
+            
             try {
                 switch (message.type) {
                     case 'offer':
-                        if (callState === 'incoming' && incomingCallInfo) {
-                            console.log('⚠️ Offer reddedildi - gelen arama henüz kabul edilmedi');
-                            return;
+                        if (!peerConnection) {
+                           console.log('🔗 Offer alındı, PeerConnection kuruluyor...');
+                           await setupPeerConnection({userId: message.userId, userName: currentCall?.userName || 'Müşteri'});
                         }
                         console.log('📨 Offer alındı, answer gönderiliyor...');
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
@@ -1606,10 +1592,9 @@
                         break;
                     case 'ice-candidate':
                         if (message.candidate) {
-                            if (!peerConnection.remoteDescription) {
+                            if (!peerConnection || !peerConnection.remoteDescription) {
                                 console.log('⏳ ICE candidate bekletiliyor, remote description yok');
-                                if (!window.pendingIceCandidates) window.pendingIceCandidates = [];
-                                window.pendingIceCandidates.push(message.candidate);
+                                pendingIceCandidates.push(message.candidate);
                                 return;
                             }
                             await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
@@ -1619,19 +1604,13 @@
                 }
             } catch (error) {
                 console.error('❌ WebRTC hata:', error);
-                if (error.name === 'InvalidStateError' && message.type === 'ice-candidate') {
-                    console.log('⏳ ICE candidate bekletiliyor (InvalidStateError)');
-                    if (!window.pendingIceCandidates) window.pendingIceCandidates = [];
-                    window.pendingIceCandidates.push(message.candidate);
-                    return;
-                }
                 showNotification('WebRTC bağlantı hatası: ' + error.message, 'error');
             }
         }
         function processPendingIceCandidates() {
-            if (!window.pendingIceCandidates || window.pendingIceCandidates.length === 0) return;
-            console.log(`🧊 ${window.pendingIceCandidates.length} bekleyen ICE candidate işleniyor`);
-            window.pendingIceCandidates.forEach(async (candidate) => {
+            if (pendingIceCandidates.length === 0) return;
+            console.log(`🧊 ${pendingIceCandidates.length} bekleyen ICE candidate işleniyor`);
+            pendingIceCandidates.forEach(async (candidate) => {
                 try {
                     if (peerConnection && peerConnection.remoteDescription) {
                         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -1641,7 +1620,7 @@
                     console.error('❌ Bekleyen ICE candidate hatası:', error);
                 }
             });
-            window.pendingIceCandidates = [];
+            pendingIceCandidates = [];
         }
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
@@ -1661,7 +1640,7 @@
             if (remoteAudio) remoteAudio.srcObject = null;
             callDuration = 0;
             callStartTime = null;
-            window.pendingIceCandidates = [];
+            pendingIceCandidates = [];
             console.log('✅ Call cleanup tamamlandı');
         }
         function toggleMicrophone() {
@@ -1950,13 +1929,6 @@
         }
         
         console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
-        console.log('✅ Infinite loop koruması aktif');
-        console.log('✅ CSS Grid düzeltildi');
-        console.log('✅ WebRTC sistemi hazır');
-        console.log('✅ Callback sistemi aktif'); 
-        console.log('✅ Arama yönetimi sistemi hazır');
-        console.log('✅ Bildirim sistemi aktif');
-        console.log('🔧 Tüm sistemler STABİL ve operasyonel');
     </script>
 </body>
 </html>
