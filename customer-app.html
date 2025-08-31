@@ -634,7 +634,6 @@
             }
         }
 
-        // ***** ÖNEMLİ DÜZELTME BU FONKSİYONDA *****
         function makeCall(adminId) {
             // Kontrol 1: Kredi var mı?
             if (userInfo.credits <= 0) {
@@ -650,7 +649,7 @@
             // Adım 1: Önce aranan adminin bilgilerini bul.
             const admin = availableAdmins.find(a => a.id === adminId);
 
-            // Adım 2: Eğer admin bilgisi bulunamazsa, hata ver ve işlemi durdur. EKRAN BOŞ KALMASIN.
+            // Adım 2: Eğer admin bilgisi bulunamazsa, hata ver ve işlemi durdur.
             if (!admin) {
                 alert('Bir hata oluştu: Usta bilgileri bulunamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
                 return; 
@@ -741,25 +740,31 @@
         }
 
         async function setupPeerConnection(isInitiator) {
-            peerConnection = new RTCPeerConnection(rtcConfig);
-            
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-            
-            peerConnection.ontrack = event => {
-                document.getElementById('remoteAudio').srcObject = event.streams[0];
-            };
-            
-            peerConnection.onicecandidate = event => {
-                if (event.candidate) {
-                    socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: lastCallInfo.adminId }));
+            try {
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
+                peerConnection.ontrack = event => {
+                    document.getElementById('remoteAudio').srcObject = event.streams[0];
+                };
+                
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: lastCallInfo.adminId }));
+                    }
+                };
+                
+                if (isInitiator) {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    socket.send(JSON.stringify({ type: 'offer', offer, targetId: lastCallInfo.adminId }));
                 }
-            };
-            
-            if (isInitiator) {
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.send(JSON.stringify({ type: 'offer', offer, targetId: lastCallInfo.adminId }));
+            } catch (err) {
+                console.error("PeerConnection veya mikrofon hatası:", err);
+                alert("Mikrofon erişimi reddedildi veya bir bağlantı hatası oluştu. Lütfen sayfa izinlerini kontrol edip tekrar deneyin.");
+                endCall(); // Aramayı hemen sonlandır
             }
         }
 
@@ -786,11 +791,14 @@
 
         function startCallTimer() {
             callDuration = 0;
+            const timerEl = document.getElementById('callTimer');
+            if(!timerEl) return;
+
             callTimer = setInterval(() => {
                 callDuration++;
                 const minutes = Math.floor(callDuration / 60).toString().padStart(2, '0');
                 const seconds = (callDuration % 60).toString().padStart(2, '0');
-                document.getElementById('callTimer').textContent = `${minutes}:${seconds}`;
+                timerEl.textContent = `${minutes}:${seconds}`;
             }, 1000);
         }
 
@@ -804,9 +812,8 @@
         }
 
         function endCall() {
-            // "İptal Et" butonuna basıldığında arama henüz başlamadığı için targetId'yi lastCallInfo'dan almalıyız.
             const target = lastCallInfo.adminId;
-            if (target) {
+            if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'end-call', targetId: target, userId: userInfo.id }));
             }
             cleanupCall();
