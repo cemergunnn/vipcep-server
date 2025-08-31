@@ -1477,7 +1477,15 @@
             console.log('📞 Görüşme sonlandırılıyor:', currentCall.userName);
             const duration = callDuration;
             if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'end-call', userId: adminUniqueId || currentAdmin.username, targetId: currentCall.userId, duration: duration, userType: 'admin', endedBy: 'admin' }));
+                socket.send(JSON.stringify({ 
+                    type: 'end-call', 
+                    userId: adminUniqueId, 
+                    targetId: currentCall.userId, 
+                    duration: duration, 
+                    userType: 'admin', 
+                    endedBy: 'admin', 
+                    reason: 'normal' 
+                }));
             }
             cleanupCall();
             resetCallState();
@@ -1932,4 +1940,3 @@
     </script>
 </body>
 </html>
-
