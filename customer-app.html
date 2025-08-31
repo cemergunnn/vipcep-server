@@ -951,16 +951,15 @@
             playSound(endedSound);
 
             cleanupCall();
+            setState('idle');
             
-            const isReviewable = message.endedBy === 'customer' && !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
+            const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
             if (isReviewable) {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
             } else {
-                showNotification(message.reason || "Arama sonlandırıldı.", "info");
-                // Değerlendirme yoksa arayüzü sıfırla
-                setState('idle');
+                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
             }
         }
 
@@ -1068,7 +1067,6 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // Temizleme işlemini sunucuya mesaj göndermeden önce yap
             cleanupCall();
 
             if (target && socket && socket.readyState === WebSocket.OPEN) {
@@ -1079,7 +1077,6 @@
                     reason: reason 
                 }));
             } else {
-                // Eğer sunucuya bağlantı yoksa, yerel olarak temizle
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
@@ -1113,8 +1110,6 @@
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
-                // Modal kapandığında ana arayüze geri dön
-                setState('idle');
             };
 
             const submitReview = async () => {
@@ -1128,11 +1123,11 @@
                 
                 const reviewData = {
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                    comment: commentInput.value, tipAmount: tipAmount, callId: callData.callId
+                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
                 };
 
                 try {
-                    await fetch(`${baseUrl}/api/admins/${callData.adminId}/review`, {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
