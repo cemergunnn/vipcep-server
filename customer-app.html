@@ -347,7 +347,15 @@
         }
         .rating-stars span:hover, .rating-stars span.active { color: var(--warning-color); }
         
-        #reviewComment { min-height: 80px; margin-top: 10px; }
+        .review-input-group {
+            position: relative;
+        }
+
+        #reviewComment { 
+            min-height: 80px; 
+            margin-top: 10px; 
+            resize: vertical;
+        }
         #tipAmount { width: 100%; text-align: center; margin: 10px auto; }
 
         .error-message {
@@ -359,6 +367,30 @@
             text-align: center;
             margin-top: 15px;
             border-left: 4px solid #ef4444;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--gray-700);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--gray-200);
+            letter-spacing: 1px;
+        }
+
+        #generateReviewBtn {
+            font-size: 12px;
+            padding: 6px 10px;
+            background: linear-gradient(135deg, #a78bfa, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 8px;
+            margin-bottom: 0;
+            width: auto;
         }
     </style>
 </head>
@@ -431,7 +463,7 @@
                 </div>
 
                 <div id="idleState">
-                    <label class="form-label" style="font-size: 16px; margin-bottom: 10px;">🎯 Müsait Ustalar</label>
+                    <div class="section-title">MÜSAİT USTALAR</div>
                     <div id="adminListContainer" class="admin-list-container">
                         <p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Müsait ustalar yükleniyor...</p>
                     </div>
@@ -770,9 +802,11 @@
 
         async function handleWebRTCMessage(message) {
             try {
-                if (!peerConnection) await setupPeerConnection(false);
-
-                if (message.offer) {
+                if (!peerConnection && message.type !== 'offer') {
+                    return;
+                }
+                if(message.type === 'offer') {
+                    await setupPeerConnection(false);
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
@@ -780,11 +814,16 @@
                         socket.send(JSON.stringify({ type: 'answer', answer, targetId: message.userId }));
                     }
                 } else if (message.answer) {
+                    if (peerConnection.signalingState !== "have-local-offer") {
+                        return;
+                    }
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
                     setState('connected');
                     startCallTimer();
                 } else if (message.candidate) {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    if (peerConnection.remoteDescription) {
+                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                    }
                 }
             } catch (e) {
                 console.error("WebRTC Mesaj Hatası:", e);
@@ -827,7 +866,6 @@
         }
 
         function showReviewModal(callData) {
-            // YENİ: Dinamik butonlu modal HTML'i
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
@@ -838,7 +876,10 @@
                         <div class="rating-stars" id="ratingStars">
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
-                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                        <div class="review-input-group">
+                            <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                            <button id="generateReviewBtn">✨ Yorum Oluştur</button>
+                        </div>
                         <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
                         <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
@@ -851,45 +892,14 @@
             const commentInput = document.getElementById('reviewComment');
             const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
+            const generateBtn = document.getElementById('generateReviewBtn');
             
-            // YENİ: Buton durumunu güncelleyen fonksiyon
-            const updateReviewButtonState = () => {
-                const hasRating = currentRating > 0;
-                const hasComment = commentInput.value.trim() !== '';
-                const hasTip = (parseInt(tipInput.value) || 0) > 0;
-
-                if (hasRating || hasComment || hasTip) {
-                    actionBtn.textContent = 'Gönder';
-                    actionBtn.style.background = ''; // Orijinal btn-login stilini kullan
-                    actionBtn.onclick = submitReview;
-                } else {
-                    actionBtn.textContent = 'Çıkış Yap';
-                    actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.onclick = closeReviewModal;
-                }
-            };
-            
-            // YENİ: Etkileşim dinleyicileri
-            stars.forEach(star => {
-                star.addEventListener('click', () => {
-                    currentRating = star.dataset.value;
-                    stars.forEach(s => {
-                        s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
-                        s.classList.toggle('active', s.dataset.value <= currentRating);
-                    });
-                    updateReviewButtonState();
-                });
-            });
-            commentInput.addEventListener('input', updateReviewButtonState);
-            tipInput.addEventListener('input', updateReviewButtonState);
-            
-            // YENİ: Modal kapatma ve gönderme fonksiyonları
-            window.closeReviewModal = () => {
+            const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
             };
 
-            window.submitReview = async () => {
+            const submitReview = async () => {
                 actionBtn.disabled = true;
                 const tipAmount = parseInt(tipInput.value) || 0;
                 if (tipAmount > userInfo.credits) {
@@ -916,7 +926,82 @@
                 }
             };
 
-            // İlk durumu ayarla
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasComment = commentInput.value.trim() !== '';
+                const hasTip = (parseInt(tipInput.value) || 0) > 0;
+
+                if (hasRating || hasComment || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = '';
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
+            
+            stars.forEach(star => {
+                star.addEventListener('click', (e) => {
+                    currentRating = e.target.dataset.value;
+                    stars.forEach(s => {
+                        s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
+                        s.classList.toggle('active', s.dataset.value <= currentRating);
+                    });
+                    updateReviewButtonState();
+                });
+            });
+            commentInput.addEventListener('input', updateReviewButtonState);
+            tipInput.addEventListener('input', updateReviewButtonState);
+
+            generateBtn.onclick = async () => {
+                if (currentRating === 0) {
+                    alert("Yorum oluşturmak için lütfen önce yıldıza tıklayarak puan verin.");
+                    return;
+                }
+                generateBtn.disabled = true;
+                generateBtn.textContent = "Oluşturuluyor...";
+
+                const sentiment = currentRating >= 4 ? "olumlu" : currentRating <= 2 ? "olumsuz" : "nötr";
+                const prompt = `Bir teknik servis hizmeti için verilen ${currentRating} yıldızlık puana uygun, kısa ve ${sentiment} bir müşteri yorumu yaz. Yorum Türkçe olsun.`;
+
+                try {
+                    const apiKey = ""; // API anahtarını boş bırakın
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                    
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (generatedText) {
+                        commentInput.value = generatedText.trim().replace(/^"|"$/g, ''); // Tırnak işaretlerini temizle
+                        updateReviewButtonState();
+                    } else {
+                        throw new Error("API'den geçerli bir metin alınamadı.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API hatası:", error);
+                    alert("Yorum oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+                } finally {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = "✨ Yorum Oluştur";
+                }
+            };
+            
             updateReviewButtonState();
         }
 
