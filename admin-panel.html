@@ -665,7 +665,7 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #64748b, #475569);
+            background: linear-gradient(135deg, #64748b, #4b5563);
             color: white;
             box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
         }
@@ -795,12 +795,38 @@
             font-weight: 600;
             color: #16a34a;
         }
+        
+        .review-summary {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #3b82f6;
+            font-style: italic;
+        }
 
         .no-reviews {
             text-align: center;
             padding: 40px;
             color: #64748b;
             font-style: italic;
+        }
+        
+        .sentiment-badge {
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 12px;
+            color: white;
+            display: inline-block;
+        }
+
+        .sentiment-badge.olumlu {
+            background-color: #22c55e;
+        }
+        .sentiment-badge.olumsuz {
+            background-color: #ef4444;
+        }
+        .sentiment-badge.notr {
+            background-color: #6b7280;
         }
 
 
@@ -934,7 +960,7 @@
                 </div>
             </div>
 
-            <div class="panel users-panel hidden">
+            <div class="panel users-panel">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
@@ -1869,9 +1895,11 @@
                     <div class="review-item">
                         <div class="review-header">
                             <span class="review-author">${review.customer_name || `Kullanıcı #${review.customer_id}`}</span>
+                            <span class="sentiment-badge ${review.sentiment ? review.sentiment.toLowerCase() : 'notr'}">${review.sentiment || 'Nötr'}</span>
                             <span class="star-rating">${generateStars(review.rating)}</span>
                         </div>
                         <p class="review-comment">${review.comment || '<i>Yorum bırakılmadı.</i>'}</p>
+                        ${review.summary ? `<p class="review-summary"><strong>Özet:</strong> ${review.summary}</p>` : ''}
                         ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} kredi destek gönderdi!</div>` : ''}
                         <div class="review-date">${new Date(review.created_at).toLocaleString('tr-TR')}</div>
                     </div>
