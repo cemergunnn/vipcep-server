@@ -945,21 +945,19 @@
         }
         
         function handleCallEnded(message, rejected = false) {
-            if (callState === 'idle') return; // Çağrı zaten bittiyse tekrar işlem yapma
-
             stopAllSounds();
             playSound(endedSound);
 
             cleanupCall();
             setState('idle');
-            
+
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
             if (isReviewable) {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
             } else {
-                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                showNotification(message.reason || "Arama sonlandırıldı.", "info");
             }
         }
 
@@ -1067,19 +1065,31 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            cleanupCall();
-
-            if (target && socket && socket.readyState === WebSocket.OPEN) {
+            // Eğer görüşme aktifse, sonlandırma mesajını gönder
+            if (callState === 'connected' && target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
                     targetId: target, 
                     userId: userInfo.id, 
                     reason: reason 
                 }));
+            } else if (callState === 'connecting' && isCancel) {
+                 if (target && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ 
+                        type: 'end-call', 
+                        targetId: target, 
+                        userId: userInfo.id, 
+                        reason: reason 
+                    }));
+                }
             } else {
+                // Eğer bağlantı yoksa, sadece yerel olarak temizle
+                cleanupCall();
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
+             cleanupCall(); // Bağlantıyı her durumda temizle
+             setState('idle'); // Arayüzü hemen güncelle
         }
 
         function showReviewModal(callData) {
