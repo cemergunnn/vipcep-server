@@ -1689,7 +1689,7 @@ wss.on('connection', (ws, req) => {
                         }));
                         break;
                     }
-
+                    
                     targetCustomer.ws.send(JSON.stringify({
                         type: 'admin-call-request',
                         adminId: senderId,
@@ -1697,7 +1697,8 @@ wss.on('connection', (ws, req) => {
                     }));
 
                     ws.send(JSON.stringify({
-                        type: 'call-connecting'
+                        type: 'call-connecting',
+                        targetId: message.targetCustomerId
                     }));
 
                     // Geri dönüş talebini listeden kaldır
@@ -1779,7 +1780,6 @@ wss.on('connection', (ws, req) => {
                             }));
                         }
                         adminLocks.delete(adminIdForReject);
-                        console.log(`🔓 Admin ${adminIdForReject} lock removed due to rejection.`);
                         broadcastAdminListToCustomers();
                     }
                     break;
@@ -1815,6 +1815,7 @@ wss.on('connection', (ws, req) => {
                         const forwardMessage = {
                             type: message.type,
                             userId: senderId,
+                            userName: senderInfo?.name, // Add sender's name for offer/answer
                             targetId: message.targetId
                         };
 
