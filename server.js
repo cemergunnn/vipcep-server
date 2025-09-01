@@ -33,7 +33,7 @@ app.use(session({
     secret: SECURITY_CONFIG.SESSION_SECRET,
     resave: true,
     saveUninitialized: true,
-    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
+    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 1000 } // 24 hours
 }));
 
 app.use(cors());
@@ -51,7 +51,7 @@ const activeCalls = new Map();
 const adminCallbacks = new Map();
 const adminLocks = new Map();
 let currentAnnouncement = null;
-const HEARTBEAT_INTERVAL = 60000;
+const HEARTBEAT_INTERVAL = 60000; // 60 seconds
 
 // ================== HELPER FUNCTIONS ==================
 function findActiveCall(userId1, userId2) {
@@ -473,8 +473,8 @@ function startHeartbeat(userId, adminId, callKey) {
                 }
                 await pool.query(`
                     INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-                    VALUES ($1, $2, $3, $4, $5)
-                `, [userId, 'initial_call', -1, newCredits, `Arama baslangic kredisi`]);
+                    VALUES ($1, 'initial_call', -1, $3, 'Arama baslangic kredisi')
+                `, [userId, newCredits]);
                 try {
                     await pool.query(`
                         INSERT INTO admin_earnings (username, total_earned)
@@ -1689,7 +1689,7 @@ wss.on('connection', (ws, req) => {
                         }));
                         break;
                     }
-                    
+
                     targetCustomer.ws.send(JSON.stringify({
                         type: 'admin-call-request',
                         adminId: senderId,
@@ -1793,20 +1793,6 @@ wss.on('connection', (ws, req) => {
 
                     broadcastCallbacksToAdmin(senderId);
                     break;
-                case 'admin-ready-for-webrtc':
-                        console.log(`🔗 Admin ${senderId} WebRTC için hazır, customer ${message.userId} bilgilendiriliyor`);
-
-                        const readyCustomer = clients.get(message.userId);
-                        if (readyCustomer && readyCustomer.ws.readyState === WebSocket.OPEN) {
-                            readyCustomer.ws.send(JSON.stringify({
-                                type: 'admin-ready-for-webrtc',
-                                adminId: message.adminId,
-                                message: 'Admin WebRTC için hazır'
-                            }));
-                            console.log(`📡 Admin ready mesajı customer ${message.userId}'e gönderildi`);
-                        }
-                        break;
-
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
@@ -1815,7 +1801,7 @@ wss.on('connection', (ws, req) => {
                         const forwardMessage = {
                             type: message.type,
                             userId: senderId,
-                            userName: senderInfo?.name, // Add sender's name for offer/answer
+                            userName: senderInfo?.name,
                             targetId: message.targetId
                         };
 
@@ -1838,12 +1824,10 @@ wss.on('connection', (ws, req) => {
                     
                     if (!callInfoToEnd) {
                         console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
-                        // Eğer aktif arama yoksa ama bir taraf hala bağlıysa, o tarafı bilgilendir
                         const endTargetFallback = findWebRTCTarget(targetId);
                         if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
-                        // Admin'in kilitli kalmaması için kilidi kaldır
                         adminLocks.delete(senderId);
                         broadcastAdminListToCustomers();
                         return;
