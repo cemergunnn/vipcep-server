@@ -7,6 +7,14 @@ const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
 
+// Gemini API import
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const API_KEY = process.env.GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+
+
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -577,7 +585,36 @@ async function stopHeartbeat(callKey, reason = 'normal') {
             console.error('Kalan kredi alınamadı:', error);
         }
 
-        broadcastCallEnd(userId, adminId, reason, { duration, creditsUsed, remainingCredits, callId: callKey });
+        const customerClient = clients.get(userId);
+        if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
+             customerClient.ws.send(JSON.stringify({
+                type: 'call-ended',
+                reason: reason,
+                endedBy: 'system',
+                adminId: adminId, 
+                duration: duration,
+                creditsUsed: creditsUsed,
+                remainingCredits: remainingCredits,
+                callId: callKey
+            }));
+        }
+
+        const adminClient = Array.from(clients.values()).find(c =>
+            c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
+        );
+
+        if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
+            adminClient.ws.send(JSON.stringify({
+                type: 'call-ended',
+                userId: userId,
+                reason: reason,
+                endedBy: 'system',
+                duration: duration,
+                creditsUsed: creditsUsed,
+                remainingCredits: remainingCredits,
+                callId: callKey
+            }));
+        }
 
         broadcastAdminListToCustomers();
         setTimeout(() => {
@@ -995,7 +1032,7 @@ app.post('/api/approved-users', async (req, res) => {
             RETURNING *
         `, [id, name, parseInt(credits)]);
 
-        const newUser = result.rows[0];
+        const newUser = result.rows[0]);
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
@@ -1098,7 +1135,7 @@ app.post('/api/admins', async (req, res) => {
             RETURNING id, username, role
         `, [username, hashedPassword, role, totpSecret]);
 
-        const newAdmin = result.rows[0];
+        const newAdmin = result.rows[0]);
 
         const response = { success: true, admin: newAdmin };
         if (totpSecret) {
@@ -1315,7 +1352,7 @@ app.get('/api/admins/:username/profile', async (req, res) => {
             WHERE admin_username = $1
         `, [username]);
 
-        const profile = profileRes.rows[0];
+        const profile = profileRes.rows[0]);
         profile.reviews = reviewsRes.rows;
         profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
 
@@ -1391,13 +1428,53 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
              broadcastCreditUpdate(customerId, newCredits, tipAmount);
         }
 
+        // Gemini API ile yorum için duygu analizi
+        const sentimentPrompt = `
+            Analyze the sentiment of the following customer comment.
+            Respond with a single word: "Olumlu", "Olumsuz", or "Nötr".
+            Comment: "${comment}"
+        `;
+        let sentiment = "Nötr";
+        if (comment && API_KEY) {
+            try {
+                const result = await model.generateContent(sentimentPrompt);
+                sentiment = result.response.text().trim();
+                console.log(`Gemini API: Duygu analizi "${comment}" -> ${sentiment}`);
+            } catch (error) {
+                console.error("Gemini API hata:", error);
+                sentiment = "Nötr";
+            }
+        }
+
         await client.query(`
             INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
         `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId]);
 
+        // Gemini API ile çağrı özeti oluşturma (örnek)
+        const summaryPrompt = `
+            Bir müşteri yorumunu ve çağrı süresini kullanarak çağrının ana hatlarını özetle.
+            Yorum: "${comment}"
+            Süre: ${callId}
+            
+            Örnek özet: "Müşteri, ürünün kurulumuyla ilgili sorun yaşadı ve 10 dakikalık bir görüşme sonunda çözüm buldu."
+            
+            Kısa ve öz bir özet oluştur:
+        `;
+        let summary = "Çağrı özeti oluşturulamadı.";
+        if (comment && API_KEY) {
+            try {
+                const result = await model.generateContent(summaryPrompt);
+                summary = result.response.text().trim();
+                console.log(`Gemini API: Çağrı özeti -> ${summary}`);
+            } catch (error) {
+                console.error("Gemini API hata:", error);
+            }
+        }
+
+
         await client.query('COMMIT');
-        res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!' });
+        res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!', sentiment: sentiment, summary: summary });
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -1622,7 +1699,14 @@ wss.on('connection', (ws, req) => {
                         type: 'call-connecting'
                     }));
 
-                    console.log(`📡 Call request sent to admin ${targetAdmin.name}`);
+                    // Geri dönüş talebini listeden kaldır
+                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
+                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
+                    adminCallbacks.set(senderId, updatedCallbacks);
+                    broadcastCallbacksToAdmin(senderId);
+
+
+                    console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
                     break;
 
                 case 'callback-request':
