@@ -1831,30 +1831,30 @@ wss.on('connection', (ws, req) => {
 
                 case 'end-call':
                     console.log(`📞 Call ended by ${senderType} ${senderId}`);
-
+                    
                     const targetId = message.targetId;
-                    const callInfoToEnd = findActiveCall(senderId, targetId);
-
+                    const callInfoToEnd = findActiveCall(senderId, targetId) || findActiveCall(targetId, senderId);
+                    
                     if (!callInfoToEnd) {
                         console.warn(`End-call isteği geldi ama aktif arama bulunamadı: ${senderId} & ${targetId}`);
+                        // Eğer aktif arama yoksa ama bir taraf hala bağlıysa, o tarafı bilgilendir
                         const endTargetFallback = findWebRTCTarget(targetId);
                         if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
-                        // Gerekli sıfırlamaları yapalım ki "meşgul" kalmasın
+                        // Admin'in kilitli kalmaması için kilidi kaldır
                         adminLocks.delete(senderId);
                         broadcastAdminListToCustomers();
                         return;
                     }
-
+                    
                     const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
-                    const endedBy = senderType;
                     
                     await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
-
+                    
                     let remainingCredits = 0;
                     try {
                         const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [customerId]);
@@ -1872,20 +1872,20 @@ wss.on('connection', (ws, req) => {
                         duration: finalDuration,
                         creditsUsed: finalCreditsUsed,
                         remainingCredits: remainingCredits,
-                        endedBy: endedBy,
+                        endedBy: senderType,
                         reason: message.reason || 'user_ended'
                     };
-
+                    
                     const finalCustomerTarget = clients.get(customerId);
                     if(finalCustomerTarget && finalCustomerTarget.ws.readyState === WebSocket.OPEN) {
                         finalCustomerTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-
+                    
                     const finalAdminTarget = Array.from(clients.values()).find(c => c.uniqueId === adminId);
                     if(finalAdminTarget && finalAdminTarget.ws.readyState === WebSocket.OPEN) {
                         finalAdminTarget.ws.send(JSON.stringify(callEndMessage));
                     }
-
+                    
                     try {
                         await pool.query(`
                             INSERT INTO call_history (user_id, admin_id, duration, credits_used, end_reason)
