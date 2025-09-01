@@ -339,6 +339,8 @@ async function initDatabase() {
                 comment TEXT,
                 tip_amount INTEGER DEFAULT 0,
                 call_id VARCHAR(255),
+                sentiment TEXT,
+                summary TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -1340,7 +1342,8 @@ app.get('/api/admins/:username/profile', async (req, res) => {
                 rating, 
                 comment, 
                 tip_amount, 
-                created_at 
+                created_at,
+                sentiment
             FROM admin_reviews 
             WHERE admin_username = $1 
             ORDER BY created_at DESC
@@ -1447,9 +1450,9 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
         }
 
         await client.query(`
-            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId]);
+            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id, sentiment)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId, sentiment]);
 
         // Gemini API ile çağrı özeti oluşturma (örnek)
         const summaryPrompt = `
