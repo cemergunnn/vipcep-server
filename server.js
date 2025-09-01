@@ -7,14 +7,6 @@ const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
 
-// Gemini API import
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const API_KEY = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
-
-
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -339,8 +331,6 @@ async function initDatabase() {
                 comment TEXT,
                 tip_amount INTEGER DEFAULT 0,
                 call_id VARCHAR(255),
-                sentiment TEXT,
-                summary TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
@@ -587,36 +577,7 @@ async function stopHeartbeat(callKey, reason = 'normal') {
             console.error('Kalan kredi alınamadı:', error);
         }
 
-        const customerClient = clients.get(userId);
-        if (customerClient && customerClient.ws.readyState === WebSocket.OPEN) {
-             customerClient.ws.send(JSON.stringify({
-                type: 'call-ended',
-                reason: reason,
-                endedBy: 'system',
-                adminId: adminId, 
-                duration: duration,
-                creditsUsed: creditsUsed,
-                remainingCredits: remainingCredits,
-                callId: callKey
-            }));
-        }
-
-        const adminClient = Array.from(clients.values()).find(c =>
-            c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
-        );
-
-        if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
-            adminClient.ws.send(JSON.stringify({
-                type: 'call-ended',
-                userId: userId,
-                reason: reason,
-                endedBy: 'system',
-                duration: duration,
-                creditsUsed: creditsUsed,
-                remainingCredits: remainingCredits,
-                callId: callKey
-            }));
-        }
+        broadcastCallEnd(userId, adminId, reason, { duration, creditsUsed, remainingCredits, callId: callKey });
 
         broadcastAdminListToCustomers();
         setTimeout(() => {
@@ -1342,9 +1303,7 @@ app.get('/api/admins/:username/profile', async (req, res) => {
                 rating, 
                 comment, 
                 tip_amount, 
-                created_at,
-                sentiment,
-                summary
+                created_at 
             FROM admin_reviews 
             WHERE admin_username = $1 
             ORDER BY created_at DESC
@@ -1432,52 +1391,13 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
              broadcastCreditUpdate(customerId, newCredits, tipAmount);
         }
 
-        // Gemini API ile yorum için duygu analizi
-        const sentimentPrompt = `
-            Analyze the sentiment of the following customer comment.
-            Respond with a single word: "Olumlu", "Olumsuz", or "Nötr".
-            Comment: "${comment}"
-        `;
-        let sentiment = "Nötr";
-        if (comment && API_KEY) {
-            try {
-                const result = await model.generateContent(sentimentPrompt);
-                sentiment = result.response.text().trim();
-                console.log(`Gemini API: Duygu analizi "${comment}" -> ${sentiment}`);
-            } catch (error) {
-                console.error("Gemini API hata:", error);
-                sentiment = "Nötr";
-            }
-        }
-
-        const summaryPrompt = `
-            Bir müşteri yorumunu ve çağrı süresini kullanarak çağrının ana hatlarını özetle.
-            Yorum: "${comment}"
-            Süre: ${callId}
-            
-            Örnek özet: "Müşteri, ürünün kurulumuyla ilgili sorun yaşadı ve 10 dakikalık bir görüşme sonunda çözüm buldu."
-            
-            Kısa ve öz bir özet oluştur:
-        `;
-        let summary = "Çağrı özeti oluşturulamadı.";
-        if (comment && API_KEY) {
-            try {
-                const result = await model.generateContent(summaryPrompt);
-                summary = result.response.text().trim();
-                console.log(`Gemini API: Çağrı özeti -> ${summary}`);
-            } catch (error) {
-                console.error("Gemini API hata:", error);
-            }
-        }
-
-
         await client.query(`
-            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id, sentiment, summary)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId, sentiment, summary]);
+            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId]);
 
         await client.query('COMMIT');
-        res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!', sentiment: sentiment, summary: summary });
+        res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!' });
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -1702,14 +1622,7 @@ wss.on('connection', (ws, req) => {
                         type: 'call-connecting'
                     }));
 
-                    // Geri dönüş talebini listeden kaldır
-                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
-                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
-                    adminCallbacks.set(senderId, updatedCallbacks);
-                    broadcastCallbacksToAdmin(senderId);
-
-
-                    console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
+                    console.log(`📡 Call request sent to admin ${targetAdmin.name}`);
                     break;
 
                 case 'callback-request':
@@ -1788,9 +1701,9 @@ wss.on('connection', (ws, req) => {
                     }));
 
                     // Geri dönüş talebini listeden kaldır
-                    const updatedCallbacksFromCall = adminCallbacks.get(senderId) || [];
-                    const filteredCallbacksFromCall = updatedCallbacksFromCall.filter(cb => cb.customerId !== message.targetCustomerId);
-                    adminCallbacks.set(senderId, filteredCallbacksFromCall);
+                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
+                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
+                    adminCallbacks.set(senderId, updatedCallbacks);
                     broadcastCallbacksToAdmin(senderId);
 
 
@@ -1933,16 +1846,12 @@ wss.on('connection', (ws, req) => {
                         broadcastAdminListToCustomers();
                         return;
                     }
-                    
-                    const durationFromClient = message.duration;
-                    const callIdFromClient = message.callId;
 
-                    const finalDuration = durationFromClient || Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
+                    const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
                     const endedBy = senderType;
-                    const finalCallId = callIdFromClient || callInfoToEnd.callKey;
                     
                     await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
 
@@ -1964,8 +1873,7 @@ wss.on('connection', (ws, req) => {
                         creditsUsed: finalCreditsUsed,
                         remainingCredits: remainingCredits,
                         endedBy: endedBy,
-                        reason: message.reason || 'user_ended',
-                        callId: finalCallId
+                        reason: message.reason || 'user_ended'
                     };
 
                     const finalCustomerTarget = clients.get(customerId);
