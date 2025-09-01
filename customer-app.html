@@ -397,7 +397,7 @@
             transform: translateX(0);
         }
         .notification.success { border-color: var(--secondary-color); }
-        .notification.error { border-color: var(--danger-color); }
+        .notification.error { border-left-color: var(--danger-color); }
         .notification.info { border-color: var(--primary-color); }
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
@@ -919,7 +919,7 @@
 
             setState('connecting');
 
-            await setupPeerConnection(true); // Gelen aramayı kabul eden müşteri, WebRTC'de initiator (teklif gönderen) olur.
+            await setupPeerConnection(false);
         }
 
         function rejectIncomingCall() {
@@ -990,7 +990,6 @@
                 };
 
                 if (isInitiator) {
-                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1065,31 +1064,19 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // Eğer görüşme aktifse, sonlandırma mesajını gönder
-            if (callState === 'connected' && target && socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ 
+            // Eğer bağlantı varsa sunucuya bildir, yoksa sadece yerel olarak sıfırla
+            if (target && socket && socket.readyState === WebSocket.OPEN) {
+                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
                     targetId: target, 
                     userId: userInfo.id, 
                     reason: reason 
                 }));
-            } else if (callState === 'connecting' && isCancel) {
-                 if (target && socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ 
-                        type: 'end-call', 
-                        targetId: target, 
-                        userId: userInfo.id, 
-                        reason: reason 
-                    }));
-                }
-            } else {
-                // Eğer bağlantı yoksa, sadece yerel olarak temizle
-                cleanupCall();
-                setState('idle');
-                showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
-             cleanupCall(); // Bağlantıyı her durumda temizle
-             setState('idle'); // Arayüzü hemen güncelle
+            
+            // Arayüzü ve bağlantıyı hemen temizle, donma sorunu yaşanmasın
+            cleanupCall();
+            setState('idle');
         }
 
         function showReviewModal(callData) {
