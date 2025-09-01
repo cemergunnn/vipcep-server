@@ -127,10 +127,10 @@
         .main-content {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr;
-            gap: 20px;
             grid-template-areas:
                 "call-panel users-panel callback-panel"
                 "connections-panel connections-panel connections-panel";
+            gap: 20px;
         }
 
         .call-management-panel {
@@ -1382,25 +1382,26 @@
                 console.log('🗑️ Callback silindi:', customerId);
             }
         }
-        function callCustomer(customerId, customerName) {
+        async function callCustomer(customerId, customerName) {
             if (currentCall || outgoingCallInfo || callState !== 'idle') {
                 showNotification('Zaten bir aramada bulunuyorsunuz!', 'warning');
                 return;
             }
             console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
             outgoingCallInfo = { userId: customerId, userName: customerName };
-            currentCall = { userId: customerId, userName: customerName }; // Arama bilgilerini sakla
+            currentCall = { userId: customerId, userName: customerName };
             callState = 'outgoing';
+
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
             const outgoingCallEl = document.getElementById('outgoingCall');
             if (outgoingNameEl) outgoingNameEl.textContent = customerName;
             if (outgoingIdEl) outgoingIdEl.textContent = customerId;
             if (outgoingCallEl) outgoingCallEl.classList.remove('hidden');
+
             updateAdminStatus('busy');
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
-            }
+
+            await setupPeerConnection(true); // YÖNETİCİ ARAYI BAŞLATIYOR VE OFFER GÖNDERİYOR
         }
         function cancelOutgoingCall() {
             if (!outgoingCallInfo) return;
@@ -1507,13 +1508,13 @@
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
-        async function setupPeerConnection(callInfo) {
+        async function setupPeerConnection(isInitiator) {
             if (peerConnection) {
                 console.log('⚠️ PeerConnection zaten var, yeniden oluşturulmayacak');
                 return;
             }
             try {
-                console.log('🔗 WebRTC bağlantısı kuruluyor...', callInfo.userName);
+                console.log('🔗 WebRTC bağlantısı kuruluyor...', isInitiator ? 'initiator' : 'receiver');
                 updateAdminStatus('busy');
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: noiseSuppression, autoGainControl: true } });
                 localStream = stream;
@@ -1535,7 +1536,8 @@
                 };
                 peerConnection.onicecandidate = (event) => { 
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
+                        const targetId = isInitiator ? outgoingCallInfo.userId : currentCall.userId;
+                        socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: targetId }));
                         console.log('🧊 ICE candidate gönderildi');
                     }
                 };
@@ -1551,18 +1553,26 @@
                         const activeCallEl = document.getElementById('activeCall');
                         const outgoingCallEl = document.getElementById('outgoingCall');
                         const incomingCallEl = document.getElementById('incomingCall');
-                        if (activeCallerEl) activeCallerEl.textContent = callInfo.userName;
+                        if (activeCallerEl) activeCallerEl.textContent = currentCall.userName;
                         if (activeCallEl) activeCallEl.classList.remove('hidden');
                         if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
                         if (incomingCallEl) incomingCallEl.classList.add('hidden');
                         activateMediaSession();
                         startTimer();
-                        console.log('✅ Görüşme başladı:', callInfo.userName);
+                        console.log('✅ Görüşme başladı:', currentCall.userName);
                     } else if (['failed', 'disconnected'].includes(state)) {
                         console.log('❌ Bağlantı koptu');
                         handleCallEnded({ reason: 'connection_lost' });
                     }
                 };
+
+                if (isInitiator) {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'offer', offer, targetId: outgoingCallInfo.userId }));
+                    }
+                }
                 
             } catch (error) {
                 console.error('❌ WebRTC kurulum hatası:', error);
@@ -1582,8 +1592,9 @@
                     case 'offer':
                         if (!peerConnection) {
                            console.log('🔗 Offer alındı, PeerConnection kuruluyor...');
-                           await setupPeerConnection({userId: message.userId, userName: currentCall?.userName || 'Müşteri'});
+                           await setupPeerConnection(false);
                         }
+                        currentCall = { userId: message.userId, userName: message.userName || 'Müşteri'};
                         console.log('📨 Offer alındı, answer gönderiliyor...');
                         await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
                         const answer = await peerConnection.createAnswer();
