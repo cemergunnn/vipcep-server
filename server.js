@@ -1034,7 +1034,7 @@ app.post('/api/approved-users', async (req, res) => {
             RETURNING *
         `, [id, name, parseInt(credits)]);
 
-        const newUser = result.rows[0]);
+        const newUser = result.rows[0];
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
@@ -1137,7 +1137,7 @@ app.post('/api/admins', async (req, res) => {
             RETURNING id, username, role
         `, [username, hashedPassword, role, totpSecret]);
 
-        const newAdmin = result.rows[0]);
+        const newAdmin = result.rows[0];
 
         const response = { success: true, admin: newAdmin };
         if (totpSecret) {
@@ -1343,7 +1343,8 @@ app.get('/api/admins/:username/profile', async (req, res) => {
                 comment, 
                 tip_amount, 
                 created_at,
-                sentiment
+                sentiment,
+                summary
             FROM admin_reviews 
             WHERE admin_username = $1 
             ORDER BY created_at DESC
@@ -1355,7 +1356,7 @@ app.get('/api/admins/:username/profile', async (req, res) => {
             WHERE admin_username = $1
         `, [username]);
 
-        const profile = profileRes.rows[0]);
+        const profile = profileRes.rows[0];
         profile.reviews = reviewsRes.rows;
         profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
 
@@ -1449,12 +1450,6 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
             }
         }
 
-        await client.query(`
-            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id, sentiment)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId, sentiment]);
-
-        // Gemini API ile çağrı özeti oluşturma (örnek)
         const summaryPrompt = `
             Bir müşteri yorumunu ve çağrı süresini kullanarak çağrının ana hatlarını özetle.
             Yorum: "${comment}"
@@ -1475,6 +1470,11 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
             }
         }
 
+
+        await client.query(`
+            INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id, sentiment, summary)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId, sentiment, summary]);
 
         await client.query('COMMIT');
         res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!', sentiment: sentiment, summary: summary });
@@ -1933,12 +1933,16 @@ wss.on('connection', (ws, req) => {
                         broadcastAdminListToCustomers();
                         return;
                     }
+                    
+                    const durationFromClient = message.duration;
+                    const callIdFromClient = message.callId;
 
-                    const finalDuration = Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
+                    const finalDuration = durationFromClient || Math.floor((Date.now() - callInfoToEnd.startTime) / 1000);
                     const finalCreditsUsed = callInfoToEnd.creditsUsed;
                     const customerId = callInfoToEnd.customerId;
                     const adminId = callInfoToEnd.adminId;
                     const endedBy = senderType;
+                    const finalCallId = callIdFromClient || callInfoToEnd.callKey;
                     
                     await stopHeartbeat(callInfoToEnd.callKey, message.reason || 'user_ended');
 
@@ -1960,7 +1964,8 @@ wss.on('connection', (ws, req) => {
                         creditsUsed: finalCreditsUsed,
                         remainingCredits: remainingCredits,
                         endedBy: endedBy,
-                        reason: message.reason || 'user_ended'
+                        reason: message.reason || 'user_ended',
+                        callId: finalCallId
                     };
 
                     const finalCustomerTarget = clients.get(customerId);
