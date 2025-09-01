@@ -1788,9 +1788,9 @@ wss.on('connection', (ws, req) => {
                     }));
 
                     // Geri dönüş talebini listeden kaldır
-                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
-                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
-                    adminCallbacks.set(senderId, updatedCallbacks);
+                    const updatedCallbacksFromCall = adminCallbacks.get(senderId) || [];
+                    const filteredCallbacksFromCall = updatedCallbacksFromCall.filter(cb => cb.customerId !== message.targetCustomerId);
+                    adminCallbacks.set(senderId, filteredCallbacksFromCall);
                     broadcastCallbacksToAdmin(senderId);
 
 
