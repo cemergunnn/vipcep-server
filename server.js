@@ -1007,7 +1007,7 @@ app.post('/api/approved-users', async (req, res) => {
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-            VALUES ($1, 'initial', $3, $3, 'İlk kredi ataması')
+            VALUES ($1, $2, $3, $4, $5)
         `, [id, 'initial', credits, credits, 'İlk kredi ataması']);
 
         res.json({ success: true, user: newUser });
@@ -1851,7 +1851,7 @@ wss.on('connection', (ws, req) => {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
                         // Gerekli sıfırlamaları yapalım ki "meşgul" kalmasın
-                        adminLocks.delete(senderId);
+                        adminLocks.delete(targetId);
                         broadcastAdminListToCustomers();
                         return;
                     }
@@ -2091,7 +2091,7 @@ async function startServer() {
         console.log('🛡️ GÜVENLİK ÖZELLİKLERİ:');
         console.log('   ✅ Credit tracking güvenli');
         console.log('   ✅ Admin disconnect koruması');
-        console.log('   ✅ Heartbeat duplicate koruması');
+        console.glog('   ✅ Heartbeat duplicate koruması');
         console.log('   ✅ Super Admin API endpoints');
         console.log('   ✅ 2FA sistem hazır');
         console.log('');
