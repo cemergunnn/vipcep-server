@@ -457,7 +457,7 @@ function startHeartbeat(userId, adminId, callKey) {
     (async () => {
         try {
             console.log(`Initial credit deduction for ${userId}`);
-            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
                 if (currentCredits <= 0) {
@@ -501,8 +501,9 @@ function startHeartbeat(userId, adminId, callKey) {
     const heartbeat = setInterval(async () => {
         console.log(`Heartbeat tick for ${callKey}`);
         console.log(`Checking credits for user: ${userId}`);
-
+        const client = await pool.connect();
         try {
+            await client.query('BEGIN');
             const adminClient = Array.from(clients.values()).find(c =>
                 c.uniqueId === adminId &&
                 c.userType === 'admin' &&
@@ -510,36 +511,43 @@ function startHeartbeat(userId, adminId, callKey) {
             );
             if (!adminClient) {
                 console.log(`Admin ${adminId} disconnected, stopping heartbeat`);
+                await client.query('COMMIT');
                 await stopHeartbeat(callKey, 'admin_disconnected');
                 return;
             }
             const customerClient = clients.get(userId);
             if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
                 console.log(`Customer ${userId} disconnected, stopping heartbeat`);
+                await client.query('COMMIT');
                 await stopHeartbeat(callKey, 'customer_disconnected');
                 return;
             }
-
-            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+            const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
             console.log(`Query result:`, userResult.rows);
             if (userResult.rows.length > 0) {
                 const currentCredits = userResult.rows[0].credits;
                 if (currentCredits <= 0) {
+                    await client.query('COMMIT');
                     await stopHeartbeat(callKey, 'no_credits');
                     return;
                 }
-
                 const newCredits = Math.max(0, currentCredits - 1);
-                await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+                await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
                 const callInfo = activeCalls.get(callKey);
                 if(callInfo) {
                     callInfo.creditsUsed += 1;
                 }
+                await client.query('COMMIT');
                 broadcastCreditUpdate(userId, newCredits, 1);
                 console.log(`Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
+            } else {
+                await client.query('COMMIT');
             }
         } catch (error) {
+            await client.query('ROLLBACK');
             console.log(`Heartbeat error ${callKey}:`, error.message);
+        } finally {
+            client.release();
         }
     }, HEARTBEAT_INTERVAL);
 
@@ -1565,6 +1573,7 @@ wss.on('connection', (ws, req) => {
 
                 case 'direct-call-request':
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
+                    // Lock race condition çözüm: Lock kontrolü ve atama tek bir blokta
                     if (adminLocks.has(message.targetAdminId)) {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
@@ -1948,7 +1957,12 @@ wss.on('connection', (ws, req) => {
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws) {
                     clients.delete(key);
-                    console.log(`🗑️ Deleted admin client record: ${key}`);
+                    // Disconnected admin'in callbacklerini temizle
+                    if (adminCallbacks.has(key)) {
+                        adminCallbacks.delete(key);
+                        console.log(`🗑️ Disconnected admin (${key}) callbacks cleaned.`);
+                    }
+                    console.log(`🗑️ Deleted client record: ${key}`);
                     break;
                 }
             }
@@ -2043,6 +2057,18 @@ async function startServer() {
     console.log('🚀 VIPCEP Server Başlatılıyor...');
 
     await initDatabase();
+
+    // Süresi dolmuş callback'leri temizleyen periyodik görev
+    setInterval(() => {
+        const now = Date.now();
+        for (const [adminId, callbacks] of adminCallbacks.entries()) {
+            const filteredCallbacks = callbacks.filter(cb => now - cb.timestamp < 3600000); // 1 saatten eski olanları sil
+            if (filteredCallbacks.length !== callbacks.length) {
+                adminCallbacks.set(adminId, filteredCallbacks);
+                console.log(`🧹 Admin ${adminId} için ${callbacks.length - filteredCallbacks.length} eski callback temizlendi.`);
+            }
+        }
+    }, 600000); // Her 10 dakikada bir çalıştır
 
     server.listen(PORT, '0.0.0.0', () => {
         console.log('🎯 VIPCEP Server Çalışıyor!');
