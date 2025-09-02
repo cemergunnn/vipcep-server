@@ -791,11 +791,6 @@
                     showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
                     break;
                 case 'call-ended': 
-                    // Arayüz donmasını engellemek için durumun "idle" olup olmadığını kontrol et
-                    if (callState === 'idle') {
-                        console.warn("Arama zaten sonlandırılmış. Tekrarlanan 'call-ended' mesajı göz ardı ediliyor.");
-                        return;
-                    }
                     handleCallEnded(message); 
                     break;
                 case 'call-rejected': 
@@ -951,15 +946,14 @@
         }
         
         function handleCallEnded(message, rejected = false) {
-            // Arayüz donmasını engellemek için, önce cleanup ve state ayarı yap.
             stopAllSounds();
+            playSound(endedSound);
+
             cleanupCall();
             setState('idle');
 
-            // Değerlendirme modalı kontrolü, arama iptal edilmediyse veya reddedilmediyse açılır
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
-            // Modalı küçük bir gecikme ile açın.
             setTimeout(() => {
                 if (isReviewable) {
                     lastCallInfo.callId = message.callId;
@@ -1074,14 +1068,10 @@
         }
 
         function endCall(isCancel = false) {
-            // Arayüz donmasını engellemek için, önce cleanup ve state ayarı yap.
-            stopAllSounds();
-            cleanupCall();
-            setState('idle');
-
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
+            // Sadece sunucuya sonlandırma isteği gönderilir, arayüz sıfırlama işlemi sunucudan gelen onayla yapılır.
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1090,6 +1080,9 @@
                     reason: reason 
                 }));
             } else {
+                // Sunucuya bağlanılamıyorsa, yerel olarak temizlik yapılır.
+                cleanupCall();
+                setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
