@@ -642,9 +642,9 @@
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
-    <audio id="ringingSound" src="sounds/ringing.mp3" loop></audio>
-    <audio id="connectedSound" src="sounds/connected.mp3"></audio>
-    <audio id="endedSound" src="sounds/ended.mp3"></audio>
+    <audio id="ringingSound" src="ringing.mp3" loop></audio>
+    <audio id="connectedSound" src="connected.mp3"></audio>
+    <audio id="endedSound" src="ended.mp3"></audio>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
@@ -782,7 +782,7 @@
                     playSound(ringingSound);
                     break;
                 case 'call-accepted': 
-                    handleCallAccepted(message); 
+                    if (callState === 'connecting') handleCallAccepted(message); 
                     break;
                 case 'callback-success':
                     showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
@@ -794,7 +794,7 @@
                     handleCallEnded(message); 
                     break;
                 case 'call-rejected': 
-                    handleCallEnded({ reason: message.reason || 'Reddedildi' }, true); 
+                    if (callState === 'connecting' || callState === 'incoming') handleCallEnded({ reason: message.reason || 'Reddedildi' }, true); 
                     break;
                 case 'credit-update':
                     userInfo.credits = message.credits;
@@ -911,6 +911,7 @@
         }
         
         async function acceptIncomingCall() {
+            if (callState !== 'incoming') return;
             stopAllSounds();
             playSound(connectedSound);
             
@@ -919,7 +920,7 @@
 
             setState('connecting');
 
-            await setupPeerConnection(true); // Gelen aramayı kabul eden müşteri, WebRTC'de initiator (teklif gönderen) olur.
+            await setupPeerConnection(false);
         }
 
         function rejectIncomingCall() {
@@ -1083,6 +1084,11 @@
         }
 
         function showReviewModal(callData) {
+            const existingModal = document.getElementById('reviewOverlay');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
