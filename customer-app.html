@@ -397,7 +397,7 @@
             transform: translateX(0);
         }
         .notification.success { border-color: var(--secondary-color); }
-        .notification.error { border-left-color: var(--danger-color); }
+        .notification.error { border-color: var(--danger-color); }
         .notification.info { border-color: var(--primary-color); }
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
@@ -642,9 +642,9 @@
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
-    <audio id="ringingSound" src="ringing.mp3" loop></audio>
-    <audio id="connectedSound" src="connected.mp3"></audio>
-    <audio id="endedSound" src="ended.mp3"></audio>
+    <audio id="ringingSound" src="sounds/ringing.mp3" loop></audio>
+    <audio id="connectedSound" src="sounds/connected.mp3"></audio>
+    <audio id="endedSound" src="sounds/ended.mp3"></audio>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
@@ -919,7 +919,7 @@
 
             setState('connecting');
 
-            await setupPeerConnection(false);
+            await setupPeerConnection(true); // Gelen aramayı kabul eden müşteri, WebRTC'de initiator (teklif gönderen) olur.
         }
 
         function rejectIncomingCall() {
@@ -945,19 +945,21 @@
         }
         
         function handleCallEnded(message, rejected = false) {
+            if (callState === 'idle') return; // Çağrı zaten bittiyse tekrar işlem yapma
+
             stopAllSounds();
             playSound(endedSound);
 
             cleanupCall();
             setState('idle');
-
+            
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
             if (isReviewable) {
                 lastCallInfo.callId = message.callId;
                 showReviewModal(message);
             } else {
-                showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
             }
         }
 
@@ -990,6 +992,7 @@
                 };
 
                 if (isInitiator) {
+                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1064,19 +1067,19 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // Eğer bağlantı varsa sunucuya bildir, yoksa sadece yerel olarak sıfırla
+            cleanupCall();
+
             if (target && socket && socket.readyState === WebSocket.OPEN) {
-                 socket.send(JSON.stringify({ 
+                socket.send(JSON.stringify({ 
                     type: 'end-call', 
                     targetId: target, 
                     userId: userInfo.id, 
                     reason: reason 
                 }));
+            } else {
+                setState('idle');
+                showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
-            
-            // Arayüzü ve bağlantıyı hemen temizle, donma sorunu yaşanmasın
-            cleanupCall();
-            setState('idle');
         }
 
         function showReviewModal(callData) {
