@@ -791,7 +791,7 @@
                     showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
                     break;
                 case 'call-ended': 
-                    // Arayüz donmasını önlemek için durumun "idle" olup olmadığını kontrol et
+                    // Arayüz donmasını engellemek için durumun "idle" olup olmadığını kontrol et
                     if (callState === 'idle') {
                         console.warn("Arama zaten sonlandırılmış. Tekrarlanan 'call-ended' mesajı göz ardı ediliyor.");
                         return;
@@ -950,15 +950,14 @@
             setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
         }
         
-        function handleCallEnded(message) {
+        function handleCallEnded(message, rejected = false) {
             // Arayüz donmasını engellemek için, önce cleanup ve state ayarı yap.
             stopAllSounds();
-            playSound(endedSound);
-
             cleanupCall();
             setState('idle');
 
-            const isReviewable = !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
+            // Değerlendirme modalı kontrolü, arama iptal edilmediyse veya reddedilmediyse açılır
+            const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
             // Modalı küçük bir gecikme ile açın.
             setTimeout(() => {
