@@ -522,6 +522,49 @@
         }
 
     </style>
+    <style>
+        /* Yeni stiller */
+        .progress-container {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.1s linear, background 0.3s ease;
+        }
+        .tip-buttons-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .tip-button {
+            background: var(--gray-200);
+            color: var(--gray-700);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tip-button.active {
+            background: var(--warning-color);
+            color: white;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+        }
+        .tip-button:hover {
+            transform: translateY(-2px);
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -650,6 +693,7 @@
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
         const endedSound = document.getElementById('endedSound');
+        const cashSound = new Audio('cash.mp3'); 
 
         function playSound(sound) {
             stopAllSounds();
@@ -674,6 +718,9 @@
         let lastCallInfo = { adminId: null, callId: null, adminName: '', adminPic: '' };
         let availableAdmins = [];
         let pendingIceCandidates = [];
+        let selectedTipAmounts = new Set();
+        let progressBarInterval = null;
+
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -1086,12 +1133,33 @@
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
+        
+        function toggleTip(amount) {
+            const tipButton = document.getElementById(`tipBtn-${amount}`);
+            if (!tipButton) return;
+            
+            if (selectedTipAmounts.has(amount)) {
+                selectedTipAmounts.delete(amount);
+                tipButton.classList.remove('active');
+            } else {
+                if (userInfo.credits < amount) {
+                    showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} dk)`, 'warning', 3000);
+                    return;
+                }
+                selectedTipAmounts.add(amount);
+                tipButton.classList.add('active');
+                cashSound.play().catch(e => console.error('Cash sound play failed', e));
+            }
+            updateReviewButtonState();
+        }
 
         function showReviewModal(callData) {
             const existingModal = document.getElementById('reviewOverlay');
             if (existingModal) {
                 existingModal.remove();
             }
+            
+            selectedTipAmounts.clear();
 
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
@@ -1104,8 +1172,19 @@
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
-                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
+                        
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL! <small>(Kredi Bakiyeniz: ${userInfo.credits} dk)</small></label>
+                        <div class="tip-buttons-container">
+                            <button id="tipBtn-5" class="tip-button" onclick="toggleTip(5)">5 dk</button>
+                            <button id="tipBtn-10" class="tip-button" onclick="toggleTip(10)">10 dk</button>
+                            <button id="tipBtn-25" class="tip-button" onclick="toggleTip(25)">25 dk</button>
+                        </div>
+                        
+                        <div class="progress-container hidden" id="reviewProgressContainer">
+                            <div class="progress-bar" id="reviewProgressBar"></div>
+                        </div>
+                        
+                        <div id="reviewStatus" style="margin-top:15px;"></div>
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
@@ -1114,9 +1193,11 @@
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
-            const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
-            
+            const reviewProgressContainer = document.getElementById('reviewProgressContainer');
+            const reviewProgressBar = document.getElementById('reviewProgressBar');
+            const reviewStatus = document.getElementById('reviewStatus');
+
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
@@ -1124,35 +1205,56 @@
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
-                const tipAmount = parseInt(tipInput.value) || 0;
-                if (tipAmount > userInfo.credits) {
-                    alert("Bahşiş için yeterli krediniz yok!");
-                    actionBtn.disabled = false;
-                    return;
-                }
+                reviewProgressContainer.classList.remove('hidden');
+                reviewProgressBar.style.width = '0';
+                reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
                 
+                let progress = 0;
+                progressBarInterval = setInterval(() => {
+                    progress += 10; // 10 saniyede dolması için
+                    reviewProgressBar.style.width = `${progress}%`;
+                    if(progress >= 100) clearInterval(progressBarInterval);
+                }, 1000);
+                
+                const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
+
                 const reviewData = {
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
+                    comment: commentInput.value, tipAmount: totalTipAmount, callId: lastCallInfo.callId
                 };
-
+                
                 try {
-                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    const response = await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
                     });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        clearInterval(progressBarInterval);
+                        reviewProgressBar.style.width = '100%';
+                        reviewProgressBar.style.background = 'linear-gradient(135deg, var(--secondary-color), #22c55e)';
+                        reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
+                        setTimeout(closeReviewModal, 2000);
+                    } else {
+                        throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
+                    }
                 } catch(e) {
+                    clearInterval(progressBarInterval);
+                    reviewProgressBar.style.width = '100%';
+                    reviewProgressBar.style.background = 'linear-gradient(135deg, var(--danger-color), #dc2626)';
+                    reviewStatus.innerHTML = `<div class="error-message">Hata: ${e.message}</div>`;
                     console.error("Review submission failed", e);
-                } finally {
-                    closeReviewModal();
+                    actionBtn.disabled = false;
                 }
             };
 
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasComment = commentInput.value.trim() !== '';
-                const hasTip = (parseInt(tipInput.value) || 0) > 0;
+                const hasTip = selectedTipAmounts.size > 0;
 
                 if (hasRating || hasComment || hasTip) {
                     actionBtn.textContent = 'Gönder';
@@ -1176,7 +1278,6 @@
                 });
             });
             commentInput.addEventListener('input', updateReviewButtonState);
-            tipInput.addEventListener('input', updateReviewButtonState);
             
             updateReviewButtonState();
         }
