@@ -1106,7 +1106,6 @@
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
                         <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
-                        <div id="reviewStatus" style="margin-top:15px;"></div>
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
@@ -1117,7 +1116,6 @@
             const commentInput = document.getElementById('reviewComment');
             const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
-            const reviewStatus = document.getElementById('reviewStatus');
             
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
@@ -1126,13 +1124,10 @@
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
-                reviewStatus.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; gap:8px;"><div class="loader"></div><span>Gönderiliyor...</span></div>`;
-                
                 const tipAmount = parseInt(tipInput.value) || 0;
                 if (tipAmount > userInfo.credits) {
                     alert("Bahşiş için yeterli krediniz yok!");
                     actionBtn.disabled = false;
-                    reviewStatus.innerHTML = '';
                     return;
                 }
                 
@@ -1142,24 +1137,15 @@
                 };
 
                 try {
-                    const response = await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
                     });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success) {
-                        reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
-                        setTimeout(closeReviewModal, 2000);
-                    } else {
-                        throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
-                    }
                 } catch(e) {
-                    reviewStatus.innerHTML = `<div class="error-message">Hata: ${e.message}</div>`;
                     console.error("Review submission failed", e);
-                    actionBtn.disabled = false;
+                } finally {
+                    closeReviewModal();
                 }
             };
 
