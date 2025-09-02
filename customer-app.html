@@ -946,24 +946,28 @@
         }
         
         function handleCallEnded(message, rejected = false) {
-            if (callState === 'idle') return; // Çağrı zaten bittiyse tekrar işlem yapma
+            if (callState === 'idle') return;
 
+            // 1. Önce sesi çalmayı başlatın.
             stopAllSounds();
             playSound(endedSound);
 
+            // 2. Çağrı temizleme işlemlerini yapın.
             cleanupCall();
             setState('idle');
-            
+
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
-            if (isReviewable) {
-                lastCallInfo.callId = message.callId;
-                showReviewModal(message);
-            } else {
-                 showNotification(message.reason || "Arama sonlandırıldı.", "info");
-            }
+            // 3. Modalı küçük bir gecikme ile açın.
+            setTimeout(() => {
+                if (isReviewable) {
+                    lastCallInfo.callId = message.callId;
+                    showReviewModal(message);
+                } else {
+                    showNotification(message.reason || "Arama sonlandırıldı.", "info");
+                }
+            }, 500); // 500ms gecikme ekledik, bu süre ihtiyaca göre ayarlanabilir
         }
-
         async function setupPeerConnection(isInitiator) {
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
@@ -1254,3 +1258,4 @@
     </script>
 </body>
 </html>
+
