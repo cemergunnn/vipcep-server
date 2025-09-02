@@ -1109,50 +1109,9 @@
                 artist: 'Aktif Çağrı Yönetimi',
                 album: 'Sistem'
             });
-            navigator.mediaSession.setActionHandler('play', handleMediaAction);
-            navigator.mediaSession.setActionHandler('pause', handleMediaAction); 
-            navigator.mediaSession.setActionHandler('stop', handleMediaAction);
+
         }
-        function handleMediaAction(details) {
-            console.log(`🎧 Medya tuşu algılandı: ${details.action} | Mevcut Durum: ${callState}`);
-            switch (callState) {
-                case 'incoming':
-                    console.log("🎧 Kulaklık tuşu ile arama KABUL EDİLİYOR...");
-                    acceptIncomingCall();
-                    break;
-                case 'connected':
-                    if (details.action === 'pause' || details.action === 'stop') {
-                        console.log("🎧 Kulaklık tuşu ile görüşme SONLANDIRILIYOR...");
-                        endCall();
-                    }
-                    break;
-                default:
-                    console.log('🎧 Kontrol edilecek aktif bir arama yok.');
-                    break;
-            }
-        }
-        function activateMediaSession() {
-            if (!('mediaSession' in navigator)) return;
-            if (!isMediaAudioUnlocked) {
-                console.warn("🎧 Medya oturumu aktif edilemedi. Önce kullanıcı etkileşimi gerekli.");
-                return;
-            }
-            const mediaAudio = document.getElementById('mediaSessionAudio');
-            try {
-                mediaAudio.play();
-                navigator.mediaSession.playbackState = 'playing';
-                console.log("🎧 Medya oturumu AKTİF edildi (state: playing).");
-            } catch (error) {
-                console.error("Sessiz ses oynatılamadı:", error);
-            }
-        }
-        function deactivateMediaSession() {
-            if (!('mediaSession' in navigator)) return;
-            const mediaAudio = document.getElementById('mediaSessionAudio');
-            mediaAudio.pause();
-            navigator.mediaSession.playbackState = 'paused';
-            console.log("🎧 Medya oturumu PASİF edildi (state: paused).");
-        }
+        
         async function checkAuthStatus() {
             try {
                 console.log('🔐 Oturum kontrol ediliyor...');
@@ -1948,3 +1907,4 @@
     </script>
 </body>
 </html>
+
