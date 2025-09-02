@@ -1315,8 +1315,15 @@
                     console.log('📱 Gelen arama UI gösterildi, kullanıcı kararını bekliyor');
                     break;
                 case 'call-connecting': handleCallConnecting(message); break;
-                case 'call-accepted': handleCallAccepted(message); break;
-                case 'call-rejected': handleCallRejected(message); break;
+                case 'call-accepted': 
+                    if(callState === 'outgoing') handleCallAccepted(message);
+                    else console.log('⚠️ Call-accepted mesajı beklenmeyen bir durumda geldi.');
+                    break;
+                case 'call-rejected': 
+                    // Yalnızca arama devam ediyorsa veya bekleniyorsa işlem yap
+                    if(callState === 'outgoing' || callState === 'incoming') handleCallRejected(message);
+                    else console.log('⚠️ Call-rejected mesajı beklenmeyen bir durumda geldi.');
+                    break;
                 case 'call-failed': 
                     showNotification(message.reason || 'Arama başarısız oldu!', 'error');
                     resetCallState();
