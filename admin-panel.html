@@ -303,9 +303,11 @@
         @keyframes callPulse {
             0%, 100% {
                 transform: scale(1);
+                opacity: 1;
             }
             50% {
-                transform: scale(1.02);
+                transform: scale(1.1);
+                opacity: 0.8;
             }
         }
 
@@ -1096,21 +1098,12 @@
                 }
             });
         }
-        function setupMediaSessionControls() {
-            if (!('mediaSession' in navigator)) {
-                console.warn("MediaSession API desteklenmiyor. Kulaklık tuşları çalışmayacaktır.");
-                return;
-            }
-            console.log("🎧 Media Session kontrolleri ayarlanıyor...");
-            const mediaAudio = document.getElementById('mediaSessionAudio');
-            mediaAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'VIPCEP Admin Panel',
-                artist: 'Aktif Çağrı Yönetimi',
-                album: 'Sistem'
-            });
 
-        }
+        // Kulaklık tuşu özelliğini destekleyen fonksiyonlar kaldırıldı.
+        // function setupMediaSessionControls() { ... }
+        // function handleMediaAction(details) { ... }
+        // function activateMediaSession() { ... }
+        // function deactivateMediaSession() { ... }
         
         async function checkAuthStatus() {
             try {
@@ -1138,7 +1131,8 @@
             updateAdminStatus('available');
             connectToServer();
             loadMyEarnings(); 
-            setupMediaSessionControls();
+            // Kulaklık tuşu özelliğini destekleyen fonksiyonlar kaldırıldığı için bu satır da kaldırıldı.
+            // setupMediaSessionControls();
         }
         async function performLogout() {
             if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) return;
@@ -1270,7 +1264,8 @@
                     if (incomingCallEl) incomingCallEl.classList.remove('hidden');
                     updateAdminStatus('busy');
                     playRingTone();
-                    activateMediaSession();
+                    // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
+                    // activateMediaSession();
                     console.log('📱 Gelen arama UI gösterildi, kullanıcı kararını bekliyor');
                     break;
                 case 'call-connecting': handleCallConnecting(message); break;
@@ -1458,10 +1453,9 @@
             resetCallState();
         }
         function resetCallState() {
-            ['outgoingCall', 'incomingCall', 'activeCall'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.classList.add('hidden');
-            });
+            const callCards = document.querySelectorAll('.call-status-card');
+            callCards.forEach(card => card.classList.add('hidden'));
+
             const tempCard = document.getElementById('tempConnectingCard');
             if (tempCard) tempCard.remove();
 
@@ -1469,7 +1463,8 @@
             outgoingCallInfo = null;
             incomingCallInfo = null;
             callState = 'idle';
-            deactivateMediaSession();
+            // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
+            // deactivateMediaSession();
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
@@ -1521,7 +1516,8 @@
                         if (activeCallEl) activeCallEl.classList.remove('hidden');
                         if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
                         if (incomingCallEl) incomingCallEl.classList.add('hidden');
-                        activateMediaSession();
+                        // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
+                        // activateMediaSession();
                         startTimer();
                         console.log('✅ Görüşme başladı:', callInfo.userName);
                     } else if (['failed', 'disconnected'].includes(state)) {
@@ -1599,7 +1595,8 @@
         }
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
-            deactivateMediaSession();
+            // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
+            // deactivateMediaSession();
             if (callTimer) { clearInterval(callTimer); callTimer = null; }
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { 
@@ -1907,4 +1904,3 @@
     </script>
 </body>
 </html>
-
