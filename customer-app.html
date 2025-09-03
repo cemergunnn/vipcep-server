@@ -1237,22 +1237,14 @@
                     <div class="modal-content">
                         <h3>Görüşmeyi Değerlendir</h3>
                         <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} Kredi</p>
-                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} Kredi</strong></p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
                         <div class="rating-stars" id="ratingStars">
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL! <small>(Kredi Bakiyeniz: ${userInfo.credits} Kredi)</small></label>
-                        <div class="tip-buttons-container">
-                            <button id="tipBtn-5" class="tip-button" onclick="toggleTip(5)">5 Kredi</button>
-                            <button id="tipBtn-10" class="tip-button" onclick="toggleTip(10)">10 Kredi</button>
-                            <button id="tipBtn-25" class="tip-button" onclick="toggleTip(25)">25 Kredi</button>
-                        </div>
-                        <div class="progress-container hidden" id="reviewProgressContainer">
-                            <div class="progress-bar" id="reviewProgressBar"></div>
-                        </div>
-                        <div id="reviewStatus" style="margin-top:15px;"></div>
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
@@ -1261,73 +1253,53 @@
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
+            const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
-            const reviewProgressContainer = document.getElementById('reviewProgressContainer');
-            const reviewProgressBar = document.getElementById('reviewProgressBar');
-            const reviewStatus = document.getElementById('reviewStatus');
-            const cashSound = new Audio('cash.mp3');
-            const tipButtons = document.querySelectorAll('.tip-button');
             
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
-                playSound(endedSound);
             };
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
-                reviewProgressContainer.classList.remove('hidden');
-                reviewProgressBar.style.width = '0%';
-                reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
-                reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
-
-                const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
-
+                const tipAmount = parseInt(tipInput.value) || 0;
+                if (tipAmount > userInfo.credits) {
+                    alert("Bahşiş için yeterli krediniz yok!");
+                    actionBtn.disabled = false;
+                    return;
+                }
+                
                 const reviewData = {
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                    comment: commentInput.value, tipAmount: totalTipAmount, callId: lastCallInfo.callId
+                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
                 };
-                
+
                 try {
-                    const response = await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
                     });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success) {
-                        reviewProgressBar.style.width = '100%';
-                        reviewProgressBar.style.background = 'linear-gradient(135deg, var(--secondary-color), #22c55e)';
-                        reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
-                        setTimeout(closeReviewModal, 2000);
-                    } else {
-                        throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
-                    }
                 } catch(e) {
-                    reviewProgressBar.style.width = '100%';
-                    reviewProgressBar.style.background = 'linear-gradient(135deg, var(--danger-color), #dc2626)';
-                    reviewStatus.innerHTML = `<div class="error-message">Hata: ${e.message}</div>`;
                     console.error("Review submission failed", e);
-                    actionBtn.disabled = false;
+                } finally {
+                    closeReviewModal();
                 }
             };
 
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasComment = commentInput.value.trim() !== '';
-                const hasTip = selectedTipAmounts.size > 0;
+                const hasTip = (parseInt(tipInput.value) || 0) > 0;
 
                 if (hasRating || hasComment || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
-                    actionBtn.disabled = false;
                     actionBtn.onclick = submitReview;
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.disabled = false;
                     actionBtn.onclick = closeReviewModal;
                 }
             };
@@ -1343,27 +1315,9 @@
                 });
             });
             commentInput.addEventListener('input', updateReviewButtonState);
+            tipInput.addEventListener('input', updateReviewButtonState);
             
             updateReviewButtonState();
-
-            tipButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const amount = parseInt(button.dataset.amount);
-                    if (selectedTipAmounts.has(amount)) {
-                        selectedTipAmounts.delete(amount);
-                        button.classList.remove('active');
-                    } else {
-                        if (userInfo.credits < amount) {
-                            showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} Kredi)`, 'warning', 3000);
-                            return;
-                        }
-                        selectedTipAmounts.add(amount);
-                        button.classList.add('active');
-                        cashSound.play().catch(e => console.error('Cash sound play failed', e));
-                    }
-                    updateReviewButtonState();
-                });
-            });
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
@@ -1386,35 +1340,6 @@
                     if(notif.parentNode) container.removeChild(notif);
                 }, 500);
             }, duration);
-        }
-
-        function showAnnouncement(announcement) {
-            const banner = document.getElementById('announcementBanner');
-            const textEl = document.getElementById('announcementBannerText');
-
-            if (announcement && banner && textEl) {
-                let processedText = announcement.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:white; text-decoration:underline;">$1</a>');
-                
-                textEl.innerHTML = processedText;
-                banner.classList.remove('hidden');
-                banner.classList.add('show');
-
-                if (announcement.type === 'warning') banner.style.backgroundColor = 'var(--warning-color)';
-                else if (announcement.type === 'important' || announcement.type === 'urgent') banner.style.backgroundColor = 'var(--danger-color)';
-                else banner.style.backgroundColor = 'var(--primary-color)';
-
-                notificationSound.play().catch(e => console.error("Bildirim sesi çalınamadı.", e));
-            }
-        }
-        
-        function hideAnnouncement() {
-            const banner = document.getElementById('announcementBanner');
-            if (banner) {
-                banner.classList.remove('show');
-                setTimeout(() => {
-                    banner.classList.add('hidden');
-                }, 300);
-            }
         }
 
         async function showAdminDetails(adminId) {
@@ -1440,7 +1365,7 @@
                     <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
                         <p><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
                         <p style="font-style: italic; color: #555;">"${review.comment || 'Yorum yok.'}"</p>
-                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} Kredi destek verdi!</p>` : ''}
+                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
                         <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
                     </div>
                 `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
