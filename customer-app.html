@@ -1130,7 +1130,10 @@
                     actionBtn.disabled = false;
                     return;
                 }
-                
+                // Bahşiş varsa rating'i otomatik 5 yap
+                if (tipAmount > 0) {
+                    currentRating = 5;
+                }
                 const reviewData = {
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
                     comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
@@ -1258,6 +1261,7 @@
     </script>
 </body>
 </html>
+
 
 
 
