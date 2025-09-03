@@ -52,6 +52,8 @@ const adminCallbacks = new Map();
 const adminLocks = new Map();
 let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
+const heartbeatMutex = new Map();
+const callRateLimiter = new Map();
 
 // ================== HELPER FUNCTIONS ==================
 function findActiveCall(userId1, userId2) {
@@ -433,130 +435,197 @@ async function isUserApproved(userId, userName) {
 
 // ================== HEARTBEAT FUNCTIONS ==================
 
-function startHeartbeat(userId, adminId, callKey) {
-    if (activeHeartbeats.has(callKey)) {
-        console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
-        clearInterval(activeHeartbeats.get(callKey));
-        activeHeartbeats.delete(callKey);
+async function acquireAdminLockAtomic(adminId, customerId) {
+    const lockKey = `admin_lock_${adminId}`;
+    if (adminLocks.has(lockKey)) {
+        return false;
     }
-    activeCalls.set(callKey, {
-        startTime: Date.now(),
-        creditsUsed: 0,
-        customerId: userId,
-        adminId: adminId,
-        callKey: callKey
-    });
-    let adminUsername = adminId;
-    const adminClient = Array.from(clients.values()).find(c =>
-        c.userType === 'admin' && (c.uniqueId === adminId || c.id === adminId)
-    );
-    if (adminClient && adminClient.name) {
-        adminUsername = adminClient.name;
-    }
-    console.log(`Admin earnings icin username: ${adminUsername}`);
-    (async () => {
-        try {
-            console.log(`Initial credit deduction for ${userId}`);
-            const userResult = await pool.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
-            if (userResult.rows.length > 0) {
-                const currentCredits = userResult.rows[0].credits;
-                if (currentCredits <= 0) {
-                    console.log(`No credits available for ${userId}, ending call immediately`);
-                    await stopHeartbeat(callKey, 'no_credits');
-                    return;
-                }
-                const newCredits = Math.max(0, currentCredits - 1);
-                await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-                const callInfo = activeCalls.get(callKey);
-                if(callInfo) {
-                    callInfo.creditsUsed = 1;
-                }
-                await pool.query(`
-                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-                    VALUES ($1, $2, $3, $4, $5)
-                `, [userId, 'initial_call', -1, newCredits, `Arama baslangic kredisi`]);
-                try {
-                    await pool.query(`
-                        INSERT INTO admin_earnings (username, total_earned)
-                        VALUES ($1, 1)
-                        ON CONFLICT (username)
-                        DO UPDATE SET
-                            total_earned = admin_earnings.total_earned + 1,
-                            last_updated = CURRENT_TIMESTAMP
-                    `, [adminUsername]);
-                    console.log(`Admin ${adminUsername} kazanci +1 kredi`);
-                } catch (error) {
-                    console.log(`Admin kazanc hatası: ${error.message}`);
-                }
-                broadcastCreditUpdate(userId, newCredits, 1);
-                console.log(`Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
-            }
-        } catch (error) {
-            console.log(`Initial credit deduction error ${callKey}:`, error.message);
+    const client = await pool.connect();
+    try {
+        const lockResult = await client.query(
+            'SELECT pg_try_advisory_lock($1) as locked',
+            [adminId.charCodeAt(0) * 1000 + adminId.charCodeAt(1)]
+        );
+        if (!lockResult.rows[0].locked) {
+            return false;
         }
-    })();
+        adminLocks.set(adminId, {
+            lockedBy: customerId,
+            lockTime: Date.now(),
+            pgLockId: lockResult.rows[0].locked
+        });
+        return true;
+    } finally {
+        client.release();
+    }
+}
+async function releaseAdminLock(adminId) {
+    const lock = adminLocks.get(adminId);
+    if (!lock) return;
+    const client = await pool.connect();
+    try {
+        await client.query(
+            'SELECT pg_advisory_unlock($1)',
+            [adminId.charCodeAt(0) * 1000 + adminId.charCodeAt(1)]
+        );
+    } finally {
+        client.release();
+    }
+    adminLocks.delete(adminId);
+}
 
-    console.log(`Starting heartbeat: ${callKey}`);
+async function startHeartbeat(userId, adminId, callKey) {
+    if (heartbeatMutex.has(callKey)) {
+        console.log(`⚠️ Heartbeat mutex active for ${callKey}, rejecting duplicate`);
+        return false;
+    }
+    heartbeatMutex.set(callKey, true);
 
-    const heartbeat = setInterval(async () => {
-        console.log(`Heartbeat tick for ${callKey}`);
-        console.log(`Checking credits for user: ${userId}`);
+    try {
+        if (activeHeartbeats.has(callKey)) {
+            const oldInterval = activeHeartbeats.get(callKey);
+            clearInterval(oldInterval);
+            activeHeartbeats.delete(callKey);
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        activeCalls.set(callKey, {
+            startTime: Date.now(),
+            creditsUsed: 0,
+            customerId: userId,
+            adminId: adminId,
+            callKey: callKey,
+            heartbeatStarted: true
+        });
+
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            const adminClient = Array.from(clients.values()).find(c =>
-                c.uniqueId === adminId &&
-                c.userType === 'admin' &&
-                c.ws && c.ws.readyState === WebSocket.OPEN
+            await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+
+            const userResult = await client.query(
+                'SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE',
+                [userId]
             );
-            if (!adminClient) {
-                console.log(`Admin ${adminId} disconnected, stopping heartbeat`);
-                await client.query('COMMIT');
-                await stopHeartbeat(callKey, 'admin_disconnected');
-                return;
+
+            if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
+                await client.query('ROLLBACK');
+                heartbeatMutex.delete(callKey);
+                await stopHeartbeat(callKey, 'no_credits');
+                return false;
             }
-            const customerClient = clients.get(userId);
-            if (!customerClient || customerClient.ws.readyState !== WebSocket.OPEN) {
-                console.log(`Customer ${userId} disconnected, stopping heartbeat`);
-                await client.query('COMMIT');
-                await stopHeartbeat(callKey, 'customer_disconnected');
-                return;
-            }
-            const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
-            console.log(`Query result:`, userResult.rows);
-            if (userResult.rows.length > 0) {
-                const currentCredits = userResult.rows[0].credits;
-                if (currentCredits <= 0) {
-                    await client.query('COMMIT');
-                    await stopHeartbeat(callKey, 'no_credits');
-                    return;
-                }
-                const newCredits = Math.max(0, currentCredits - 1);
-                await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-                const callInfo = activeCalls.get(callKey);
-                if(callInfo) {
-                    callInfo.creditsUsed += 1;
-                }
-                await client.query('COMMIT');
-                broadcastCreditUpdate(userId, newCredits, 1);
-                console.log(`Credit deducted: ${userId} ${currentCredits}→${newCredits} (Admin: ${adminId})`);
-            } else {
-                await client.query('COMMIT');
-            }
+
+            const currentCredits = userResult.rows[0].credits;
+            const newCredits = currentCredits - 1;
+
+            await client.query(
+                'UPDATE approved_users SET credits = $1 WHERE id = $2',
+                [newCredits, userId]
+            );
+
+            await client.query(
+                `INSERT INTO credit_transactions 
+                (user_id, transaction_type, amount, balance_after, description)
+                VALUES ($1, $2, $3, $4, $5)`,
+                [userId, 'initial_call', -1, newCredits, `Arama başlangıç - Admin: ${adminId}`]
+            );
+
+            await pool.query(`
+                INSERT INTO admin_earnings (username, total_earned)
+                VALUES ($1, 1)
+                ON CONFLICT (username)
+                DO UPDATE SET
+                    total_earned = admin_earnings.total_earned + 1,
+                    last_updated = CURRENT_TIMESTAMP
+            `, [adminId]);
+
+
+            await client.query('COMMIT');
+            broadcastCreditUpdate(userId, newCredits, 1);
+            console.log(`Initial credit deducted: ${userId} ${currentCredits}→${newCredits}`);
         } catch (error) {
             await client.query('ROLLBACK');
-            console.log(`Heartbeat error ${callKey}:`, error.message);
+            console.error(`Initial credit error for ${callKey}:`, error);
+            heartbeatMutex.delete(callKey);
+            await stopHeartbeat(callKey, 'credit_error');
+            return false;
         } finally {
             client.release();
         }
-    }, HEARTBEAT_INTERVAL);
 
-    activeHeartbeats.set(callKey, heartbeat);
-    activeCallAdmins.set(adminId, {
-        customerId: userId,
-        callStartTime: Date.now()
-    });
-    broadcastAdminListToCustomers();
+        console.log(`✅ Starting heartbeat for ${callKey}`);
+        const heartbeat = setInterval(async () => {
+            await processHeartbeatTick(callKey, userId, adminId);
+        }, HEARTBEAT_INTERVAL);
+
+        activeHeartbeats.set(callKey, heartbeat);
+        activeCallAdmins.set(adminId, {
+            customerId: userId,
+            callStartTime: Date.now()
+        });
+
+        broadcastAdminListToCustomers();
+        return true;
+    } finally {
+        heartbeatMutex.delete(callKey);
+    }
+}
+
+async function processHeartbeatTick(callKey, userId, adminId) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+
+        const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId && c.userType === 'admin');
+        const customerClient = clients.get(userId);
+
+        if (!adminClient?.ws || adminClient.ws.readyState !== WebSocket.OPEN || !customerClient?.ws || customerClient.ws.readyState !== WebSocket.OPEN) {
+            await client.query('COMMIT');
+            await stopHeartbeat(callKey, 'connection_lost');
+            return;
+        }
+
+        const userResult = await client.query(
+            'SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE',
+            [userId]
+        );
+
+        if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
+            await client.query('COMMIT');
+            await stopHeartbeat(callKey, 'no_credits');
+            return;
+        }
+
+        const newCredits = userResult.rows[0].credits - 1;
+        await client.query(
+            'UPDATE approved_users SET credits = $1 WHERE id = $2',
+            [newCredits, userId]
+        );
+
+        const callInfo = activeCalls.get(callKey);
+        if (callInfo) {
+            callInfo.creditsUsed += 1;
+        }
+
+        await client.query(`
+            INSERT INTO admin_earnings (username, total_earned)
+            VALUES ($1, 1)
+            ON CONFLICT (username)
+            DO UPDATE SET
+                total_earned = admin_earnings.total_earned + 1,
+                last_updated = CURRENT_TIMESTAMP
+        `, [adminId]);
+
+        await client.query('COMMIT');
+        broadcastCreditUpdate(userId, newCredits, 1);
+        console.log(`Credit deducted: ${userId} ${newCredits} (Admin: ${adminId})`);
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error(`Heartbeat tick error ${callKey}:`, error);
+    } finally {
+        client.release();
+    }
 }
 async function stopHeartbeat(callKey, reason = 'normal') {
     const heartbeat = activeHeartbeats.get(callKey);
@@ -568,7 +637,7 @@ async function stopHeartbeat(callKey, reason = 'normal') {
         const callInfo = activeCalls.get(callKey);
         const duration = callInfo ? Math.floor((Date.now() - callInfo.startTime) / 1000) : 0;
         const creditsUsed = callInfo ? callInfo.creditsUsed : 0;
-        adminLocks.delete(adminId);
+        releaseAdminLock(adminId);
         console.log(`🔓 Admin ${adminId} lock kaldırıldı - call bitti`);
 
         activeCallAdmins.delete(adminId);
@@ -1372,15 +1441,47 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        const existingReview = await client.query(
+            'SELECT id FROM admin_reviews WHERE call_id = $1 AND customer_id = $2',
+            [callId, customerId]
+        );
+
+        if (existingReview.rows.length > 0) {
+            await client.query('ROLLBACK');
+            return res.json({
+                success: false,
+                error: 'Bu arama için zaten değerlendirme yapılmış'
+            });
+        }
+        
         if (tipAmount && tipAmount > 0) {
+            await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
             const userRes = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [customerId]);
-            if (userRes.rows.length === 0 || userRes.rows[0].credits < tipAmount) {
+            
+            if (userRes.rows.length === 0) {
                 await client.query('ROLLBACK');
-                return res.status(400).json({ success: false, error: 'Yetersiz kredi (bahşiş için)' });
+                return res.status(400).json({ success: false, error: 'Kullanıcı bulunamadı' });
             }
 
-            const newCredits = userRes.rows[0].credits - tipAmount;
-            await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, customerId]);
+            const currentCredits = userRes.rows[0].credits;
+            if (currentCredits < tipAmount) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ success: false, error: `Yetersiz kredi. Mevcut: ${currentCredits}, İstenen: ${tipAmount}` });
+            }
+
+            const newCredits = currentCredits - tipAmount;
+            const updateResult = await client.query(
+                `UPDATE approved_users 
+                 SET credits = $1 
+                 WHERE id = $2 AND credits = $3
+                 RETURNING credits`,
+                [newCredits, customerId, currentCredits]
+            );
+
+            if (updateResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ success: false, error: 'İşlem çakışması, lütfen tekrar deneyin' });
+            }
 
             await client.query(`
                 INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
@@ -1388,15 +1489,15 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
             `, [customerId, -tipAmount, newCredits, `${adminUsername} ustasına bahşiş`]);
 
             await client.query(`
-                INSERT INTO admin_earnings (username, total_earned, last_updated)
-                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                INSERT INTO admin_earnings (username, total_earned)
+                VALUES ($1, $2)
                 ON CONFLICT (username)
                 DO UPDATE SET
                     total_earned = admin_earnings.total_earned + $2,
                     last_updated = CURRENT_TIMESTAMP
             `, [adminUsername, tipAmount]);
 
-             broadcastCreditUpdate(customerId, newCredits, tipAmount);
+            broadcastCreditUpdate(customerId, newCredits, tipAmount);
         }
 
         await client.query(`
@@ -1410,6 +1511,9 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error submitting review:', error);
+        if (error.code === '40001') {
+            return res.status(503).json({ success: false, error: 'Sistem yoğun, lütfen tekrar deneyin' });
+        }
         res.status(500).json({ success: false, error: 'Değerlendirme gönderilemedi.' });
     } finally {
         client.release();
@@ -1572,23 +1676,26 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'direct-call-request':
+                    if (!checkCallRateLimit(message.userId)) {
+                        ws.send(JSON.stringify({
+                            type: 'call-rejected',
+                            reason: 'Çok fazla arama denemesi! Lütfen biraz bekleyin.'
+                        }));
+                        break;
+                    }
                     console.log(`📞 Direct call request from ${message.userName} (${message.userId}) to admin ${message.targetAdminId}`);
-                    // Lock race condition çözüm: Lock kontrolü ve atama tek bir blokta
-                    if (adminLocks.has(message.targetAdminId)) {
+                    const lockAcquired = await acquireAdminLockAtomic(message.targetAdminId, message.userId);
+                    if (!lockAcquired) {
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Bu usta şu anda meşgul!'
                         }));
                         break;
                     }
-                    adminLocks.set(message.targetAdminId, {
-                        lockedBy: message.userId,
-                        lockTime: Date.now()
-                    });
-
                     console.log(`🔒 Admin ${message.targetAdminId} kilitlendi: ${message.userId}`);
                     broadcastAdminListToCustomers();
                     if (message.credits <= 0) {
+                        await releaseAdminLock(message.targetAdminId);
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Yetersiz kredi!'
@@ -1604,6 +1711,7 @@ wss.on('connection', (ws, req) => {
                     );
 
                     if (!targetAdmin) {
+                        await releaseAdminLock(message.targetAdminId);
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda bağlı değil!'
@@ -1612,6 +1720,7 @@ wss.on('connection', (ws, req) => {
                     }
 
                     if (activeCallAdmins.has(targetAdmin.uniqueId)) {
+                        await releaseAdminLock(message.targetAdminId);
                         ws.send(JSON.stringify({
                             type: 'call-rejected',
                             reason: 'Seçilen usta şu anda başka bir aramada!'
@@ -1698,7 +1807,7 @@ wss.on('connection', (ws, req) => {
                         }));
                         break;
                     }
-
+                    
                     targetCustomer.ws.send(JSON.stringify({
                         type: 'admin-call-request',
                         adminId: senderId,
@@ -1709,7 +1818,6 @@ wss.on('connection', (ws, req) => {
                         type: 'call-connecting'
                     }));
 
-                    // Geri dönüş talebini listeden kaldır
                     const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
                     const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
                     adminCallbacks.set(senderId, updatedCallbacks);
@@ -1746,7 +1854,7 @@ wss.on('connection', (ws, req) => {
                             type: 'call-failed',
                             reason: 'Müşteri artık çevrimiçi değil!'
                         }));
-                        adminLocks.delete(adminClient.uniqueId);
+                        releaseAdminLock(adminClient.uniqueId);
                         broadcastAdminListToCustomers();
                         break;
                     }
@@ -1787,7 +1895,7 @@ wss.on('connection', (ws, req) => {
                                 reason: 'Usta şu anda meşgul veya aramanızı reddetti.'
                             }));
                         }
-                        adminLocks.delete(adminIdForReject);
+                        releaseAdminLock(adminIdForReject);
                         console.log(`🔓 Admin ${adminIdForReject} lock removed due to rejection.`);
                         broadcastAdminListToCustomers();
                     }
@@ -1851,8 +1959,7 @@ wss.on('connection', (ws, req) => {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
                         
-                        // İptal edilen aramanın admin kilidini temizle ve durumu güncelle
-                        adminLocks.delete(targetId);
+                        releaseAdminLock(targetId);
                         broadcastAdminListToCustomers();
                         return;
                     }
@@ -1919,67 +2026,99 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-    ws.on('close', () => {
+    ws.on('close', async () => {
         const client = findClientById(ws);
-    console.log(`👋 WebSocket closed: ${client?.name || 'Unknown'} (${client?.userType || 'unknown'})`);
+        console.log(`👋 WebSocket closed: ${client?.name || 'Unknown'} (${client?.userType || 'unknown'})`);
 
-    if (client && client.userType === 'admin') {
-        const adminKey = client.uniqueId || client.id;
-        console.log(`🔴 Admin ${adminKey} WebSocket closed`);
+        if (client && client.userType === 'admin') {
+            const adminKey = client.uniqueId || client.id;
+            console.log(`🔴 Admin ${adminKey} WebSocket closed`);
 
-        const adminCallInfo = activeCallAdmins.get(adminKey);
+            const adminCallInfo = activeCallAdmins.get(adminKey);
 
-        if (adminCallInfo) {
-            console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
-            for (const [key, clientData] of clients.entries()) {
-                if (clientData.ws === ws && clientData.userType === 'admin') {
-                    clientData.ws = null;
-                    clientData.online = false;
-                    break;
+            if (adminCallInfo) {
+                console.log(`⏳ Admin ${adminKey} in active call with ${adminCallInfo.customerId}, waiting for reconnection...`);
+                for (const [key, clientData] of clients.entries()) {
+                    if (clientData.ws === ws && clientData.userType === 'admin') {
+                        clientData.ws = null;
+                        clientData.online = false;
+                        break;
+                    }
+                }
+                const callKey = `${adminCallInfo.customerId}-${adminKey}`;
+                const callInfo = activeCalls.get(callKey);
+                const creditsUsedSoFar = callInfo ? callInfo.creditsUsed : 0;
+                
+                clients.set(`${adminKey}_disconnected`, {
+                    ...client,
+                    ws: null,
+                    disconnectedAt: Date.now(),
+                    creditsUsedBeforeDisconnect: creditsUsedSoFar
+                });
+
+                setTimeout(async () => {
+                    const reconnectedClient = Array.from(clients.values()).find(c =>
+                        c.uniqueId === adminKey &&
+                        c.userType === 'admin' &&
+                        c.ws &&
+                        c.ws.readyState === WebSocket.OPEN
+                    );
+
+                    if (!reconnectedClient) {
+                        console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
+                        const refundAmount = Math.max(0, Math.floor(creditsUsedSoFar * 0.5));
+                        if (refundAmount > 0) {
+                            const refundClient = await pool.connect();
+                            try {
+                                await refundClient.query('BEGIN');
+                                await refundClient.query('UPDATE approved_users SET credits = credits + $1 WHERE id = $2',
+                                    [refundAmount, adminCallInfo.customerId]
+                                );
+                                await refundClient.query(`
+                                    INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+                                    VALUES ($1, 'refund', $2, (SELECT credits FROM approved_users WHERE id = $1), $3)
+                                `, [adminCallInfo.customerId, refundAmount, 'Admin bağlantı kaybı - kısmi iade']);
+                                await refundClient.query('COMMIT');
+                                console.log(`💰 Refunded ${refundAmount} credits to ${adminCallInfo.customerId}`);
+                            } catch (error) {
+                                await refundClient.query('ROLLBACK');
+                                console.error('Credit refund error:', error);
+                            } finally {
+                                refundClient.release();
+                            }
+                        }
+                        await stopHeartbeat(callKey, 'admin_permanently_disconnected');
+                        activeCallAdmins.delete(adminKey);
+                        clients.delete(`${adminKey}_disconnected`);
+                    } else {
+                        console.log(`✅ Admin ${adminKey} reconnected successfully`);
+                    }
+                }, 15000);
+            } else {
+                for (const [key, clientData] of clients.entries()) {
+                    if (clientData.ws === ws) {
+                        clients.delete(key);
+                        if (adminCallbacks.has(key)) {
+                            adminCallbacks.delete(key);
+                            console.log(`🗑️ Disconnected admin (${key}) callbacks cleaned.`);
+                        }
+                        console.log(`🗑️ Deleted client record: ${key}`);
+                        break;
+                    }
                 }
             }
-
-            setTimeout(async () => {
-                const currentClient = Array.from(clients.values()).find(c =>
-                    c.uniqueId === adminKey && c.userType === 'admin'
-                );
-                if (!currentClient || !currentClient.ws || currentClient.ws.readyState !== WebSocket.OPEN) {
-                    console.log(`💔 Admin ${adminKey} failed to reconnect - ending call`);
-                    const callKey = `${adminCallInfo.customerId}-${adminKey}`;
-                    await stopHeartbeat(callKey, 'admin_permanently_disconnected');
-                    activeCallAdmins.delete(adminKey);
-                    broadcastAdminListToCustomers();
-                    clients.delete(adminKey);
-                } else {
-                    console.log(`✅ Admin ${adminKey} successfully maintained connection`);
-                }
-            }, 15000);
         } else {
             for (const [key, clientData] of clients.entries()) {
                 if (clientData.ws === ws) {
                     clients.delete(key);
-                    // Disconnected admin'in callbacklerini temizle
-                    if (adminCallbacks.has(key)) {
-                        adminCallbacks.delete(key);
-                        console.log(`🗑️ Disconnected admin (${key}) callbacks cleaned.`);
-                    }
                     console.log(`🗑️ Deleted client record: ${key}`);
                     break;
                 }
             }
         }
-    } else {
-        for (const [key, clientData] of clients.entries()) {
-            if (clientData.ws === ws) {
-                clients.delete(key);
-                console.log(`🗑️ Deleted client record: ${key}`);
-                break;
-            }
-        }
-    }
-    setTimeout(() => {
-        broadcastAdminListToCustomers();
-    }, 100);
+        setTimeout(() => {
+            broadcastAdminListToCustomers();
+        }, 100);
     });
 
     ws.on('error', (error) => {
@@ -1988,6 +2127,29 @@ wss.on('connection', (ws, req) => {
 });
 
 // ================== HELPER FUNCTIONS ==================
+
+function checkCallRateLimit(userId) {
+    const now = Date.now();
+    const userLimits = callRateLimiter.get(userId) || { lastCall: 0, callCount: 0, windowStart: now };
+
+    if (now - userLimits.lastCall < 10000) {
+        return false;
+    }
+
+    if (now - userLimits.windowStart < 60000) {
+        if (userLimits.callCount >= 3) {
+            return false;
+        }
+        userLimits.callCount++;
+    } else {
+        userLimits.windowStart = now;
+        userLimits.callCount = 1;
+    }
+
+    userLimits.lastCall = now;
+    callRateLimiter.set(userId, userLimits);
+    return true;
+}
 
 function findClientById(ws) {
     for (const client of clients.values()) {
@@ -2092,7 +2254,7 @@ async function startServer() {
         console.log('🛡️ GÜVENLİK ÖZELLİKLERİ:');
         console.log('   ✅ Credit tracking güvenli');
         console.log('   ✅ Admin disconnect koruması');
-        console.glog('   ✅ Heartbeat duplicate koruması');
+        console.log('   ✅ Heartbeat duplicate koruması');
         console.log('   ✅ Super Admin API endpoints');
         console.log('   ✅ 2FA sistem hazır');
         console.log('');
