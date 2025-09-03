@@ -1137,7 +1137,7 @@
                 };
 
                 try {
-                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
@@ -1258,5 +1258,6 @@
     </script>
 </body>
 </html>
+
 
 
