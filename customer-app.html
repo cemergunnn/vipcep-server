@@ -1259,10 +1259,30 @@
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
+            const tipButtons = document.querySelectorAll('.tip-button');
             const actionBtn = document.getElementById('reviewActionBtn');
             const reviewProgressContainer = document.getElementById('reviewProgressContainer');
             const reviewProgressBar = document.getElementById('reviewProgressBar');
             const reviewStatus = document.getElementById('reviewStatus');
+            const cashSound = new Audio('cash.mp3');
+
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasComment = commentInput.value.trim() !== '';
+                const hasTip = selectedTipAmounts.size > 0;
+
+                if (hasRating || hasComment || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = '';
+                    actionBtn.disabled = false;
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.disabled = false;
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
             
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
@@ -1276,7 +1296,7 @@
                 reviewProgressBar.style.width = '0%';
                 reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
-
+                
                 const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
 
                 const reviewData = {
@@ -1298,7 +1318,6 @@
                         reviewProgressBar.style.background = 'linear-gradient(135deg, var(--secondary-color), #22c55e)';
                         reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
                         setTimeout(closeReviewModal, 2000);
-                        playSound(endedSound);
                     } else {
                         throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
                     }
@@ -1311,24 +1330,6 @@
                 }
             };
 
-            const updateReviewButtonState = () => {
-                const hasRating = currentRating > 0;
-                const hasComment = commentInput.value.trim() !== '';
-                const hasTip = selectedTipAmounts.size > 0;
-
-                if (hasRating || hasComment || hasTip) {
-                    actionBtn.textContent = 'Gönder';
-                    actionBtn.style.background = '';
-                    actionBtn.disabled = false;
-                    actionBtn.onclick = submitReview;
-                } else {
-                    actionBtn.textContent = 'Çıkış Yap';
-                    actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.disabled = false;
-                    actionBtn.onclick = closeReviewModal;
-                }
-            };
-            
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
                     currentRating = e.target.dataset.value;
@@ -1342,6 +1343,25 @@
             commentInput.addEventListener('input', updateReviewButtonState);
             
             updateReviewButtonState();
+
+            tipButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const amount = parseInt(button.dataset.amount);
+                    if (selectedTipAmounts.has(amount)) {
+                        selectedTipAmounts.delete(amount);
+                        button.classList.remove('active');
+                    } else {
+                        if (userInfo.credits < amount) {
+                            showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} Kredi)`, 'warning', 3000);
+                            return;
+                        }
+                        selectedTipAmounts.add(amount);
+                        button.classList.add('active');
+                        cashSound.play().catch(e => console.error('Cash sound play failed', e));
+                    }
+                    updateReviewButtonState();
+                });
+            });
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
@@ -1371,7 +1391,6 @@
             const textEl = document.getElementById('announcementBannerText');
 
             if (announcement && banner && textEl) {
-                // Duyuru metnindeki URL'leri tıklanabilir hale getir
                 let processedText = announcement.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:white; text-decoration:underline;">$1</a>');
                 
                 textEl.innerHTML = processedText;
