@@ -348,42 +348,6 @@
             resize: vertical;
         }
         #tipAmount { width: 100%; text-align: center; margin: 10px auto; }
-        
-        /* Yeni Bahşiş Buton Stilleri */
-        .tip-buttons {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-            justify-content: center;
-        }
-        .tip-btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            background: var(--gray-100);
-            color: var(--gray-700);
-            border: 2px solid var(--gray-200);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            position: relative;
-            overflow: hidden;
-        }
-        .tip-btn:hover {
-            transform: translateY(-2px);
-            background: #fff;
-            border-color: var(--warning-color);
-            color: var(--warning-color);
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
-        }
-        .tip-btn.selected {
-            background: #fff;
-            border-color: var(--warning-color);
-            color: var(--warning-color);
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
-            transform: scale(1.05);
-        }
 
         .error-message {
             background: #fef2f2;
@@ -556,97 +520,6 @@
             70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(34, 197, 94, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
-        
-        .tip-section {
-            margin-top: 20px;
-            position: relative;
-        }
-        
-        .tip-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--gray-700);
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--gray-200);
-            letter-spacing: 1px;
-            display: inline-block;
-            position: relative;
-        }
-        
-        .tip-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: center;
-        }
-        
-        .tip-btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            background: var(--gray-100);
-            color: var(--gray-700);
-            border: 2px solid var(--gray-200);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .tip-btn:hover {
-            transform: translateY(-2px);
-            background: #fff;
-            border-color: var(--warning-color);
-            color: var(--warning-color);
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
-        }
-        
-        .tip-btn.selected {
-            background: #fff;
-            border-color: var(--warning-color);
-            color: var(--warning-color);
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
-            transform: scale(1.05);
-        }
-        
-        /* Coin ve Konfeti Animasyonları */
-        .coin-effect {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-        .coin-effect span {
-            position: absolute;
-            opacity: 0;
-            font-size: 16px;
-            animation: coin-drop 1s ease-in forwards;
-        }
-        .confetti-effect span {
-            position: absolute;
-            opacity: 0;
-            font-size: 10px;
-            animation: confetti-drop 1s ease-out forwards;
-            border-radius: 50%;
-            width: 8px;
-            height: 8px;
-            background: gold;
-        }
-        
-        @keyframes coin-drop {
-            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
-        }
-        @keyframes confetti-drop {
-            0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
-        }
 
     </style>
 </head>
@@ -772,44 +645,22 @@
     <audio id="ringingSound" src="ringing.mp3" loop></audio>
     <audio id="connectedSound" src="connected.mp3"></audio>
     <audio id="endedSound" src="ended.mp3"></audio>
-    <audio id="cashSound" src="cash.mp3"></audio>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
         const endedSound = document.getElementById('endedSound');
-        const cashSound = document.getElementById('cashSound');
 
         function playSound(sound) {
-            stopAllSounds(sound);
+            stopAllSounds();
             sound.currentTime = 0;
-            sound.play().catch(e => {
-                if (e.name !== 'AbortError') {
-                    console.error("Ses çalınamadı:", e);
-                }
-            });
+            sound.play().catch(e => console.error("Ses çalınamadı:", e));
         }
 
-        function playCashSound() {
-            // Yeni bir ses öğesi oluşturarak birden fazla sesin aynı anda çalmasını sağlar
-            const newCashSound = new Audio(cashSound.src);
-            newCashSound.play().catch(e => {
-                 if (e.name !== 'AbortError') {
-                    console.error("Cash sesi çalınamadı:", e);
-                }
-            });
-        }
-        
-        function stopAllSounds(exceptSound = null) {
-            if (ringingSound && ringingSound !== exceptSound) {
-                ringingSound.pause();
-            }
-            if (connectedSound && connectedSound !== exceptSound) {
-                connectedSound.pause();
-            }
-            if (endedSound && endedSound !== exceptSound) {
-                endedSound.pause();
-            }
+        function stopAllSounds() {
+            ringingSound.pause();
+            connectedSound.pause();
+            endedSound.pause();
         }
 
         let socket = null;
@@ -908,7 +759,7 @@
                         socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
                         const loginMessage = document.getElementById('loginMessage');
-                        loginMessage.innerHTML = `<div class="error-message">${message.reason || "Giriş başarısız."}</div>`;
+                        loginMessage.innerHTML = `<div class="error-message">${message.reason}</div>`;
                     }
                     break;
                 case 'admin-list-update': 
@@ -1253,26 +1104,17 @@
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                        
-                        <div class="tip-section">
-                            <div class="tip-title">USTAYA DESTEK OL</div>
-                            <div class="tip-buttons" id="tipButtons">
-                                <button class="tip-btn" data-tip="10">10 Kredi</button>
-                                <button class="tip-btn" data-tip="30">30 Kredi</button>
-                                <button class="tip-btn" data-tip="50">50 Kredi</button>
-                            </div>
-                        </div>
-
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
 
             let currentRating = 0;
-            let currentTipAmount = 0;
             const stars = document.querySelectorAll('#ratingStars span');
-            const tipButtons = document.querySelectorAll('.tip-btn');
             const commentInput = document.getElementById('reviewComment');
+            const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
             
             const closeReviewModal = () => {
@@ -1282,65 +1124,50 @@
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
-                if (currentTipAmount > userInfo.credits) {
+                const tipAmount = parseInt(tipInput.value) || 0;
+                if (tipAmount > userInfo.credits) {
                     alert("Bahşiş için yeterli krediniz yok!");
                     actionBtn.disabled = false;
                     return;
                 }
                 
                 const reviewData = {
-                    customerId: userInfo.id, 
-                    customerName: userInfo.name, 
-                    rating: currentRating,
-                    comment: commentInput.value, 
-                    tipAmount: currentTipAmount, 
-                    callId: lastCallInfo.callId
+                    customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
+                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
                 };
 
                 try {
-                    const response = await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
                     });
-                     const result = await response.json();
-                     if (result.success) {
-                         showNotification('Değerlendirmeniz için teşekkürler!', 'success');
-                         closeReviewModal();
-                     } else {
-                         showNotification(result.error || 'Değerlendirme gönderilemedi.', 'error');
-                         actionBtn.disabled = false;
-                     }
                 } catch(e) {
                     console.error("Review submission failed", e);
-                    showNotification('Değerlendirme gönderilirken bir hata oluştu.', 'error');
-                    actionBtn.disabled = false;
                 } finally {
-                    updateUserDisplay();
+                    closeReviewModal();
                 }
             };
 
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
-                const hasTip = currentTipAmount > 0;
                 const hasComment = commentInput.value.trim() !== '';
+                const hasTip = (parseInt(tipInput.value) || 0) > 0;
 
-                if (hasRating || hasTip || hasComment) {
+                if (hasRating || hasComment || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
                     actionBtn.onclick = submitReview;
-                    actionBtn.disabled = false;
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
                     actionBtn.onclick = closeReviewModal;
-                    actionBtn.disabled = false;
                 }
             };
             
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
-                    currentRating = parseInt(e.target.dataset.value);
+                    currentRating = e.target.dataset.value;
                     stars.forEach(s => {
                         s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
                         s.classList.toggle('active', s.dataset.value <= currentRating);
@@ -1348,60 +1175,8 @@
                     updateReviewButtonState();
                 });
             });
-            
-            tipButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const tipValue = parseInt(button.dataset.tip);
-                    if (button.classList.contains('selected')) {
-                        button.classList.remove('selected');
-                        currentTipAmount -= tipValue;
-                    } else {
-                        if (userInfo.credits >= (currentTipAmount + tipValue)) {
-                            button.classList.add('selected');
-                            currentTipAmount += tipValue;
-                            playCashSound();
-                        } else {
-                            showNotification('Yeterli krediniz yok!', 'error');
-                        }
-                    }
-                    updateReviewButtonState();
-                });
-
-                // Fare butona geldiğinde ve ayrıldığında animasyonları yönet
-                button.addEventListener('mouseover', (e) => {
-                    const tipValue = parseInt(e.target.dataset.tip);
-                    const effectContainer = document.createElement('div');
-                    effectContainer.className = 'coin-effect';
-                    e.target.appendChild(effectContainer);
-                    const coinCount = tipValue / 10;
-                    for(let i = 0; i < coinCount; i++){
-                        const coin = document.createElement('span');
-                        coin.textContent = '🪙';
-                        coin.style.left = `${Math.random() * 100}%`;
-                        coin.style.animationDelay = `${Math.random() * 0.5}s`;
-                        effectContainer.appendChild(coin);
-                        
-                        if(tipValue > 30) {
-                            const confetti = document.createElement('span');
-                            confetti.style.left = `${Math.random() * 100}%`;
-                            confetti.style.top = `${Math.random() * 50}%`;
-                            confetti.style.animationDelay = `${Math.random() * 0.8}s`;
-                            confetti.style.background = ['gold', 'silver', '#f59e0b'][Math.floor(Math.random() * 3)];
-                            confetti.className = 'confetti-effect';
-                            effectContainer.appendChild(confetti);
-                        }
-                    }
-                });
-                
-                button.addEventListener('mouseout', (e) => {
-                    const effectContainer = e.target.querySelector('.coin-effect');
-                    if (effectContainer) {
-                        effectContainer.remove();
-                    }
-                });
-            });
-
             commentInput.addEventListener('input', updateReviewButtonState);
+            tipInput.addEventListener('input', updateReviewButtonState);
             
             updateReviewButtonState();
         }
@@ -1483,3 +1258,4 @@
     </script>
 </body>
 </html>
+
