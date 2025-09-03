@@ -1517,10 +1517,12 @@
             console.log('🔄 Call state sıfırlandı');
         }
         async function setupPeerConnection(callInfo) {
-            if (peerConnection) {
-                console.log('⚠️ PeerConnection zaten var, yeniden oluşturulmayacak');
-                return;
+            // Sadece bağlantı durumu idle ise PeerConnection oluştur.
+            if (callState !== 'connecting' || peerConnection) {
+                 console.log('⚠️ PeerConnection zaten var veya durum uygun değil, yeniden oluşturulmayacak');
+                 return;
             }
+
             try {
                 console.log('🔗 WebRTC bağlantısı kuruluyor...', callInfo.userName);
                 updateAdminStatus('busy');
