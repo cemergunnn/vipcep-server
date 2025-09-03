@@ -329,7 +329,7 @@ async function initDatabase() {
                 admin_username VARCHAR(50) NOT NULL REFERENCES admins(username) ON DELETE CASCADE,
                 customer_id VARCHAR(10) NOT NULL,
                 customer_name VARCHAR(255),
-                rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+                rating INTEGER CHECK (rating >= 0 AND rating <= 5),
                 comment TEXT,
                 tip_amount INTEGER DEFAULT 0,
                 call_id VARCHAR(255),
@@ -1433,9 +1433,17 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
     const { adminUsername } = req.params;
     const { customerId, customerName, rating, comment, tipAmount, callId } = req.body;
 
-    if (!customerId || !rating || rating < 1 || rating > 5) {
-        return res.status(400).json({ success: false, error: 'Geçersiz veri' });
+    if (!customerId) {
+        return res.status(400).json({ success: false, error: 'Geçersiz veri: customerId eksik' });
     }
+
+    // Derecelendirme (rating) 0 ise veya yoksa, yalnızca tipAmount'a bak
+    if ((rating < 1 || rating > 5) && (!tipAmount || tipAmount <= 0)) {
+        return res.status(400).json({ success: false, error: 'Geçersiz veri: En az 1 yıldız veya bahşiş gerekli' });
+    }
+    
+    // Rating 0 olarak geliyorsa, bunu null olarak veritabanına kaydet
+    const finalRating = (rating === 0 || !rating) ? null : rating;
 
     const client = await pool.connect();
     try {
@@ -1503,7 +1511,7 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
         await client.query(`
             INSERT INTO admin_reviews (admin_username, customer_id, customer_name, rating, comment, tip_amount, call_id)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [adminUsername, customerId, customerName, rating, comment, tipAmount || 0, callId]);
+        `, [adminUsername, customerId, customerName, finalRating, comment, tipAmount || 0, callId]);
 
         await client.query('COMMIT');
         res.json({ success: true, message: 'Değerlendirmeniz için teşekkürler!' });
@@ -1514,7 +1522,7 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
         if (error.code === '40001') {
             return res.status(503).json({ success: false, error: 'Sistem yoğun, lütfen tekrar deneyin' });
         }
-        res.status(500).json({ success: false, error: 'Değerlendirme gönderilemedi.' });
+        res.status(500).json({ success: false, error: 'Değerlendirme gönderilemedi' });
     } finally {
         client.release();
     }
