@@ -325,9 +325,10 @@
             padding: 30px;
             border-radius: 16px;
             text-align: center;
-            max-width: 340px;
+            max-width: 400px;
             width: 90%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            position: relative;
         }
         .modal-content h3 { color: var(--primary-color); margin-bottom: 20px; }
         .modal-content p { margin-bottom: 10px; font-size: 16px; }
@@ -519,6 +520,66 @@
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(34, 197, 94, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .tip-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .tip-btn {
+            background: #e2e8f0;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tip-btn:hover {
+            transform: translateY(-2px);
+            background: #d1d5db;
+        }
+
+        .tip-btn.active {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            border-color: #f59e0b;
+        }
+        
+        .particle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .particle {
+            position: absolute;
+            font-size: 20px;
+            animation: fly-up 1.5s ease-out forwards;
+            opacity: 0;
+        }
+
+        @keyframes fly-up {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            50% { transform: translateY(-50px) rotate(180deg); }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes fly-up-strong {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            50% { transform: translateY(-100px) rotate(180deg); }
+            100% { transform: translateY(-200px) rotate(360deg); opacity: 0; }
         }
 
     </style>
@@ -1092,6 +1153,9 @@
             if (existingModal) {
                 existingModal.remove();
             }
+            
+            let totalTipAmount = 0;
+            let currentRating = 0;
 
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
@@ -1104,19 +1168,29 @@
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                        
                         <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
-                        <input type="number" id="tipAmount" class="form-input" placeholder="Kredi Miktarı" min="0" max="${userInfo.credits}">
+                        <div class="tip-buttons">
+                            <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
+                            <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
+                            <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                        </div>
+                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
 
-            let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
-            const tipInput = document.getElementById('tipAmount');
             const actionBtn = document.getElementById('reviewActionBtn');
+            const tipButtons = document.querySelectorAll('.tip-btn');
+            const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
             
+            // Modal açıldığında hafif konfeti yağmuru
+            createParticles(30, ['🪙', '🎉']);
+
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
@@ -1124,21 +1198,23 @@
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
-                const tipAmount = parseInt(tipInput.value) || 0;
-                if (tipAmount > userInfo.credits) {
-                    alert("Bahşiş için yeterli krediniz yok!");
-                    actionBtn.disabled = false;
+
+                // Eğer hiç yıldız seçilmediyse veya bahşiş verilmediyse işlemi durdur
+                if (currentRating === 0 && totalTipAmount === 0) {
+                    closeReviewModal();
                     return;
                 }
+
                 // Bahşiş varsa rating'i otomatik 5 yap
-                if (tipAmount > 0) {
+                if (totalTipAmount > 0) {
                     currentRating = 5;
                 }
+                
                 const reviewData = {
                     customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                    comment: commentInput.value, tipAmount: tipAmount, callId: lastCallInfo.callId
+                    comment: commentInput.value, tipAmount: totalTipAmount, callId: lastCallInfo.callId
                 };
-
+                
                 try {
                     await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
                         method: 'POST',
@@ -1154,10 +1230,9 @@
 
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
-                const hasComment = commentInput.value.trim() !== '';
-                const hasTip = (parseInt(tipInput.value) || 0) > 0;
+                const hasTip = totalTipAmount > 0;
 
-                 if (true) {
+                if (hasRating || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
                     actionBtn.onclick = submitReview;
@@ -1168,20 +1243,81 @@
                 }
             };
             
+            // Yıldız tıklaması
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
-                    currentRating = e.target.dataset.value;
+                    currentRating = parseInt(e.target.dataset.value);
                     stars.forEach(s => {
-                        s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
-                        s.classList.toggle('active', s.dataset.value <= currentRating);
+                        s.innerHTML = parseInt(s.dataset.value) <= currentRating ? '★' : '☆';
+                        s.classList.toggle('active', parseInt(s.dataset.value) <= currentRating);
                     });
                     updateReviewButtonState();
                 });
             });
+
+            // Bahşiş butonları için tıklama ve mouseover olayları
+            tipButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tip = parseInt(button.dataset.tip);
+                    
+                    if (totalTipAmount + tip > userInfo.credits) {
+                        showNotification('Yetersiz kredi!', 'error');
+                        return;
+                    }
+
+                    if (button.dataset.active === 'true') {
+                        totalTipAmount -= tip;
+                        button.classList.remove('active');
+                        button.dataset.active = 'false';
+                    } else {
+                        totalTipAmount += tip;
+                        button.classList.add('active');
+                        button.dataset.active = 'true';
+                        playSound(new Audio('cash.mp3'));
+                    }
+                    
+                    totalTipDisplay.textContent = totalTipAmount;
+                    updateReviewButtonState();
+                });
+
+                // Mouseover
+                button.addEventListener('mouseover', () => {
+                    const tip = parseInt(button.dataset.tip);
+                    let amount = 30; // Hafif yoğunluk
+
+                    if (tip === 30) amount = 60; // Orta
+                    if (tip === 50) amount = 100; // Yoğun
+                    
+                    createParticles(amount, ['🪙', '🎉']);
+                });
+            });
+
             commentInput.addEventListener('input', updateReviewButtonState);
-            tipInput.addEventListener('input', updateReviewButtonState);
-            
             updateReviewButtonState();
+        }
+        
+        // Konfeti parçacıklarını oluşturan fonksiyon
+        function createParticles(amount, icons) {
+            const modalContent = document.querySelector('.modal-content');
+            const container = document.createElement('div');
+            container.className = 'particle-container';
+            modalContent.appendChild(container);
+
+            for (let i = 0; i < amount; i++) {
+                const particle = document.createElement('span');
+                particle.className = 'particle';
+                particle.textContent = icons[Math.floor(Math.random() * icons.length)];
+                
+                const size = 15 + Math.random() * 10;
+                particle.style.fontSize = `${size}px`;
+                
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.animationName = Math.random() > 0.5 ? 'fly-up-strong' : 'fly-up';
+                particle.style.animationDelay = `${Math.random() * 0.5}s`;
+                container.appendChild(particle);
+            }
+            
+            setTimeout(() => container.remove(), 2000);
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
@@ -1261,8 +1397,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
