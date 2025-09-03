@@ -969,7 +969,7 @@
             document.getElementById('displayUserName').textContent = userInfo.name;
             document.getElementById('displayUserId').textContent = userInfo.id;
             const creditsEl = document.getElementById('displayUserCredits');
-            creditsEl.textContent = `${userInfo.credits} dk`;
+            creditsEl.textContent = `${userInfo.credits} Kredi`;
             creditsEl.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
         }
 
@@ -1251,7 +1251,7 @@
                 tipButton.classList.remove('active');
             } else {
                 if (userInfo.credits < amount) {
-                    showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} dk)`, 'warning', 3000);
+                    showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} Kredi)`, 'warning', 3000);
                     return;
                 }
                 selectedTipAmounts.add(amount);
@@ -1274,18 +1274,18 @@
                     <div class="modal-content">
                         <h3>Görüşmeyi Değerlendir</h3>
                         <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
-                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} Kredi</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} Kredi</strong></p>
                         <div class="rating-stars" id="ratingStars">
                             ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
                         <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         
-                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL! <small>(Kredi Bakiyeniz: ${userInfo.credits} dk)</small></label>
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL! <small>(Kredi Bakiyeniz: ${userInfo.credits} Kredi)</small></label>
                         <div class="tip-buttons-container">
-                            <button id="tipBtn-5" class="tip-button" onclick="toggleTip(5)">5 dk</button>
-                            <button id="tipBtn-10" class="tip-button" onclick="toggleTip(10)">10 dk</button>
-                            <button id="tipBtn-25" class="tip-button" onclick="toggleTip(25)">25 dk</button>
+                            <button id="tipBtn-5" class="tip-button" onclick="toggleTip(5)">5 Kredi</button>
+                            <button id="tipBtn-10" class="tip-button" onclick="toggleTip(10)">10 Kredi</button>
+                            <button id="tipBtn-25" class="tip-button" onclick="toggleTip(25)">25 Kredi</button>
                         </div>
                         
                         <div class="progress-container hidden" id="reviewProgressContainer">
@@ -1335,7 +1335,6 @@
                     const result = await response.json();
                     
                     if (response.ok && result.success) {
-                        clearInterval(progressBarInterval);
                         reviewProgressBar.style.width = '100%';
                         reviewProgressBar.style.background = 'linear-gradient(135deg, var(--secondary-color), #22c55e)';
                         reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
@@ -1344,7 +1343,6 @@
                         throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
                     }
                 } catch(e) {
-                    clearInterval(progressBarInterval);
                     reviewProgressBar.style.width = '100%';
                     reviewProgressBar.style.background = 'linear-gradient(135deg, var(--danger-color), #dc2626)';
                     reviewStatus.innerHTML = `<div class="error-message">Hata: ${e.message}</div>`;
@@ -1361,10 +1359,12 @@
                 if (hasRating || hasComment || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
+                    actionBtn.disabled = false;
                     actionBtn.onclick = submitReview;
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.disabled = false;
                     actionBtn.onclick = closeReviewModal;
                 }
             };
@@ -1459,7 +1459,7 @@
                     <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
                         <p><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
                         <p style="font-style: italic; color: #555;">"${review.comment || 'Yorum yok.'}"</p>
-                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} Kredi destek verdi!</p>` : ''}
                         <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
                     </div>
                 `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
@@ -1488,6 +1488,48 @@
             }
             return stars;
         }
+
+        function showCallSummaryModal(durationInSeconds, creditsUsed) {
+            const minutes = Math.floor(durationInSeconds / 60);
+            const seconds = durationInSeconds % 60;
+            const formattedDuration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('summaryDuration').textContent = formattedDuration;
+            document.getElementById('summaryCredits').textContent = `${creditsUsed} Kredi`;
+            
+            cashSound.play().catch(e => console.error("Cash sound play failed", e));
+            document.getElementById('callSummaryModal').classList.remove('hidden');
+        }
+
+        function closeCallSummaryModal() {
+            document.getElementById('callSummaryModal').classList.add('hidden');
+        }
+        
+        async function loadMyEarnings() {
+            try {
+                const response = await fetch(`${baseUrl}/api/my-earnings`, { 
+                    credentials: 'include' 
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateMyEarningsDisplay(result.earnings);
+                } else {
+                    console.error('Kazanç bilgisi yüklenemedi');
+                }
+            } catch (error) {
+                console.error('Kazanç yükleme hatası:', error);
+            }
+        }
+        
+        function updateMyEarningsDisplay(earnings) {
+            const earningsElement = document.getElementById('earningsAmount');
+            if (earningsElement) {
+                earningsElement.textContent = earnings || 0;
+            }
+        }
+        
+        console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
     </script>
 </body>
 </html>
