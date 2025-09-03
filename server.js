@@ -1536,7 +1536,7 @@ wss.on('connection', (ws, req) => {
                 
                 case 'login-request':
                     const rateLimit = await checkRateLimit(clientIP);
-                    if (!rateLimit.allowed) {
+                    if (!rateStatus.allowed) {
                         ws.send(JSON.stringify({
                             type: 'login-response',
                             success: false,
