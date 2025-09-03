@@ -804,6 +804,11 @@
             color: #64748b;
             font-style: italic;
         }
+        
+        .modal-footer {
+            margin-top: 25px;
+            text-align: center;
+        }
 
 
         @media (max-width: 1200px) {
@@ -858,7 +863,7 @@
                     <div class="admin-name" id="adminName">-</div>
                     <div class="admin-role" id="adminRole">🟡 Normal Admin</div>
                     <div class="admin-earnings" id="adminEarnings" style="font-size: 11px; color: #fbbf24; background: rgba(251, 191, 36, 0.2); padding: 3px 8px; border-radius: 10px; margin-top: 3px;">
-                        💰 <span id="earningsAmount">0</span> dk kazanç
+                        💰 <span id="earningsAmount">0</span> Kredi kazanç
                     </div>
                     <div class="admin-status available" id="adminStatus">
                         <div class="admin-status-dot"></div>
@@ -991,6 +996,7 @@
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
     <audio id="mediaSessionAudio" loop></audio>
+    <audio id="cashSound" src="cash.mp3"></audio>
 
     <div id="profileModal" class="modal-overlay hidden">
         <div class="modal">
@@ -998,7 +1004,26 @@
             <div id="profileModalContent"></div>
         </div>
     </div>
-
+    
+    <div id="callSummaryModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div id="callSummaryModalContent">
+                <div style="text-align: center;">
+                    <h3 style="color: #16a34a;">✅ Görüşme Sonlandırıldı</h3>
+                    <p style="margin-top: 20px; font-size: 16px;">
+                        Görüşme süresi: <strong id="summaryDuration">00:00</strong>
+                    </p>
+                    <p style="font-size: 16px; margin-top: 10px;">
+                        Kazanılan kredi: <strong style="color: #f59e0b;" id="summaryCredits">0 Kredi</strong>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeCallSummaryModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         let socket = null;
         let peerConnection = null;
@@ -1033,6 +1058,7 @@
         const baseUrl = window.location.hostname === 'localhost' ?
             'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
 
+        const cashSound = new Audio('cash.mp3');
 
         window.onload = function() {
             console.log('🎯 VIPCEP Admin Panel başlatılıyor...');
@@ -1285,8 +1311,7 @@
                 case 'call-ended': handleCallEnded(message); break;
                 case 'offer': case 'answer': case 'ice-candidate': handleWebRTCMessage(message); break;
                 case 'auto-credit-update':
-                    showNotification(`Kredi güncellendi: ${message.userId} -> ${message.newCredits} dk`, 'info', 3000);
-                    if (!isInitializing) loadOnlineUsers(); 
+                    // Bu bildirimler artık admin panelinde gösterilmeyecek
                     break;
                 default: console.log('❓ Bilinmeyen mesaj tipi:', message.type); break;
             }
@@ -1431,9 +1456,32 @@
         function handleCallEnded(message) {
             console.log('📞 Arama sonlandı:', message.reason);
             if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
+            
+            // Görüşme özeti modalını göster
+            if (message.reason !== 'cancelled' && message.reason !== 'rejected') {
+                showCallSummaryModal(message.duration, message.creditsUsed, currentCall.userName);
+                cashSound.play().catch(e => console.error("Cash sound play failed", e));
+            }
+
             cleanupCall();
             resetCallState();
         }
+
+        function showCallSummaryModal(durationInSeconds, creditsUsed, customerName) {
+            const minutes = Math.floor(durationInSeconds / 60);
+            const seconds = durationInSeconds % 60;
+            const formattedDuration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('summaryDuration').textContent = formattedDuration;
+            document.getElementById('summaryCredits').textContent = `${creditsUsed} Kredi`;
+            
+            document.getElementById('callSummaryModal').classList.remove('hidden');
+        }
+
+        function closeCallSummaryModal() {
+            document.getElementById('callSummaryModal').classList.add('hidden');
+        }
+
         function endCall() {
             if (!currentCall) return;
             console.log('📞 Görüşme sonlandırılıyor:', currentCall.userName);
@@ -1713,7 +1761,7 @@
             container.innerHTML = users.map(user => {
                 const isOnline = user.isOnline || connectedUsers.some(c => c.id === user.id && c.userType === 'customer');
                 const canCall = isOnline && callState === 'idle';
-                return `<div class="user-item ${isOnline ? 'online-user' : ''}"><div class="user-info"><div class="user-id">#${user.id}</div><div class="user-name">${user.name}</div><div class="user-credits">${user.credits || 0} dakika kredi</div><div class="user-status ${isOnline ? 'online' : ''}">${isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı'}</div></div><div class="user-actions"><button class="btn btn-call" ${canCall ? `onclick="callCustomer('${user.id}', '${user.name}')"` : 'disabled'}>📞 Ara</button></div></div>`;
+                return `<div class="user-item ${isOnline ? 'online-user' : ''}"><div class="user-info"><div class="user-id">#${user.id}</div><div class="user-name">${user.name}</div><div class="user-credits">${user.credits || 0} Kredi</div><div class="user-status ${isOnline ? 'online' : ''}">${isOnline ? '🟢 Çevrimiçi' : '⚫ Çevrimdışı'}</div></div><div class="user-actions"><button class="btn btn-call" ${canCall ? `onclick="callCustomer('${user.id}', '${user.name}')"` : 'disabled'}>📞 Ara</button></div></div>`;
             }).join('');
         }
         function renderConnectedUsers() {
@@ -1835,7 +1883,7 @@
                             <span class="star-rating">${generateStars(review.rating)}</span>
                         </div>
                         <p class="review-comment">${review.comment || '<i>Yorum bırakılmadı.</i>'}</p>
-                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} kredi destek gönderdi!</div>` : ''}
+                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} Kredi destek gönderdi!</div>` : ''}
                         <div class="review-date">${new Date(review.created_at).toLocaleString('tr-TR')}</div>
                     </div>
                 `).join('');
@@ -1874,6 +1922,22 @@
                 stars += i < fullStars ? '★' : '☆';
             }
             return stars;
+        }
+
+        function showCallSummaryModal(durationInSeconds, creditsUsed, customerName) {
+            const minutes = Math.floor(durationInSeconds / 60);
+            const seconds = durationInSeconds % 60;
+            const formattedDuration = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('summaryDuration').textContent = formattedDuration;
+            document.getElementById('summaryCredits').textContent = `${creditsUsed} Kredi`;
+            
+            cashSound.play().catch(e => console.error("Cash sound play failed", e));
+            document.getElementById('callSummaryModal').classList.remove('hidden');
+        }
+
+        function closeCallSummaryModal() {
+            document.getElementById('callSummaryModal').classList.add('hidden');
         }
         
         async function loadMyEarnings() {
