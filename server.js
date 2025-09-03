@@ -1432,18 +1432,14 @@ app.put('/api/admins/:username/profile', async (req, res) => {
 app.post('/api/admins/:adminUsername/review', async (req, res) => {
     const { adminUsername } = req.params;
     const { customerId, customerName, rating, comment, tipAmount, callId } = req.body;
-
-    if (!customerId) {
-        return res.status(400).json({ success: false, error: 'Geçersiz veri: customerId eksik' });
-    }
-
+    
     // Derecelendirme (rating) 0 ise veya yoksa, yalnızca tipAmount'a bak
-    if ((rating < 1 || rating > 5) && (!tipAmount || tipAmount <= 0)) {
+    if ((rating === undefined || rating === null || rating < 1 || rating > 5) && (!tipAmount || tipAmount <= 0)) {
         return res.status(400).json({ success: false, error: 'Geçersiz veri: En az 1 yıldız veya bahşiş gerekli' });
     }
     
-    // Rating 0 olarak geliyorsa, bunu null olarak veritabanına kaydet
-    const finalRating = (rating === 0 || !rating) ? null : rating;
+    // Rating 0 olarak geliyorsa, bunu veritabanına NULL olarak kaydet
+    const finalRating = (rating === 0) ? null : rating;
 
     const client = await pool.connect();
     try {
@@ -1826,12 +1822,6 @@ wss.on('connection', (ws, req) => {
                         type: 'call-connecting'
                     }));
 
-                    const adminCallbackListForCall = adminCallbacks.get(senderId) || [];
-                    const updatedCallbacks = adminCallbackListForCall.filter(cb => cb.customerId !== message.targetCustomerId);
-                    adminCallbacks.set(senderId, updatedCallbacks);
-                    broadcastCallbacksToAdmin(senderId);
-
-
                     console.log(`📡 Admin call request sent to customer ${message.targetCustomerId}`);
                     break;
                 case 'accept-incoming-call': {
@@ -1877,14 +1867,6 @@ wss.on('connection', (ws, req) => {
                     const callKey = `${customerClient.id}-${adminClient.uniqueId}`;
                     startHeartbeat(customerClient.id, adminClient.uniqueId, callKey);
                     console.log(`💓 Heartbeat started for call: ${callKey}`);
-
-                    const adminCallbackListUpdated = adminCallbacks.get(adminClient.uniqueId) || [];
-                    const filteredCallbacks = adminCallbackListUpdated.filter(cb => cb.customerId !== customerClient.id);
-                    if (adminCallbackListUpdated.length > filteredCallbacks.length) {
-                        adminCallbacks.set(adminClient.uniqueId, filteredCallbacks);
-                        broadcastCallbacksToAdmin(adminClient.uniqueId);
-                        console.log(`📝 Cleared callback request for customer '${customerClient.id}'`);
-                    }
                     break;
                 }
 
