@@ -1268,24 +1268,6 @@
             const cashSound = new Audio('cash.mp3');
             const tipButtons = document.querySelectorAll('.tip-button');
             
-            const updateReviewButtonState = () => {
-                const hasRating = currentRating > 0;
-                const hasComment = commentInput.value.trim() !== '';
-                const hasTip = selectedTipAmounts.size > 0;
-
-                if (hasRating || hasComment || hasTip) {
-                    actionBtn.textContent = 'Gönder';
-                    actionBtn.style.background = '';
-                    actionBtn.disabled = false;
-                    actionBtn.onclick = submitReview;
-                } else {
-                    actionBtn.textContent = 'Çıkış Yap';
-                    actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.disabled = false;
-                    actionBtn.onclick = closeReviewModal;
-                }
-            };
-            
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
@@ -1331,26 +1313,25 @@
                     actionBtn.disabled = false;
                 }
             };
-            
-            const toggleTip = (amount) => {
-                const tipButton = document.getElementById(`tipBtn-${amount}`);
-                if (!tipButton) return;
-                
-                if (selectedTipAmounts.has(amount)) {
-                    selectedTipAmounts.delete(amount);
-                    tipButton.classList.remove('active');
-                } else {
-                    if (userInfo.credits < amount) {
-                        showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} Kredi)`, 'warning', 3000);
-                        return;
-                    }
-                    selectedTipAmounts.add(amount);
-                    tipButton.classList.add('active');
-                    cashSound.play().catch(e => console.error('Cash sound play failed', e));
-                }
-                updateReviewButtonState();
-            };
 
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasComment = commentInput.value.trim() !== '';
+                const hasTip = selectedTipAmounts.size > 0;
+
+                if (hasRating || hasComment || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = '';
+                    actionBtn.disabled = false;
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.disabled = false;
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
+            
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
                     currentRating = e.target.dataset.value;
