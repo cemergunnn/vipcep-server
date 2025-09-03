@@ -1007,8 +1007,8 @@ app.post('/api/approved-users', async (req, res) => {
 
         await pool.query(`
             INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
-            VALUES ($1, 'initial', $3, $3, 'İlk kredi ataması')
-        `, [id, name, credits]);
+            VALUES ($1, $2, $3, $4, $5)
+        `, [id, 'initial', credits, credits, 'İlk kredi ataması']);
 
         res.json({ success: true, user: newUser });
     } catch (error) {
@@ -1759,14 +1759,8 @@ wss.on('connection', (ws, req) => {
                     console.log(`📤 Sent 'call-accepted' to customer '${customerClient.id}'`);
 
                     const callKey = `${customerClient.id}-${adminClient.uniqueId}`;
-                    
-                    if (activeCalls.has(callKey)) {
-                         startHeartbeat(customerClient.id, adminClient.uniqueId, callKey);
-                         console.log(`💓 Heartbeat started for call: ${callKey}`);
-                    } else {
-                        console.log(`⚠️ Active call not found, starting heartbeat for new call: ${callKey}`);
-                        startHeartbeat(customerClient.id, adminClient.uniqueId, callKey);
-                    }
+                    startHeartbeat(customerClient.id, adminClient.uniqueId, callKey);
+                    console.log(`💓 Heartbeat started for call: ${callKey}`);
 
                     const adminCallbackListUpdated = adminCallbacks.get(adminClient.uniqueId) || [];
                     const filteredCallbacks = adminCallbackListUpdated.filter(cb => cb.customerId !== customerClient.id);
@@ -2098,7 +2092,7 @@ async function startServer() {
         console.log('🛡️ GÜVENLİK ÖZELLİKLERİ:');
         console.log('   ✅ Credit tracking güvenli');
         console.log('   ✅ Admin disconnect koruması');
-        console.log('   ✅ Heartbeat duplicate koruması');
+        console.glog('   ✅ Heartbeat duplicate koruması');
         console.log('   ✅ Super Admin API endpoints');
         console.log('   ✅ 2FA sistem hazır');
         console.log('');
