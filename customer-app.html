@@ -171,7 +171,7 @@
         .btn-end {
             background: linear-gradient(135deg, var(--danger-color), #dc2626);
             color: white;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 44px 15px rgba(239, 68, 68, 0.3);
         }
         
         .user-info {
@@ -564,6 +564,73 @@
         .tip-button:hover {
             transform: translateY(-2px);
         }
+
+        /* Duyuru Widget'ı Stilleri */
+        .announcement-widget {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-left: 4px solid var(--primary-color);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px) translateX(-50%);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .announcement-widget.show {
+            opacity: 1;
+            transform: translateY(0) translateX(-50%);
+        }
+        .announcement-widget h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .announcement-widget p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--gray-700);
+        }
+        .announcement-widget .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--gray-500);
+        }
+        .announcement-widget.warning {
+            border-left-color: var(--warning-color);
+        }
+        .announcement-widget.warning h4 {
+            color: var(--warning-color);
+        }
+        .announcement-widget.important {
+            border-left-color: var(--danger-color);
+        }
+        .announcement-widget.important h4 {
+            color: var(--danger-color);
+        }
+        .announcement-widget.urgent {
+            border-left-color: var(--danger-color);
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-left-color: var(--danger-color); }
+            50% { border-left-color: var(--warning-color); }
+            100% { border-left-color: var(--danger-color); }
+        }
     </style>
 </head>
 <body>
@@ -681,6 +748,12 @@
                 </div>
             </div>
         </div>
+
+    <div id="announcementWidget" class="announcement-widget hidden">
+        <button class="close-btn" onclick="hideAnnouncement()">&times;</button>
+        <h4 id="announcementTitle"></h4>
+        <p id="announcementTextContent"></p>
+    </div>
     
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
@@ -688,12 +761,15 @@
     <audio id="ringingSound" src="ringing.mp3" loop></audio>
     <audio id="connectedSound" src="connected.mp3"></audio>
     <audio id="endedSound" src="ended.mp3"></audio>
+    <audio id="cashSound" src="cash.mp3"></audio>
+    <audio id="notificationSound" src="notification.mp3"></audio>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
         const endedSound = document.getElementById('endedSound');
-        const cashSound = new Audio('cash.mp3'); 
+        const cashSound = document.getElementById('cashSound');
+        const notificationSound = document.getElementById('notificationSound');
 
         function playSound(sound) {
             stopAllSounds();
@@ -705,6 +781,7 @@
             ringingSound.pause();
             connectedSound.pause();
             endedSound.pause();
+            notificationSound.pause();
         }
 
         let socket = null;
@@ -851,6 +928,12 @@
                 case 'answer':
                 case 'ice-candidate':
                     handleWebRTCMessage(message);
+                    break;
+                case 'announcement-broadcast':
+                    showAnnouncement(message.announcement);
+                    break;
+                case 'announcement-deleted':
+                    hideAnnouncement();
                     break;
             }
         }
@@ -1160,7 +1243,7 @@
             }
             
             selectedTipAmounts.clear();
-
+            
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
@@ -1197,7 +1280,7 @@
             const reviewProgressContainer = document.getElementById('reviewProgressContainer');
             const reviewProgressBar = document.getElementById('reviewProgressBar');
             const reviewStatus = document.getElementById('reviewStatus');
-
+            
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
@@ -1208,13 +1291,6 @@
                 reviewProgressContainer.classList.remove('hidden');
                 reviewProgressBar.style.width = '0';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
-                
-                let progress = 0;
-                progressBarInterval = setInterval(() => {
-                    progress += 10; // 10 saniyede dolması için
-                    reviewProgressBar.style.width = `${progress}%`;
-                    if(progress >= 100) clearInterval(progressBarInterval);
-                }, 1000);
                 
                 const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
 
@@ -1233,7 +1309,6 @@
                     const result = await response.json();
                     
                     if (response.ok && result.success) {
-                        clearInterval(progressBarInterval);
                         reviewProgressBar.style.width = '100%';
                         reviewProgressBar.style.background = 'linear-gradient(135deg, var(--secondary-color), #22c55e)';
                         reviewStatus.innerHTML = `<div class="success-message">Değerlendirmeniz için teşekkürler!</div>`;
@@ -1242,7 +1317,6 @@
                         throw new Error(result.error || 'Değerlendirme gönderilirken bir hata oluştu.');
                     }
                 } catch(e) {
-                    clearInterval(progressBarInterval);
                     reviewProgressBar.style.width = '100%';
                     reviewProgressBar.style.background = 'linear-gradient(135deg, var(--danger-color), #dc2626)';
                     reviewStatus.innerHTML = `<div class="error-message">Hata: ${e.message}</div>`;
@@ -1302,6 +1376,27 @@
                     if(notif.parentNode) container.removeChild(notif);
                 }, 500);
             }, duration);
+        }
+
+        function showAnnouncement(announcement) {
+            const widget = document.getElementById('announcementWidget');
+            if (!widget) return;
+            const titleEl = document.getElementById('announcementTitle');
+            const textEl = document.getElementById('announcementTextContent');
+            
+            if (announcement) {
+                titleEl.textContent = `📢 ${announcement.type.toUpperCase()} DUYURU`;
+                textEl.textContent = announcement.text;
+                widget.className = `announcement-widget show ${announcement.type}`;
+                notificationSound.play().catch(e => console.error("Bildirim sesi çalınamadı.", e));
+            }
+        }
+        
+        function hideAnnouncement() {
+            const widget = document.getElementById('announcementWidget');
+            if (widget) {
+                widget.classList.remove('show');
+            }
         }
 
         async function showAdminDetails(adminId) {
