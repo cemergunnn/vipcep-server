@@ -1318,14 +1318,6 @@
                 reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
                 
-                let progress = 0;
-                progressBarInterval = setInterval(() => {
-                    progress += 10;
-                    if(progress <= 100) {
-                        reviewProgressBar.style.width = `${progress}%`;
-                    }
-                }, 1000);
-
                 const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
 
                 const reviewData = {
