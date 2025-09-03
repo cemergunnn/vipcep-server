@@ -1850,7 +1850,8 @@ wss.on('connection', (ws, req) => {
                         if (endTargetFallback && endTargetFallback.ws.readyState === WebSocket.OPEN) {
                              endTargetFallback.ws.send(JSON.stringify({ type: 'call-ended', reason: 'force_end' }));
                         }
-                        // Gerekli sıfırlamaları yapalım ki "meşgul" kalmasın
+                        
+                        // İptal edilen aramanın admin kilidini temizle ve durumu güncelle
                         adminLocks.delete(targetId);
                         broadcastAdminListToCustomers();
                         return;
