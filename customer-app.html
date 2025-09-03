@@ -759,7 +759,7 @@
                         socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
                         const loginMessage = document.getElementById('loginMessage');
-                        loginMessage.innerHTML = `<div class="error-message">${message.reason}</div>`;
+                        loginMessage.innerHTML = `<div class="error-message">${message.reason || "Giriş başarısız."}</div>`;
                     }
                     break;
                 case 'admin-list-update': 
@@ -1137,15 +1137,25 @@
                 };
 
                 try {
-                    await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
+                    const response = await fetch(`${baseUrl}/api/admins/${lastCallInfo.adminId}/review`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(reviewData)
                     });
+                     const result = await response.json();
+                     if (result.success) {
+                         showNotification('Değerlendirmeniz için teşekkürler!', 'success');
+                         closeReviewModal();
+                     } else {
+                         showNotification(result.error || 'Değerlendirme gönderilemedi.', 'error');
+                         actionBtn.disabled = false;
+                     }
                 } catch(e) {
                     console.error("Review submission failed", e);
+                    showNotification('Değerlendirme gönderilirken bir hata oluştu.', 'error');
+                    actionBtn.disabled = false;
                 } finally {
-                    closeReviewModal();
+                    updateUserDisplay(); // Kalan krediyi güncelle
                 }
             };
 
@@ -1258,4 +1268,3 @@
     </script>
 </body>
 </html>
-
