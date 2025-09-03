@@ -941,7 +941,7 @@
                 </div>
             </div>
 
-            <div class="panel users-panel">
+            <div class="panel users-panel hidden">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
@@ -1517,12 +1517,10 @@
             console.log('🔄 Call state sıfırlandı');
         }
         async function setupPeerConnection(callInfo) {
-            // Sadece bağlantı durumu idle ise PeerConnection oluştur.
-            if (callState !== 'connecting' || peerConnection) {
-                 console.log('⚠️ PeerConnection zaten var veya durum uygun değil, yeniden oluşturulmayacak');
-                 return;
+            if (peerConnection) {
+                console.log('⚠️ PeerConnection zaten var, yeniden oluşturulmayacak');
+                return;
             }
-
             try {
                 console.log('🔗 WebRTC bağlantısı kuruluyor...', callInfo.userName);
                 updateAdminStatus('busy');
@@ -1885,7 +1883,7 @@
                             <span class="star-rating">${generateStars(review.rating)}</span>
                         </div>
                         <p class="review-comment">${review.comment || '<i>Yorum bırakılmadı.</i>'}</p>
-                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} Kredi destek verdi!</div>` : ''}
+                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} Kredi destek gönderdi!</div>` : ''}
                         <div class="review-date">${new Date(review.created_at).toLocaleString('tr-TR')}</div>
                     </div>
                 `).join('');
