@@ -357,22 +357,30 @@
             justify-content: center;
         }
         .tip-btn {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
-            background: var(--gray-200);
+            background: var(--gray-100);
             color: var(--gray-700);
             border: 2px solid var(--gray-200);
             cursor: pointer;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .tip-btn:hover {
+            transform: translateY(-2px);
+            background: #fff;
+            border-color: var(--warning-color);
+            color: var(--warning-color);
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
         }
         .tip-btn.selected {
             background: #fff;
             border-color: var(--warning-color);
             color: var(--warning-color);
             box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
-            transform: translateY(-2px);
+            transform: scale(1.05);
         }
 
         .error-message {
@@ -610,6 +618,8 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
         }
         
         .tip-btn:hover {
@@ -626,6 +636,42 @@
             color: var(--warning-color);
             box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
             transform: scale(1.05);
+        }
+        
+        /* Coin ve Konfeti Animasyonları */
+        .coin-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .coin-effect span {
+            position: absolute;
+            opacity: 0;
+            font-size: 16px;
+            animation: coin-drop 1s ease-in forwards;
+        }
+        .confetti-effect span {
+            position: absolute;
+            opacity: 0;
+            font-size: 10px;
+            animation: confetti-drop 1s ease-out forwards;
+            border-radius: 50%;
+            width: 8px;
+            height: 8px;
+            background: gold;
+        }
+        
+        @keyframes coin-drop {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+        }
+        @keyframes confetti-drop {
+            0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(80px) rotate(360deg); opacity: 0; }
         }
 
     </style>
@@ -1320,7 +1366,7 @@
             
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
-                    currentRating = e.target.dataset.value;
+                    currentRating = parseInt(e.target.dataset.value);
                     stars.forEach(s => {
                         s.innerHTML = s.dataset.value <= currentRating ? '★' : '☆';
                         s.classList.toggle('active', s.dataset.value <= currentRating);
@@ -1345,6 +1391,39 @@
                         }
                     }
                     updateReviewButtonState();
+                });
+
+                // Fare butona geldiğinde ve ayrıldığında animasyonları yönet
+                button.addEventListener('mouseover', (e) => {
+                    const tipValue = parseInt(e.target.dataset.tip);
+                    const effectContainer = document.createElement('div');
+                    effectContainer.className = 'coin-effect';
+                    e.target.appendChild(effectContainer);
+                    const coinCount = tipValue / 10;
+                    for(let i = 0; i < coinCount; i++){
+                        const coin = document.createElement('span');
+                        coin.textContent = '🪙';
+                        coin.style.left = `${Math.random() * 100}%`;
+                        coin.style.animationDelay = `${Math.random() * 0.5}s`;
+                        effectContainer.appendChild(coin);
+                        
+                        if(tipValue > 30) {
+                            const confetti = document.createElement('span');
+                            confetti.style.left = `${Math.random() * 100}%`;
+                            confetti.style.top = `${Math.random() * 50}%`;
+                            confetti.style.animationDelay = `${Math.random() * 0.8}s`;
+                            confetti.style.background = ['gold', 'silver', '#f59e0b'][Math.floor(Math.random() * 3)];
+                            confetti.className = 'confetti-effect';
+                            effectContainer.appendChild(confetti);
+                        }
+                    }
+                });
+                
+                button.addEventListener('mouseout', (e) => {
+                    const effectContainer = e.target.querySelector('.coin-effect');
+                    if (effectContainer) {
+                        effectContainer.remove();
+                    }
                 });
             });
 
