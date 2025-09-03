@@ -941,7 +941,7 @@
                 </div>
             </div>
 
-            <div class="panel users-panel hidden">
+            <div class="panel users-panel">
                 <h3>🟢 Online Kullanıcılar</h3>
                 <div class="search-container">
                     <input type="text" id="searchInput" class="search-input" placeholder="🔍 Kullanıcı adı veya ID ile ara..." oninput="searchUsers()">
@@ -1883,7 +1883,7 @@
                             <span class="star-rating">${generateStars(review.rating)}</span>
                         </div>
                         <p class="review-comment">${review.comment || '<i>Yorum bırakılmadı.</i>'}</p>
-                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} Kredi destek gönderdi!</div>` : ''}
+                        ${review.tip_amount > 0 ? `<div class="review-tip">💰 ${review.tip_amount} Kredi destek verdi!</div>` : ''}
                         <div class="review-date">${new Date(review.created_at).toLocaleString('tr-TR')}</div>
                     </div>
                 `).join('');
