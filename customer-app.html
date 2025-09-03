@@ -652,15 +652,25 @@
         const endedSound = document.getElementById('endedSound');
 
         function playSound(sound) {
-            stopAllSounds();
+            stopAllSounds(sound);
             sound.currentTime = 0;
-            sound.play().catch(e => console.error("Ses çalınamadı:", e));
+            sound.play().catch(e => {
+                if (e.name !== 'AbortError') {
+                    console.error("Ses çalınamadı:", e);
+                }
+            });
         }
 
-        function stopAllSounds() {
-            ringingSound.pause();
-            connectedSound.pause();
-            endedSound.pause();
+        function stopAllSounds(exceptSound = null) {
+            if (ringingSound && ringingSound !== exceptSound) {
+                ringingSound.pause();
+            }
+            if (connectedSound && connectedSound !== exceptSound) {
+                connectedSound.pause();
+            }
+            if (endedSound && endedSound !== exceptSound) {
+                endedSound.pause();
+            }
         }
 
         let socket = null;
