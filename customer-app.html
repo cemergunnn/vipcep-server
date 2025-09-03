@@ -1201,7 +1201,6 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // Sadece sunucuya sonlandırma isteği gönderilir, arayüz sıfırlama işlemi sunucudan gelen onayla yapılır.
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1210,7 +1209,6 @@
                     reason: reason 
                 }));
             } else {
-                // Sunucuya bağlanılamıyorsa, yerel olarak temizlik yapılır.
                 cleanupCall();
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
@@ -1290,6 +1288,7 @@
                 actionBtn.disabled = true;
                 reviewProgressContainer.classList.remove('hidden');
                 reviewProgressBar.style.width = '0';
+                reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
                 
                 const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
