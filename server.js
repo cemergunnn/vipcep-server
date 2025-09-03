@@ -941,62 +941,6 @@ app.get('/', (req, res) => {
         </html>
     `);
 });
-app.post('/auth/super-login', async (req, res) => {
-    const { username, password, totpCode, step } = req.body;
-    const clientIP = req.ip || req.connection.remoteAddress;
-
-    try {
-        const rateStatus = await checkRateLimit(clientIP, 'super-admin');
-        if (!rateStatus.allowed) {
-            return res.json({ success: false, error: 'Çok fazla başarısız deneme!' });
-        }
-
-        const admin = await authenticateAdmin(username, password);
-        if (!admin || admin.role !== 'super') {
-            await recordFailedLogin(clientIP, 'super-admin');
-            return res.json({ success: false, error: 'Geçersiz kullanıcı adı veya şifre!' });
-        }
-
-        if (admin.totp_secret) {
-            if (step !== '2fa') {
-                req.session.tempSuperAdmin = {
-                    id: admin.id,
-                    username: admin.username,
-                    timestamp: Date.now()
-                };
-                return res.json({
-                    success: false,
-                    require2FA: true,
-                    message: '2FA kodu gerekli'
-                });
-            } else {
-                if (!req.session.tempSuperAdmin ||
-                    req.session.tempSuperAdmin.id !== admin.id ||
-                    Date.now() - req.session.tempSuperAdmin.timestamp > 300000) {
-                    return res.json({ success: false, error: 'Oturum süresi doldu, tekrar deneyin!' });
-                }
-
-                if (!totpCode || !verifyTOTP(admin.totp_secret, totpCode)) {
-                    await recordFailedLogin(clientIP, 'super-admin');
-                    return res.json({ success: false, error: 'Geçersiz 2FA kodu!' });
-                }
-
-                delete req.session.tempSuperAdmin;
-            }
-        }
-
-        req.session.superAdmin = {
-            id: admin.id,
-            username: admin.username,
-            loginTime: new Date()
-        };
-        res.json({ success: true, redirectUrl: SECURITY_CONFIG.SUPER_ADMIN_PATH });
-
-    } catch (error) {
-        console.log('Super login error:', error);
-        res.json({ success: false, error: 'Sistem hatası!' });
-    }
-});
 app.post('/auth/admin-login', async (req, res) => {
     const { username, password } = req.body;
     const clientIP = req.ip || req.connection.remoteAddress;
@@ -1432,12 +1376,12 @@ app.put('/api/admins/:username/profile', async (req, res) => {
 app.post('/api/admins/:adminUsername/review', async (req, res) => {
     const { adminUsername } = req.params;
     const { customerId, customerName, rating, comment, tipAmount, callId } = req.body;
-    
+
     // Derecelendirme (rating) 0 ise veya yoksa, yalnızca tipAmount'a bak
     if ((rating === undefined || rating === null || rating < 1 || rating > 5) && (!tipAmount || tipAmount <= 0)) {
         return res.status(400).json({ success: false, error: 'Geçersiz veri: En az 1 yıldız veya bahşiş gerekli' });
     }
-    
+
     // Rating 0 olarak geliyorsa, bunu veritabanına NULL olarak kaydet
     const finalRating = (rating === 0) ? null : rating;
 
@@ -1457,11 +1401,11 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
                 error: 'Bu arama için zaten değerlendirme yapılmış'
             });
         }
-        
+
         if (tipAmount && tipAmount > 0) {
             await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
             const userRes = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [customerId]);
-            
+
             if (userRes.rows.length === 0) {
                 await client.query('ROLLBACK');
                 return res.status(400).json({ success: false, error: 'Kullanıcı bulunamadı' });
@@ -1475,8 +1419,8 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
 
             const newCredits = currentCredits - tipAmount;
             const updateResult = await client.query(
-                `UPDATE approved_users 
-                 SET credits = $1 
+                `UPDATE approved_users
+                 SET credits = $1
                  WHERE id = $2 AND credits = $3
                  RETURNING credits`,
                 [newCredits, customerId, currentCredits]
