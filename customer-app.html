@@ -1154,7 +1154,7 @@
                 const hasComment = commentInput.value.trim() !== '';
                 const hasTip = (parseInt(tipInput.value) || 0) > 0;
 
-                if (hasRating || hasComment || hasTip) {
+                 if (hasRating || hasTip) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
                     actionBtn.onclick = submitReview;
@@ -1258,4 +1258,5 @@
     </script>
 </body>
 </html>
+
 
