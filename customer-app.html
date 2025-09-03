@@ -1297,25 +1297,163 @@
         }
         
         // Konfeti parçacıklarını oluşturan fonksiyon
+function showReviewModal(callData) {
+            const existingModal = document.getElementById('reviewOverlay');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            let totalTipAmount = 0;
+            let currentRating = 0;
+
+            const reviewModalHTML = `
+                <div id="reviewOverlay" class="modal-overlay">
+                    <div class="modal-content">
+                        <h3>Görüşmeyi Değerlendir</h3>
+                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                        <div class="rating-stars" id="ratingStars">
+                            ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
+                        </div>
+                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                        
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <div class="tip-buttons">
+                            <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
+                            <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
+                            <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                        </div>
+                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+
+                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
+
+            const stars = document.querySelectorAll('#ratingStars span');
+            const commentInput = document.getElementById('reviewComment');
+            const actionBtn = document.getElementById('reviewActionBtn');
+            const tipButtons = document.querySelectorAll('.tip-btn');
+            const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
+            
+            // Modal açıldığında hafif konfeti yağmuru
+            createParticles(30, ['🪙', '🎉']);
+
+            const closeReviewModal = () => {
+                const overlay = document.getElementById('reviewOverlay');
+                if(overlay) overlay.remove();
+            };
+
+            const submitReview = async () => {
+                actionBtn.disabled = true;
+
+                // Eğer hiç yıldız seçilmediyse veya bahşiş verilmediyse işlemi durdur
+                if (currentRating === 0 && totalTipAmount === 0) {
+                    closeReviewModal();
+                    return;
+                }
+
+                // Bahşiş varsa rating'i otomatik 5 yap
+                if (totalTipAmount > 0) {
+                    currentRating = 5;
+                }
+                
+                const reviewData = {
+                    customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
+                    comment: commentInput.value, tipAmount: totalTipAmount, callId: lastCallInfo.callId
+                };
+                
+                try {
+                    await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(reviewData)
+                    });
+                } catch(e) {
+                    console.error("Review submission failed", e);
+                } finally {
+                    closeReviewModal();
+                }
+            };
+
+            const updateReviewButtonState = () => {
+                const hasRating = currentRating > 0;
+                const hasTip = totalTipAmount > 0;
+
+                if (hasRating || hasTip) {
+                    actionBtn.textContent = 'Gönder';
+                    actionBtn.style.background = '';
+                    actionBtn.onclick = submitReview;
+                } else {
+                    actionBtn.textContent = 'Çıkış Yap';
+                    actionBtn.style.background = 'var(--gray-500)';
+                    actionBtn.onclick = closeReviewModal;
+                }
+            };
+            
+            // Yıldız tıklaması
+            stars.forEach(star => {
+                star.addEventListener('click', (e) => {
+                    currentRating = parseInt(e.target.dataset.value);
+                    stars.forEach(s => {
+                        s.innerHTML = parseInt(s.dataset.value) <= currentRating ? '★' : '☆';
+                        s.classList.toggle('active', parseInt(s.dataset.value) <= currentRating);
+                    });
+                    updateReviewButtonState();
+                });
+            });
+
+            // Bahşiş butonları için tıklama ve mouseover olayları
+            tipButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tip = parseInt(button.dataset.tip);
+                    
+                    if (totalTipAmount + tip > userInfo.credits) {
+                        showNotification('Yetersiz kredi!', 'error');
+                        return;
+                    }
+
+                    if (button.dataset.active === 'true') {
+                        totalTipAmount -= tip;
+                        button.classList.remove('active');
+                        button.dataset.active = 'false';
+                    } else {
+                        totalTipAmount += tip;
+                        button.classList.add('active');
+                        button.dataset.active = 'true';
+                        playSound(new Audio('cash.mp3'));
+                    }
+                    
+                    totalTipDisplay.textContent = totalTipAmount;
+                    updateReviewButtonState();
+                });
+
+                // Mouseover
+                button.addEventListener('mouseover', () => {
+                    const tip = parseInt(button.dataset.tip);
+                    let amount = 30; // Hafif yoğunluk
+
+                    if (tip === 30) amount = 60; // Orta
+                    if (tip === 50) amount = 100; // Yoğun
+                    
+                    createParticles(amount, ['🪙', '🎉']);
+                });
+            });
+
+            commentInput.addEventListener('input', updateReviewButtonState);
+            updateReviewButtonState();
+        }
+        
+        // Konfeti parçacıklarını oluşturan fonksiyon
         function createParticles(amount, icons) {
-            // Parçacıkların konumlandırılacağı yeni bir konteyner oluşturun.
+            const modalContent = document.querySelector('.modal-content');
+            if (!modalContent) return;
+
             const container = document.createElement('div');
             container.className = 'particle-container';
+            modalContent.appendChild(container);
             
-            // Konumlandırma için "USTAYA DESTEK OL!" etiketini bulun.
-            const label = document.querySelector('.form-label[style*="USTAYA DESTEK OL"]');
-            
-            // Konteyneri bu etiketin hemen arkasına ekleyin.
-            label.parentNode.insertBefore(container, label.nextSibling);
-
-            // Gerekli CSS ayarlarını yapın.
-            container.style.position = 'absolute';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = '100%';
-            container.style.height = '100%';
-            container.style.zIndex = '-1'; // Arkada görünmesi için
-
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
                 particle.className = 'particle';
@@ -1330,9 +1468,8 @@
                 container.appendChild(particle);
             }
             
-            setTimeout(() => container.remove(), 2000);
+            setTimeout(() => container.remove(), 5000); // Süreyi 2000ms olarak ayarladık
         }
-
         function showNotification(message, type = 'info', duration = 3000) {
             const container = document.getElementById('notification-container');
             if (!container) return;
@@ -1410,5 +1547,6 @@
     </script>
 </body>
 </html>
+
 
 
