@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIPCEP Müşteri Uygulaması</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <style>
             :root {
                 --primary-color: #2563eb;
@@ -1259,12 +1261,30 @@
             let currentRating = 0;
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
-            const tipButtons = document.querySelectorAll('.tip-button');
             const actionBtn = document.getElementById('reviewActionBtn');
             const reviewProgressContainer = document.getElementById('reviewProgressContainer');
             const reviewProgressBar = document.getElementById('reviewProgressBar');
             const reviewStatus = document.getElementById('reviewStatus');
             const cashSound = new Audio('cash.mp3');
+
+            const toggleTip = (amount) => {
+                const tipButton = document.getElementById(`tipBtn-${amount}`);
+                if (!tipButton) return;
+                
+                if (selectedTipAmounts.has(amount)) {
+                    selectedTipAmounts.delete(amount);
+                    tipButton.classList.remove('active');
+                } else {
+                    if (userInfo.credits < amount) {
+                        showNotification(`Bu bahşiş için yeterli krediniz yok! (${amount} Kredi)`, 'warning', 3000);
+                        return;
+                    }
+                    selectedTipAmounts.add(amount);
+                    tipButton.classList.add('active');
+                    cashSound.play().catch(e => console.error('Cash sound play failed', e));
+                }
+                updateReviewButtonState();
+            };
 
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
@@ -1296,7 +1316,7 @@
                 reviewProgressBar.style.width = '0%';
                 reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
-                
+
                 const totalTipAmount = Array.from(selectedTipAmounts).reduce((sum, amount) => sum + amount, 0);
 
                 const reviewData = {
@@ -1344,6 +1364,7 @@
             
             updateReviewButtonState();
 
+            const tipButtons = document.querySelectorAll('.tip-button');
             tipButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const amount = parseInt(button.dataset.amount);
