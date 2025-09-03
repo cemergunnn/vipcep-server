@@ -1298,10 +1298,23 @@
         
         // Konfeti parçacıklarını oluşturan fonksiyon
         function createParticles(amount, icons) {
-            const modalContent = document.querySelector('.modal-content');
+            // Parçacıkların konumlandırılacağı yeni bir konteyner oluşturun.
             const container = document.createElement('div');
             container.className = 'particle-container';
-            modalContent.appendChild(container);
+            
+            // Konumlandırma için "USTAYA DESTEK OL!" etiketini bulun.
+            const label = document.querySelector('.form-label[style*="USTAYA DESTEK OL"]');
+            
+            // Konteyneri bu etiketin hemen arkasına ekleyin.
+            label.parentNode.insertBefore(container, label.nextSibling);
+
+            // Gerekli CSS ayarlarını yapın.
+            container.style.position = 'absolute';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.zIndex = '-1'; // Arkada görünmesi için
 
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
@@ -1317,7 +1330,7 @@
                 container.appendChild(particle);
             }
             
-            setTimeout(() => container.remove(), 2000);
+            setTimeout(() => container.remove(), 5000);
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
@@ -1397,3 +1410,4 @@
     </script>
 </body>
 </html>
+
