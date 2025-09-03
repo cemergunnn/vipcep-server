@@ -775,6 +775,12 @@
                 </div>
             </div>
         </div>
+
+    <div id="announcementWidget" class="announcement-widget hidden">
+        <button class="close-btn" onclick="hideAnnouncement()">&times;</button>
+        <h4 id="announcementTitle"></h4>
+        <p id="announcementTextContent"></p>
+    </div>
     
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
@@ -1309,6 +1315,7 @@
                 actionBtn.disabled = true;
                 reviewProgressContainer.classList.remove('hidden');
                 reviewProgressBar.style.width = '0%';
+                reviewProgressBar.style.background = 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))';
                 reviewStatus.innerHTML = `<div style="font-size:14px; color: var(--gray-700);">Gönderiliyor...</div>`;
                 
                 let progress = 0;
@@ -1412,7 +1419,10 @@
             const textEl = document.getElementById('announcementBannerText');
 
             if (announcement && banner && textEl) {
-                textEl.textContent = announcement.text;
+                // Duyuru metnindeki URL'leri tıklanabilir hale getir
+                let processedText = announcement.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:white; text-decoration:underline;">$1</a>');
+                
+                textEl.innerHTML = processedText;
                 banner.classList.remove('hidden');
                 banner.classList.add('show');
 
