@@ -996,7 +996,6 @@
     <audio id="remoteAudio" autoplay></audio>
     <audio id="localAudio" muted></audio>
     <audio id="mediaSessionAudio" loop></audio>
-    <audio id="cashSound" src="cash.mp3"></audio>
 
     <div id="profileModal" class="modal-overlay hidden">
         <div class="modal">
@@ -1475,6 +1474,7 @@
             document.getElementById('summaryDuration').textContent = formattedDuration;
             document.getElementById('summaryCredits').textContent = `${creditsUsed} Kredi`;
             
+            cashSound.play().catch(e => console.error("Cash sound play failed", e));
             document.getElementById('callSummaryModal').classList.remove('hidden');
         }
 
