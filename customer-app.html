@@ -523,7 +523,7 @@
         }
 
         .tip-buttons-container {
-            position: relative;
+            position: relative; /* Parçacıkların bu kapsayıcıya göre konumlanması için */
             z-index: 2; /* Ensure buttons are on top */
         }
 
@@ -560,33 +560,35 @@
         
         .particle-container {
             position: absolute;
-            bottom: 0;
+            top: 0; /* 'USTAYA DESTEK OL!' kısmının üstünden başlasın */
             left: 0;
-            top: 0;
             width: 100%;
+            height: 100%; /* Kapsayıcının (tip-buttons-container) alt sınırına kadar uzasın */
             pointer-events: none;
             overflow: hidden;
-            z-index: 1;
+            z-index: 1; /* Diğer içeriklerin altında kalsın */
         }
         
         .particle {
             position: absolute;
             font-size: 20px;
-            animation: fly-up 5s ease-out forwards;
+            animation: fly-down 5s ease-out forwards; /* Animasyon adı değişti */
             opacity: 0;
         }
 
-        @keyframes fly-up {
-            0% { transform: translateY(0) rotate(0); opacity: 1; }
-            50% { transform: translateY(-200px) rotate(180deg); }
-            100% { transform: translateY(-400px) rotate(360deg); opacity: 0; }
+        @keyframes fly-down { /* Yeni anahtar kareler */
+            0% { transform: translateY(-100%) rotate(0); opacity: 0; } /* Yukarıdan başla, görünmez */
+            10% { opacity: 1; } /* Hızla görünür ol */
+            90% { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
+            100% { transform: translateY(200%) rotate(720deg); opacity: 0; } /* Aşağıya doğru kaybol */
         }
 
-        @keyframes fly-up-strong {
+        /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
+        /* @keyframes fly-up-strong {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
             50% { transform: translateY(-220px) rotate(180deg); }
             100% { transform: translateY(-450px) rotate(360deg); opacity: 0; }
-        }
+        } */
 
     </style>
 </head>
@@ -1184,6 +1186,7 @@
                                 <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
                                 <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
                             </div>
+                            <div class="particle-container" id="tipParticleContainer"></div>
                         </div>
                         <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px; position: relative; z-index: 2;">Toplam Destek: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
 
@@ -1198,7 +1201,8 @@
             const tipButtons = document.querySelectorAll('.tip-btn');
             const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
             
-            createParticles(30, ['🪙', '🎉']);
+            // Konfeti başlangıçta tip container'ının içinde oluşturulacak
+            // createParticles(30, ['🪙', '🎉']); // Bu çağrıyı kaldırıyoruz, tip butonuna basınca oluşturulacak
 
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
@@ -1300,16 +1304,11 @@
         }
         
         function createParticles(amount, icons) {
-            const modalContent = document.querySelector('.modal-content');
-            if (!modalContent) return;
+            const container = document.getElementById('tipParticleContainer'); // ID'ye göre hedefle
+            if (!container) return;
 
-            // Remove any existing particle container first
-            const existingContainer = modalContent.querySelector('.particle-container');
-            if (existingContainer) existingContainer.remove();
-
-            const container = document.createElement('div');
-            container.className = 'particle-container';
-            modalContent.prepend(container);
+            // Mevcut parçacıkları temizle (tekrar tekrar çağrıldığında birikmemeleri için)
+            container.innerHTML = '';
             
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
@@ -1319,16 +1318,16 @@
                 const size = 15 + Math.random() * 10;
                 particle.style.fontSize = `${size}px`;
                 
-                particle.style.left = `${Math.random() * 100}%`;
-                particle.style.animationName = Math.random() > 0.5 ? 'fly-up-strong' : 'fly-up';
-                particle.style.animationDuration = `5s`;
+                // Parçacıkların yatayda daha geniş dağılmasını sağla
+                particle.style.left = `${Math.random() * 90 + 5}%`; // %5'ten %95'e kadar
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
             }
 
+            // Animasyon süresi sonunda parçacıkları temizle
             setTimeout(() => {
-                if(container) container.remove();
-            }, 5000)
+                if(container) container.innerHTML = '';
+            }, 5000);
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
