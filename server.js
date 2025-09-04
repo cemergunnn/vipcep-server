@@ -65,7 +65,6 @@ const adminCallbacks = new Map();
 const adminLocks = new Map();
 let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
-
 // ================== HELPER FUNCTIONS ==================
 function anonymizeCustomerName(fullName) {
     if (!fullName || typeof fullName !== 'string') return 'Anonim';
@@ -213,7 +212,6 @@ function broadcastCallbacksToAdmin(adminId) {
         }));
     }
 }
-
 // ================== AUTHENTICATION FUNCTIONS ==================
 
 async function checkRateLimit(ip, userType = 'customer') {
@@ -493,7 +491,6 @@ async function initDatabase() {
         console.log('Database error:', error.message);
     }
 }
-
 // ================== HEARTBEAT FUNCTIONS ==================
 
 async function startHeartbeat(userId, adminId, callKey) {
@@ -633,6 +630,7 @@ function broadcastCallEnd(userId, adminId, reason, details = {}) {
         }));
     }
 }
+
 // ================== MIDDLEWARE FOR AUTH ==================
 const requireNormalAdminLogin = (req, res, next) => {
     if (req.session?.normalAdmin) return next();
@@ -642,7 +640,6 @@ const requireSuperAdminLogin = (req, res, next) => {
     if (req.session?.superAdmin) return next();
     res.redirect('/');
 };
-
 // ================== ROUTES ==================
 
 app.get('/', (req, res) => {
@@ -880,32 +877,7 @@ app.post('/auth/logout', (req, res) => {
 });
 
 // ================== API ROUTES ==================
-app.get('/api/admins/:username/profile', async (req, res) => {
-    // Bu rotanın çalışması için login kontrolü gerekebilir, şimdilik ekliyorum
-    if (!req.session.superAdmin && !req.session.normalAdmin) {
-        return res.status(401).json({ success: false, error: 'Yetkisiz erişim' });
-    }
-    
-    const { username } = req.params;
-    try {
-        const profileRes = await pool.query(`SELECT a.username, p.specialization, p.bio, p.profile_picture_url FROM admins a LEFT JOIN admin_profiles p ON a.username = p.admin_username WHERE a.username = $1`, [username]);
-        if (profileRes.rows.length === 0) {
-            return res.status(404).json({ success: false, error: 'Admin not found' });
-        }
 
-        const reviewsRes = await pool.query(`SELECT id, customer_id, customer_name, rating, comment, tip_amount, created_at FROM admin_reviews WHERE admin_username = $1 ORDER BY created_at DESC`, [username]);
-        const averageRatingRes = await pool.query(`SELECT AVG(rating) as average_rating FROM admin_reviews WHERE admin_username = $1`, [username]);
-
-        const profile = profileRes.rows[0];
-        profile.reviews = reviewsRes.rows.map(review => ({ ...review, customer_name: anonymizeCustomerName(review.customer_name) }));
-        profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
-        
-        res.json({ success: true, profile });
-    } catch (error) {
-        console.error(`Error fetching admin profile for ${username}:`, error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-});
 app.post('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
     const { id, name, credits } = req.body;
 
@@ -1223,6 +1195,7 @@ app.delete('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) =>
         res.status(500).json({ success: false, error: 'Sunucu hatası' });
     }
 });
+
 app.post('/api/clear-failed-logins', requireSuperAdminLogin, async (req, res) => {
     try {
         await pool.query('DELETE FROM failed_logins');
@@ -1230,6 +1203,28 @@ app.post('/api/clear-failed-logins', requireSuperAdminLogin, async (req, res) =>
     } catch (error) {
         console.error('Failed logins clear error:', error);
         res.status(500).json({ success: false, error: 'Kayıtlar temizlenirken bir sunucu hatası oluştu.' });
+    }
+});
+
+app.get('/api/export-data', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const [usersRes, callsRes, adminsRes, reviewsRes] = await Promise.all([
+            pool.query('SELECT id, name, credits, created_at FROM approved_users'),
+            pool.query('SELECT * FROM call_history ORDER BY call_time DESC LIMIT 500'),
+            pool.query('SELECT username, role, is_active, last_login FROM admins'),
+            pool.query('SELECT * FROM admin_reviews')
+        ]);
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            users: usersRes.rows,
+            calls: callsRes.rows,
+            admins: adminsRes.rows,
+            reviews: reviewsRes.rows
+        };
+        res.json(exportData);
+    } catch (error) {
+        console.error('Data export error:', error);
+        res.status(500).json({ success: false, error: 'Veri dışa aktarılırken hata oluştu.' });
     }
 });
 // ================== WEBSOCKET HANDLER ==================
@@ -1285,7 +1280,7 @@ wss.on('connection', (ws, req) => {
                     if (targetAdmin && !activeCallAdmins.has(targetAdmin.id) && !adminLocks.has(targetAdmin.id)) {
                         adminLocks.set(targetAdmin.id, message.userId);
                         targetAdmin.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
-                        broadcastAdminListToCustomers();
+                        broadcastAdminListToCustomers(); // Update lock status for other customers
                     } else {
                         ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul veya çevrimdışı' }));
                     }
@@ -1472,5 +1467,3 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
-
-
