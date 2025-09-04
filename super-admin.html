@@ -682,7 +682,27 @@
         async function exportData() { alert('Veri dışa aktarma fonksiyonu geliştirilecek.'); }
         async function viewCallHistory() { alert('Arama geçmişi fonksiyonu geliştirilecek.'); }
         function refreshData() { loadInitialData(); loadAdminEarnings(); loadAdminsForProfileManagement(); }
-        async function clearFailedLogins() { alert('Rate limit temizleme fonksiyonu geliştirilecek.'); }
+        async function clearFailedLogins() {
+            if (!confirm('Tüm başarısız giriş denemesi kayıtlarını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) {
+                return;
+            }
+            try {
+                const response = await fetch('/api/clear-failed-logins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    // İstatistikleri tazelemek için verileri yeniden yükleyebiliriz.
+                    loadInitialData(); 
+                } else {
+                    throw new Error(result.error || 'Bilinmeyen bir hata oluştu.');
+                }
+            } catch (error) {
+                alert(`Hata: ${error.message}`);
+            }
+        }
 
         async function logout() { 
              await fetch('/auth/logout', { method: 'POST' });
