@@ -496,6 +496,8 @@ async function initDatabase() {
 
 // ================== HEARTBEAT FUNCTIONS ==================
 
+// ================== HEARTBEAT FUNCTIONS ==================
+
 async function startHeartbeat(userId, adminId, callKey) {
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
@@ -508,29 +510,38 @@ async function startHeartbeat(userId, adminId, callKey) {
     const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
     const adminUsername = adminClient ? adminClient.name : adminId;
 
-    const client = await pool.connect();
+    // HATA DÜZELTMESİ: İlk kredi düşme işlemi artık ana fonksiyonda ve try-catch içinde
     try {
-        await client.query('BEGIN');
-        const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
-        if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
+            if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
+                await client.query('COMMIT');
+                await stopHeartbeat(callKey, 'no_credits');
+                client.release();
+                return;
+            }
+            const newCredits = userResult.rows[0].credits - 1;
+            await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+            await client.query(`INSERT INTO admin_earnings (username, total_earned) VALUES ($1, 1) ON CONFLICT (username) DO UPDATE SET total_earned = admin_earnings.total_earned + 1, last_updated = CURRENT_TIMESTAMP`, [adminUsername]);
             await client.query('COMMIT');
-            await stopHeartbeat(callKey, 'no_credits');
-            return;
+
+            callData.creditsUsed = 1;
+            broadcastCreditUpdate(userId, newCredits);
+            await broadcastEarningsUpdateToAdmin(adminUsername, { source: 'call', amount: 1 });
+            broadcastSystemStateToSuperAdmins();
+        } catch (dbError) {
+            await client.query('ROLLBACK');
+            console.error('Initial credit deduction DB error:', dbError);
+            await stopHeartbeat(callKey, 'db_error'); // Hata durumunda aramayı sonlandır
+        } finally {
+            client.release();
         }
-        const newCredits = userResult.rows[0].credits - 1;
-        await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-        await client.query(`INSERT INTO admin_earnings (username, total_earned) VALUES ($1, 1) ON CONFLICT (username) DO UPDATE SET total_earned = admin_earnings.total_earned + 1, last_updated = CURRENT_TIMESTAMP`, [adminUsername]);
-        await client.query('COMMIT');
-        
-        callData.creditsUsed = 1;
-        broadcastCreditUpdate(userId, newCredits);
-        await broadcastEarningsUpdateToAdmin(adminUsername, { source: 'call', amount: 1 });
-        broadcastSystemStateToSuperAdmins();
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Initial credit deduction error:', error);
-    } finally {
-        client.release();
+    } catch (connectError) {
+        console.error('Initial credit deduction connection error:', connectError);
+        await stopHeartbeat(callKey, 'db_error'); // Hata durumunda aramayı sonlandır
+        return; // Fonksiyondan çık, interval'i başlatma
     }
 
     const heartbeat = setInterval(async () => {
@@ -569,7 +580,6 @@ async function startHeartbeat(userId, adminId, callKey) {
     broadcastAdminListToCustomers();
     broadcastSystemStateToSuperAdmins();
 }
-
 async function stopHeartbeat(callKey, reason = 'normal') {
     const heartbeat = activeHeartbeats.get(callKey);
     if (heartbeat) {
@@ -1304,4 +1314,5 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
