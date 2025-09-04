@@ -582,6 +582,17 @@
             90% { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
             100% { transform: translateY(200%) rotate(720deg); opacity: 0; } /* Aşağıya doğru kaybol */
         }
+        /* 1. Nefes Alma Animasyonunu Tanımlama */
+        @keyframes breathing-label {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+/* 2. Animasyonu İlgili Etikete Uygulama */
+.tip-buttons-container .form-label {
+    animation: breathing-label 2.5s infinite ease-in-out;
+}
 
         /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
         /* @keyframes fly-up-strong {
@@ -1407,6 +1418,7 @@
     </script>
 </body>
 </html>
+
 
 
 
