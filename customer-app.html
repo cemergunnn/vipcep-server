@@ -1161,24 +1161,26 @@
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
-                        <h3>Görüşmeyi Değerlendir</h3>
-                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
-                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
-                        <div class="rating-stars" id="ratingStars">
-                            ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
-                        </div>
-                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                        
-                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
-                        <div class="tip-buttons">
-                            <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
-                            <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
-                            <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
-                        </div>
-                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+                        <div style="position: relative; z-index: 1;">
+                            <h3>Görüşmeyi Değerlendir</h3>
+                            <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                            <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                            <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                            <div class="rating-stars" id="ratingStars">
+                                ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
+                            </div>
+                            <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                            
+                            <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                            <div class="tip-buttons">
+                                <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
+                                <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
+                                <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                            </div>
+                            <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
 
-                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                            <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                        </div>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
