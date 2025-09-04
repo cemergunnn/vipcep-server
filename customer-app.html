@@ -879,7 +879,7 @@
             document.getElementById('displayUserName').textContent = userInfo.name;
             document.getElementById('displayUserId').textContent = userInfo.id;
             const creditsEl = document.getElementById('displayUserCredits');
-            creditsEl.textContent = `${userInfo.credits} dk`;
+            creditsEl.textContent = `${userInfo.credits} `;
             creditsEl.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
         }
 
@@ -1169,8 +1169,8 @@
                         <div style="position: relative; z-index: 2;">
                             <h3>Görüşmeyi Değerlendir</h3>
                             <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                            <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
-                            <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                            <p>Harcanan Kredi: ${callData.creditsUsed || 0} </p>
+                            <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} </strong></p>
                             <div class="rating-stars" id="ratingStars">
                                 ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                             </div>
@@ -1185,7 +1185,7 @@
                                 <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
                             </div>
                         </div>
-                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px; position: relative; z-index: 2;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px; position: relative; z-index: 2;">Toplam Destek: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
 
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500); position: relative; z-index: 2;">Çıkış Yap</button>
                     </div>
@@ -1407,4 +1407,5 @@
     </script>
 </body>
 </html>
+
 
