@@ -721,7 +721,7 @@
         function playSound(sound) {
             stopAllSounds();
             sound.currentTime = 0;
-            sound.play().catch(e => console.error("Ses çalınamadı:", e));
+            sound.play().catch(e => console.error("Ses çalınamadı:", e.name, e.message));
         }
 
         function stopAllSounds() {
@@ -1015,26 +1015,23 @@
         function handleCallEnded(message, rejected = false) {
             if (callState === 'idle') return;
 
-            // 1. Önce sesi çalmayı başlatın.
-            stopAllSounds();
-            if(!rejected) playSound(endedSound);
-
-            // 2. Çağrı temizleme işlemlerini yapın.
+            // Çağrı temizleme işlemlerini yapın.
             cleanupCall();
             setState('idle');
 
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
-            // 3. Modalı küçük bir gecikme ile açın.
+            // Modalı küçük bir gecikme ile açın.
             setTimeout(() => {
                 if (isReviewable) {
                     lastCallInfo.callId = message.callId;
-                    showReviewModal(message);
+                    showReviewModal(message); // Ses çalma işlemi artık bu fonksiyonun içinde
                 } else {
                     showNotification(message.reason || "Arama sonlandırıldı.", "info");
                 }
-            }, 500); // 500ms gecikme ekledik, bu süre ihtiyaca göre ayarlanabilir
+            }, 500); 
         }
+
         async function setupPeerConnection(isInitiator) {
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
@@ -1155,6 +1152,9 @@
         }
 
         function showReviewModal(callData) {
+            // DÜZELTME: Ses çalma işlemi modal açılırken buraya taşındı.
+            playSound(endedSound);
+
             const existingModal = document.getElementById('reviewOverlay');
             if (existingModal) {
                 existingModal.remove();
@@ -1198,7 +1198,7 @@
             const tipButtons = document.querySelectorAll('.tip-btn');
             const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
             
-            createParticles(30, ['🪙', '🎉']);
+            createParticles(30, ['💰', '🎉']);
 
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
@@ -1278,7 +1278,8 @@
                         totalTipAmount += tip;
                         button.classList.add('active');
                         button.dataset.active = 'true';
-                        playSound(new Audio('cash.mp3'));
+                        // Bahşiş sesi için yeni bir Audio nesnesi oluşturarak `endedSound` ile çakışmasını engelliyoruz.
+                        new Audio('cash.mp3').play().catch(e => console.error("Cash sound error", e));
                     }
                     
                     totalTipDisplay.textContent = totalTipAmount;
