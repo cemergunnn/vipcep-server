@@ -329,6 +329,7 @@
             width: 90%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             position: relative;
+            z-index: 1001; /* Ensure content is above particles */
         }
         .modal-content h3 { color: var(--primary-color); margin-bottom: 20px; }
         .modal-content p { margin-bottom: 10px; font-size: 16px; }
@@ -561,7 +562,7 @@
             height: 100%;
             pointer-events: none;
             overflow: hidden;
-            z-index: 0;
+            z-index: 1000; /* Behind modal content */
         }
         
         .particle {
@@ -1161,26 +1162,24 @@
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
-                        <div style="position: relative; z-index: 1;">
-                            <h3>Görüşmeyi Değerlendir</h3>
-                            <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                            <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
-                            <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
-                            <div class="rating-stars" id="ratingStars">
-                                ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
-                            </div>
-                            <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
-                            
-                            <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
-                            <div class="tip-buttons">
-                                <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
-                                <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
-                                <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
-                            </div>
-                            <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
-
-                            <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                        <h3>Görüşmeyi Değerlendir</h3>
+                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                        <div class="rating-stars" id="ratingStars">
+                            ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
                         </div>
+                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
+                        
+                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                        <div class="tip-buttons">
+                            <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
+                            <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
+                            <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                        </div>
+                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+
+                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
@@ -1196,19 +1195,21 @@
 
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
-                if(overlay) overlay.remove();
+                 if(overlay) {
+                    const particleContainer = overlay.querySelector('.particle-container');
+                    if (particleContainer) particleContainer.remove();
+                    overlay.remove();
+                }
             };
 
             const submitReview = async () => {
                 actionBtn.disabled = true;
 
-                // Eğer hiç yıldız seçilmediyse veya bahşiş verilmediyse işlemi durdur
                 if (currentRating === 0 && totalTipAmount === 0) {
                     closeReviewModal();
                     return;
                 }
-
-                // Bahşiş varsa rating'i otomatik 5 yap
+                
                 if (totalTipAmount > 0) {
                     currentRating = 5;
                 }
@@ -1246,7 +1247,6 @@
                 }
             };
             
-            // Yıldız tıklaması
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
                     currentRating = parseInt(e.target.dataset.value);
@@ -1258,7 +1258,6 @@
                 });
             });
 
-            // Bahşiş butonları için tıklama ve mouseover olayları
             tipButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     const tip = parseInt(button.dataset.tip);
@@ -1283,14 +1282,11 @@
                     updateReviewButtonState();
                 });
 
-                // Mouseover
                 button.addEventListener('mouseover', () => {
                     const tip = parseInt(button.dataset.tip);
-                    let amount = 30; // Hafif yoğunluk
-
-                    if (tip === 30) amount = 60; // Orta
-                    if (tip === 50) amount = 100; // Yoğun
-                    
+                    let amount = 30; 
+                    if (tip === 30) amount = 60;
+                    if (tip === 50) amount = 100;
                     createParticles(amount, ['🪙', '🎉']);
                 });
             });
@@ -1299,14 +1295,17 @@
             updateReviewButtonState();
         }
         
-        // Konfeti parçacıklarını oluşturan fonksiyon
         function createParticles(amount, icons) {
-            const modalContent = document.querySelector('.modal-content');
-            if (!modalContent) return;
+            const modalOverlay = document.querySelector('#reviewOverlay');
+            if (!modalOverlay) return;
+
+            // Remove any existing particle container first
+            const existingContainer = modalOverlay.querySelector('.particle-container');
+            if (existingContainer) existingContainer.remove();
 
             const container = document.createElement('div');
             container.className = 'particle-container';
-            modalContent.prepend(container);
+            modalOverlay.prepend(container);
             
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
@@ -1322,8 +1321,6 @@
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
             }
-            
-            setTimeout(() => container.remove(), 5000);
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
