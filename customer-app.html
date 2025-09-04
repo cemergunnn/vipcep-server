@@ -1017,7 +1017,7 @@
 
             // 1. Önce sesi çalmayı başlatın.
             stopAllSounds();
-            playSound(endedSound);
+            if(!rejected) playSound(endedSound);
 
             // 2. Çağrı temizleme işlemlerini yapın.
             cleanupCall();
@@ -1407,5 +1407,3 @@
     </script>
 </body>
 </html>
-
-
