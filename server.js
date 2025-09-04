@@ -1131,17 +1131,31 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
                 
+// DOĞRU VE ÇALIŞAN BLOK:
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
                     const targetIdForSignal = message.targetId;
                     const targetClient = clients.get(targetIdForSignal) || Array.from(clients.values()).find(c => c.uniqueId === targetIdForSignal);
-                    if (targetClient) {
-                         const sender = Array.from(clients.values()).find(c => c.ws === ws);
-                         if(sender){
-                             message.senderId = sender.id;
-                             targetClient.ws.send(JSON.stringify(message));
-                         }
+                    
+                    if (targetClient && targetClient.ws && targetClient.ws.readyState === WebSocket.OPEN) {
+                        // Göndereni bul
+                        const sender = Array.from(clients.values()).find(c => c.ws === ws);
+                        if (sender) {
+                            // Orijinal mesajı değiştirmek yerine, doğru bilgileri içeren yeni bir mesaj oluştur
+                            const forwardMessage = {
+                                type: message.type,
+                                userId: sender.uniqueId || sender.id // Gönderenin kimliğini ekle
+                            };
+
+                            if (message.offer) forwardMessage.offer = message.offer;
+                            if (message.answer) forwardMessage.answer = message.answer;
+                            if (message.candidate) forwardMessage.candidate = message.candidate;
+                            
+                            targetClient.ws.send(JSON.stringify(forwardMessage));
+                        }
+                    } else {
+                        console.log(`⚠️ WebRTC target not found or not open: ${targetIdForSignal}`);
                     }
                     break;
                 
@@ -1290,3 +1304,4 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
