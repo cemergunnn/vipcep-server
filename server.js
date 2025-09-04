@@ -19,6 +19,8 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 8080;
 
+app.set('trust proxy', 1); // Proxy arkasında çalışmak için bu satır zorunludur!
+
 // Security configuration
 const SECURITY_CONFIG = {
     SUPER_ADMIN_PATH: '/panel-admin',
@@ -65,61 +67,6 @@ let currentAnnouncement = null;
 const HEARTBEAT_INTERVAL = 60000;
 
 // ================== HELPER FUNCTIONS ==================
-function anonymizeCustomerName(fullName) {
-    if (!fullName || typeof fullName !== 'string') return 'Anonim';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 1) return parts[0];
-    const firstName = parts[0];
-    const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
-    return `${firstName} ${lastInitial}.`;
-}
-
-function broadcastSystemStateToSuperAdmins() {
-    const activeCallDetails = [];
-    for (const [adminId, callInfo] of activeCallAdmins.entries()) {
-        const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
-        const customerClient = clients.get(callInfo.customerId);
-        activeCallDetails.push({
-            adminName: adminClient ? adminClient.name : adminId,
-            customerName: customerClient ? customerClient.name : callInfo.customerId,
-            startTime: callInfo.callStartTime
-        });
-    }
-
-    const state = {
-        activeCalls: activeCallDetails,
-        onlineAdmins: Array.from(clients.values()).filter(c => c.userType === 'admin').length,
-        onlineCustomers: Array.from(clients.values()).filter(c => c.userType === 'customer').length,
-    };
-    
-    const message = JSON.stringify({
-        type: 'system-state-update',
-        state: state
-    });
-
-    clients.forEach(client => {
-        if (client.userType === 'super-admin' && client.ws && client.ws.readyState === WebSocket.OPEN) {
-            client.ws.send(message);
-        }
-    });
-}
-
-async function broadcastEarningsUpdateToAdmin(adminUsername, sourceInfo = null) {
-    try {
-        const result = await pool.query('SELECT total_earned FROM admin_earnings WHERE username = $1', [adminUsername]);
-        const newEarnings = result.rows[0]?.total_earned || 0;
-        const adminClient = Array.from(clients.values()).find(c => c.id === adminUsername && c.userType === 'admin');
-        if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
-            adminClient.ws.send(JSON.stringify({
-                type: 'admin-earning-update',
-                newEarnings: newEarnings,
-                sourceInfo: sourceInfo
-            }));
-        }
-    } catch (error) {
-        console.error(`Kazanç güncellemesi gönderilemedi (${adminUsername}):`, error);
-    }
-}
 function anonymizeCustomerName(fullName) {
     if (!fullName || typeof fullName !== 'string') return 'Anonim';
     const parts = fullName.trim().split(' ');
@@ -229,7 +176,7 @@ async function broadcastAdminListToCustomers() {
                 ...admin,
                 status: isOnline ? (isInCall ? 'busy' : 'available') : 'offline'
             };
-        });
+        }).filter(admin => admin.status !== 'offline');
 
 
         const message = JSON.stringify({
@@ -266,6 +213,7 @@ function broadcastCallbacksToAdmin(adminId) {
         }));
     }
 }
+
 // ================== AUTHENTICATION FUNCTIONS ==================
 
 async function checkRateLimit(ip, userType = 'customer') {
@@ -716,6 +664,8 @@ app.get('/', (req, res) => {
                 #messageArea.error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
                 #messageArea.success { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; }
                 .twofa-section { display: none; }
+                .twofa-section.active { display: block; }
+                .back-btn { background: linear-gradient(135deg, #64748b, #475569); }
             </style>
         </head>
         <body>
@@ -737,12 +687,30 @@ app.get('/', (req, res) => {
                     <button class="btn" onclick="normalAdminLogin()">🟡 ADMİN GİRİŞİ</button>
                     <button class="btn btn-customer" onclick="window.location.href='${SECURITY_CONFIG.CUSTOMER_PATH}'">🟢 MÜŞTERİ UYGULAMASI</button>
                 </div>
-                <div id="step2" class="twofa-section" style="display:none;">
+                <div id="step2" class="twofa-section">
+                     <div class="form-group">
+                        <input type="text" id="totpCode" class="form-input" placeholder="******" maxlength="6">
                     </div>
+                    <button class="btn" onclick="verify2FA()">🔐 DOĞRULA</button>
+                    <button class="btn back-btn" onclick="goBackToStep1()">← GERİ</button>
+                </div>
             </div>
             <script>
                 const messageArea = document.getElementById('messageArea');
-                function showMessage(msg, type = 'error') { messageArea.textContent = msg; messageArea.className = type; messageArea.style.display = 'block'; }
+                let currentUsername = '';
+                let currentPassword = '';
+
+                function showMessage(msg, type = 'error') {
+                    messageArea.textContent = msg;
+                    messageArea.className = type;
+                    messageArea.style.display = 'block';
+                }
+                
+                function goBackToStep1() {
+                    document.getElementById('step1').style.display = 'block';
+                    document.getElementById('step2').style.display = 'none';
+                }
+
                 async function normalAdminLogin() {
                     const username = document.getElementById('username').value;
                     const password = document.getElementById('password').value;
@@ -755,15 +723,64 @@ app.get('/', (req, res) => {
                             body: JSON.stringify({ username, password, rememberMe })
                         });
                         const result = await response.json();
-                        if (result.success) { window.location.href = result.redirectUrl; } else { showMessage(result.error); }
-                    } catch (err) { showMessage('Sunucu hatası.'); }
+                        if (result.success) {
+                            window.location.href = result.redirectUrl;
+                        } else {
+                            showMessage(result.error);
+                        }
+                    } catch (err) {
+                        showMessage('Sunucu hatası.');
+                    }
                 }
-                // Orijinal dosyanızdaki startSuperLogin ve 2FA scriptleri buraya eklenecek
+                async function startSuperLogin() {
+                    currentUsername = document.getElementById('username').value;
+                    currentPassword = document.getElementById('password').value;
+                    if (!currentUsername || !currentPassword) return showMessage('Kullanıcı adı ve şifre gerekli!');
+                    try {
+                         const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: currentUsername, password: currentPassword, step: 'credentials' })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            window.location.href = result.redirectUrl;
+                        } else if (result.require2FA) {
+                            document.getElementById('step1').style.display = 'none';
+                            document.getElementById('step2').style.display = 'block';
+                            document.getElementById('totpCode').focus();
+                        }
+                        else {
+                             showMessage(result.error);
+                        }
+                    } catch(err) {
+                        showMessage('Sunucu hatası.');
+                    }
+                }
+                 async function verify2FA() {
+                    const totpCode = document.getElementById('totpCode').value;
+                     try {
+                         const response = await fetch('/auth/super-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: currentUsername, password: currentPassword, step: '2fa', totpCode: totpCode })
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            window.location.href = result.redirectUrl;
+                        } else {
+                             showMessage(result.error);
+                        }
+                    } catch(err) {
+                        showMessage('Sunucu hatası.');
+                    }
+                }
             </script>
         </body>
         </html>
     `);
 });
+
 app.get(SECURITY_CONFIG.SUPER_ADMIN_PATH, requireSuperAdminLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'super-admin.html'));
 });
@@ -861,6 +878,7 @@ app.post('/auth/logout', (req, res) => {
     });
 });
 
+
 // ================== API ROUTES ==================
 
 app.get('/api/admins/:username/profile', async (req, res) => {
@@ -904,15 +922,6 @@ app.delete('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) =>
         res.json({ success: true, message: 'Yorum başarıyla silindi' });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Sunucu hatası' });
-    }
-});
-
-app.get('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
     }
 });
 
@@ -1030,6 +1039,28 @@ app.get('/api/my-earnings', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+app.get('/api/admins', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, role, is_active, last_login, created_at FROM admins ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT username, total_earned, last_updated
+            FROM admin_earnings
+            ORDER BY total_earned DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // ================== WEBSOCKET HANDLER ==================
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
@@ -1083,7 +1114,7 @@ wss.on('connection', (ws, req) => {
                     if (targetAdmin && !activeCallAdmins.has(targetAdmin.id) && !adminLocks.has(targetAdmin.id)) {
                         adminLocks.set(targetAdmin.id, message.userId);
                         targetAdmin.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
-                        broadcastAdminListToCustomers();
+                        broadcastAdminListToCustomers(); // Update lock status for other customers
                     } else {
                         ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul veya çevrimdışı' }));
                     }
@@ -1163,7 +1194,15 @@ wss.on('connection', (ws, req) => {
         }
         if (disconnectedClient) {
             console.log(`👋 Client disconnected: ${disconnectedClient.name || disconnectedClient.id}`);
+            
             if (disconnectedClient.userType === 'admin') {
+                adminLocks.forEach((customerId, adminId) => {
+                    if (adminId === disconnectedClient.id) {
+                        adminLocks.delete(adminId);
+                        console.log(`🧹 Disconnected admin lock cleaned for: ${adminId}`);
+                    }
+                });
+                
                 const callInfo = activeCallAdmins.get(disconnectedClient.id);
                 if(callInfo) {
                     stopHeartbeat(`${callInfo.customerId}-${disconnectedClient.id}`, 'admin_disconnected');
