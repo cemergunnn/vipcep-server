@@ -890,7 +890,43 @@ app.post('/auth/logout', (req, res) => {
 
 
 // ================== API ROUTES ==================
+// YENİDEN EKLENDİ: Duyuru API Rotaları
+app.post('/api/announcement', requireSuperAdminLogin, (req, res) => {
+    const { text, type } = req.body;
+    currentAnnouncement = { text, type, createdAt: new Date(), createdBy: req.session.superAdmin.username };
+    broadcastToCustomers({ type: 'announcement-broadcast', announcement: currentAnnouncement });
+    res.json({ success: true });
+});
 
+app.delete('/api/announcement', requireSuperAdminLogin, (req, res) => {
+    currentAnnouncement = null;
+    broadcastToCustomers({ type: 'announcement-deleted' });
+    res.json({ success: true });
+});
+
+app.get('/api/announcement', requireSuperAdminLogin, (req, res) => {
+    res.json({ success: true, announcement: currentAnnouncement });
+});
+
+// YENİDEN EKLENDİ: Admin Kazançları API Rotaları
+app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT username, total_earned, last_updated FROM admin_earnings ORDER BY total_earned DESC`);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/reset-admin-earnings/:username', requireSuperAdminLogin, async (req, res) => {
+    const { username } = req.params;
+    try {
+        await pool.query('UPDATE admin_earnings SET total_earned = 0, last_updated = CURRENT_TIMESTAMP WHERE username = $1', [username]);
+        res.json({ success: true });
+    } catch (error) {
+        res.json({ success: false, error: error.message });
+    }
+});
 app.get('/api/admins/:username/profile', async (req, res) => {
     const { username } = req.params;
     try {
@@ -1314,5 +1350,6 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
