@@ -880,7 +880,32 @@ app.post('/auth/logout', (req, res) => {
 });
 
 // ================== API ROUTES ==================
+app.get('/api/admins/:username/profile', async (req, res) => {
+    // Bu rotanın çalışması için login kontrolü gerekebilir, şimdilik ekliyorum
+    if (!req.session.superAdmin && !req.session.normalAdmin) {
+        return res.status(401).json({ success: false, error: 'Yetkisiz erişim' });
+    }
+    
+    const { username } = req.params;
+    try {
+        const profileRes = await pool.query(`SELECT a.username, p.specialization, p.bio, p.profile_picture_url FROM admins a LEFT JOIN admin_profiles p ON a.username = p.admin_username WHERE a.username = $1`, [username]);
+        if (profileRes.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Admin not found' });
+        }
 
+        const reviewsRes = await pool.query(`SELECT id, customer_id, customer_name, rating, comment, tip_amount, created_at FROM admin_reviews WHERE admin_username = $1 ORDER BY created_at DESC`, [username]);
+        const averageRatingRes = await pool.query(`SELECT AVG(rating) as average_rating FROM admin_reviews WHERE admin_username = $1`, [username]);
+
+        const profile = profileRes.rows[0];
+        profile.reviews = reviewsRes.rows.map(review => ({ ...review, customer_name: anonymizeCustomerName(review.customer_name) }));
+        profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
+        
+        res.json({ success: true, profile });
+    } catch (error) {
+        console.error(`Error fetching admin profile for ${username}:`, error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
 app.post('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
     const { id, name, credits } = req.body;
 
@@ -1447,4 +1472,5 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
