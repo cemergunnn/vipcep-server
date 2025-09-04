@@ -1352,8 +1352,9 @@
         }
         function loadInitialData() {
             console.log('📊 İlk veri yükleme başlatılıyor...');
-            loadOnlineUsers();
+            // loadOnlineUsers(); // Bu satır kaldırıldı veya yorum satırı yapıldı
             isInitializing = false;
+        }
         }
         function updateAdminStatus(status) {
             const statusElement = document.getElementById('adminStatus');
@@ -2000,3 +2001,4 @@
     </script>
 </body>
 </html>
+
