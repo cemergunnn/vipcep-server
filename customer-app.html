@@ -1306,7 +1306,7 @@
 
             const container = document.createElement('div');
             container.className = 'particle-container';
-            modalContent.appendChild(container);
+            modalContent.prepend(container);
             
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
@@ -1403,3 +1403,4 @@
     </script>
 </body>
 </html>
+
