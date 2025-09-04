@@ -1198,6 +1198,15 @@ app.delete('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) =>
         res.status(500).json({ success: false, error: 'Sunucu hatası' });
     }
 });
+app.post('/api/clear-failed-logins', requireSuperAdminLogin, async (req, res) => {
+    try {
+        await pool.query('DELETE FROM failed_logins');
+        res.json({ success: true, message: 'Başarısız giriş denemesi kayıtları başarıyla temizlendi.' });
+    } catch (error) {
+        console.error('Failed logins clear error:', error);
+        res.status(500).json({ success: false, error: 'Kayıtlar temizlenirken bir sunucu hatası oluştu.' });
+    }
+});
 // ================== WEBSOCKET HANDLER ==================
 wss.on('connection', (ws, req) => {
     const clientIP = req.socket.remoteAddress || 'unknown';
@@ -1438,3 +1447,4 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
