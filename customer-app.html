@@ -41,7 +41,6 @@
             overflow: hidden;
             width: 100%;
             max-width: 400px;
-            /* position: relative; KESİK PENCERE SORUNU İÇİN KALDIRILDI */
         }
         
         .app-header {
@@ -329,7 +328,7 @@
             width: 90%;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             position: relative;
-            z-index: 1001; /* Ensure content is above particles */
+            overflow: hidden; /* This is important! */
         }
         .modal-content h3 { color: var(--primary-color); margin-bottom: 20px; }
         .modal-content p { margin-bottom: 10px; font-size: 16px; }
@@ -523,6 +522,11 @@
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
         }
 
+        .tip-buttons-container {
+            position: relative;
+            z-index: 2; /* Ensure buttons are on top */
+        }
+
         .tip-buttons {
             display: flex;
             justify-content: center;
@@ -556,13 +560,13 @@
         
         .particle-container {
             position: absolute;
-            top: 0;
+            bottom: 60px; /* Position it around the buttons */
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100px; /* Limit the height */
             pointer-events: none;
             overflow: hidden;
-            z-index: 1000; /* Behind modal content */
+            z-index: 1; /* Behind buttons, but inside modal */
         }
         
         .particle {
@@ -574,14 +578,14 @@
 
         @keyframes fly-up {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
-            50% { transform: translateY(-250px) rotate(180deg); }
-            100% { transform: translateY(-500px) rotate(360deg); opacity: 0; }
+            50% { transform: translateY(-100px) rotate(180deg); }
+            100% { transform: translateY(-200px) rotate(360deg); opacity: 0; }
         }
 
         @keyframes fly-up-strong {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
-            50% { transform: translateY(-300px) rotate(180deg); }
-            100% { transform: translateY(-600px) rotate(360deg); opacity: 0; }
+            50% { transform: translateY(-120px) rotate(180deg); }
+            100% { transform: translateY(-240px) rotate(360deg); opacity: 0; }
         }
 
     </style>
@@ -1162,24 +1166,28 @@
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
-                        <h3>Görüşmeyi Değerlendir</h3>
-                        <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
-                        <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
-                        <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
-                        <div class="rating-stars" id="ratingStars">
-                            ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
+                        <div style="position: relative; z-index: 2;">
+                            <h3>Görüşmeyi Değerlendir</h3>
+                            <p>Süre: ${Math.floor((callData.duration || 0)/60)} dk ${(callData.duration || 0)%60} sn</p>
+                            <p>Harcanan Kredi: ${callData.creditsUsed || 0} dk</p>
+                            <p>Kalan Kredi: <strong>${callData.remainingCredits === undefined ? userInfo.credits : callData.remainingCredits} dk</strong></p>
+                            <div class="rating-stars" id="ratingStars">
+                                ${[...Array(5)].map((_, i) => `<span data-value="${i+1}">☆</span>`).join('')}
+                            </div>
+                            <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         </div>
-                        <textarea id="reviewComment" class="form-input" placeholder="Yorumunuz (isteğe bağlı)"></textarea>
                         
-                        <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
-                        <div class="tip-buttons">
-                            <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
-                            <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
-                            <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                        <div class="tip-buttons-container">
+                            <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
+                            <div class="tip-buttons">
+                                <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
+                                <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
+                                <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                            </div>
                         </div>
-                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
+                        <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px; position: relative; z-index: 2;">Toplam Bağış: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
 
-                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500);">Çıkış Yap</button>
+                        <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500); position: relative; z-index: 2;">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
@@ -1190,16 +1198,11 @@
             const tipButtons = document.querySelectorAll('.tip-btn');
             const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
             
-            // Modal açıldığında hafif konfeti yağmuru
             createParticles(30, ['🪙', '🎉']);
 
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
-                 if(overlay) {
-                    const particleContainer = overlay.querySelector('.particle-container');
-                    if (particleContainer) particleContainer.remove();
-                    overlay.remove();
-                }
+                if(overlay) overlay.remove();
             };
 
             const submitReview = async () => {
@@ -1296,16 +1299,16 @@
         }
         
         function createParticles(amount, icons) {
-            const modalOverlay = document.querySelector('#reviewOverlay');
-            if (!modalOverlay) return;
+            const modalContent = document.querySelector('.modal-content');
+            if (!modalContent) return;
 
             // Remove any existing particle container first
-            const existingContainer = modalOverlay.querySelector('.particle-container');
+            const existingContainer = modalContent.querySelector('.particle-container');
             if (existingContainer) existingContainer.remove();
 
             const container = document.createElement('div');
             container.className = 'particle-container';
-            modalOverlay.prepend(container);
+            modalContent.prepend(container);
             
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
@@ -1321,6 +1324,10 @@
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
             }
+
+            setTimeout(() => {
+                if(container) container.remove();
+            }, 5000)
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
