@@ -496,8 +496,6 @@ async function initDatabase() {
 
 // ================== HEARTBEAT FUNCTIONS ==================
 
-// ================== HEARTBEAT FUNCTIONS ==================
-
 async function startHeartbeat(userId, adminId, callKey) {
     if (activeHeartbeats.has(callKey)) {
         console.log(`⚠️ Heartbeat already exists for ${callKey}, stopping old one`);
@@ -510,38 +508,31 @@ async function startHeartbeat(userId, adminId, callKey) {
     const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
     const adminUsername = adminClient ? adminClient.name : adminId;
 
-    // HATA DÜZELTMESİ: İlk kredi düşme işlemi artık ana fonksiyonda ve try-catch içinde
+    const client = await pool.connect();
     try {
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
-            if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
-                await client.query('COMMIT');
-                await stopHeartbeat(callKey, 'no_credits');
-                client.release();
-                return;
-            }
-            const newCredits = userResult.rows[0].credits - 1;
-            await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
-            await client.query(`INSERT INTO admin_earnings (username, total_earned) VALUES ($1, 1) ON CONFLICT (username) DO UPDATE SET total_earned = admin_earnings.total_earned + 1, last_updated = CURRENT_TIMESTAMP`, [adminUsername]);
+        await client.query('BEGIN');
+        const userResult = await client.query('SELECT credits FROM approved_users WHERE id = $1 FOR UPDATE', [userId]);
+        if (userResult.rows.length === 0 || userResult.rows[0].credits <= 0) {
             await client.query('COMMIT');
-
-            callData.creditsUsed = 1;
-            broadcastCreditUpdate(userId, newCredits);
-            await broadcastEarningsUpdateToAdmin(adminUsername, { source: 'call', amount: 1 });
-            broadcastSystemStateToSuperAdmins();
-        } catch (dbError) {
-            await client.query('ROLLBACK');
-            console.error('Initial credit deduction DB error:', dbError);
-            await stopHeartbeat(callKey, 'db_error'); // Hata durumunda aramayı sonlandır
-        } finally {
+            await stopHeartbeat(callKey, 'no_credits');
             client.release();
+            return;
         }
-    } catch (connectError) {
-        console.error('Initial credit deduction connection error:', connectError);
-        await stopHeartbeat(callKey, 'db_error'); // Hata durumunda aramayı sonlandır
-        return; // Fonksiyondan çık, interval'i başlatma
+        const newCredits = userResult.rows[0].credits - 1;
+        await client.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+        await client.query(`INSERT INTO admin_earnings (username, total_earned) VALUES ($1, 1) ON CONFLICT (username) DO UPDATE SET total_earned = admin_earnings.total_earned + 1, last_updated = CURRENT_TIMESTAMP`, [adminUsername]);
+        await client.query('COMMIT');
+        
+        callData.creditsUsed = 1;
+        broadcastCreditUpdate(userId, newCredits);
+        await broadcastEarningsUpdateToAdmin(adminUsername, { source: 'call', amount: 1 });
+        broadcastSystemStateToSuperAdmins();
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Initial credit deduction error:', error);
+        await stopHeartbeat(callKey, 'db_error');
+    } finally {
+        if (client) client.release();
     }
 
     const heartbeat = setInterval(async () => {
@@ -580,6 +571,7 @@ async function startHeartbeat(userId, adminId, callKey) {
     broadcastAdminListToCustomers();
     broadcastSystemStateToSuperAdmins();
 }
+
 async function stopHeartbeat(callKey, reason = 'normal') {
     const heartbeat = activeHeartbeats.get(callKey);
     if (heartbeat) {
@@ -674,7 +666,6 @@ app.get('/', (req, res) => {
                 #messageArea.error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; }
                 #messageArea.success { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); color: #86efac; }
                 .twofa-section { display: none; }
-                .twofa-section.active { display: block; }
                 .back-btn { background: linear-gradient(135deg, #64748b, #475569); }
             </style>
         </head>
@@ -699,7 +690,7 @@ app.get('/', (req, res) => {
                 </div>
                 <div id="step2" class="twofa-section">
                      <div class="form-group">
-                        <input type="text" id="totpCode" class="form-input" placeholder="******" maxlength="6">
+                        <input type="text" id="totpCode" class="form-input" placeholder="******" maxlength="6" style="text-align:center; letter-spacing: 5px;">
                     </div>
                     <button class="btn" onclick="verify2FA()">🔐 DOĞRULA</button>
                     <button class="btn back-btn" onclick="goBackToStep1()">← GERİ</button>
@@ -888,36 +879,236 @@ app.post('/auth/logout', (req, res) => {
     });
 });
 
-
 // ================== API ROUTES ==================
-// YENİDEN EKLENDİ: Duyuru API Rotaları
+
+app.post('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
+    const { id, name, credits } = req.body;
+
+    if (!id || !name || credits < 0) {
+        return res.json({ success: false, error: 'Geçersiz veri!' });
+    }
+
+    try {
+        const existingUser = await pool.query('SELECT id FROM approved_users WHERE id = $1', [id]);
+        if (existingUser.rows.length > 0) {
+            return res.json({ success: false, error: 'Bu ID zaten kullanılıyor!' });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO approved_users (id, name, credits)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `, [id, name, parseInt(credits)]);
+
+        const newUser = result.rows[0];
+
+        await pool.query(`
+            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [id, 'initial', credits, credits, 'İlk kredi ataması']);
+
+        res.json({ success: true, user: newUser });
+    } catch (error) {
+        console.log('User creation error:', error);
+        res.json({ success: false, error: 'Kullanıcı oluşturulamadı!' });
+    }
+});
+app.delete('/api/approved-users/:userId', requireSuperAdminLogin, async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const result = await pool.query('DELETE FROM approved_users WHERE id = $1', [userId]);
+
+        if (result.rowCount > 0) {
+            await pool.query('DELETE FROM credit_transactions WHERE user_id = $1', [userId]);
+            await pool.query('DELETE FROM call_history WHERE user_id = $1', [userId]);
+
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+        }
+    } catch (error) {
+        console.log('User deletion error:', error);
+        res.json({ success: false, error: 'Kullanıcı silinemedi!' });
+    }
+});
+app.post('/api/approved-users/:userId/credits', requireSuperAdminLogin, async (req, res) => {
+    const { userId } = req.params;
+    const { credits, reason } = req.body;
+
+    if (credits < 0) {
+        return res.json({ success: false, error: 'Kredi negatif olamaz!' });
+    }
+
+    try {
+        const currentUser = await pool.query('SELECT credits FROM approved_users WHERE id = $1', [userId]);
+        if (currentUser.rows.length === 0) {
+            return res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
+        }
+
+        const oldCredits = currentUser.rows[0].credits;
+        const newCredits = parseInt(credits);
+        const creditDiff = newCredits - oldCredits;
+
+        await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [newCredits, userId]);
+
+        await pool.query(`
+            INSERT INTO credit_transactions (user_id, transaction_type, amount, balance_after, description)
+            VALUES ($1, $2, $3, $4, $5)
+        `, [userId, creditDiff > 0 ? 'add' : 'subtract', creditDiff, newCredits, reason || 'Super admin tarafından güncellendi']);
+
+        broadcastCreditUpdate(userId, newCredits);
+
+        res.json({ success: true, credits: newCredits, oldCredits });
+    } catch (error) {
+        console.log('Credit update error:', error);
+        res.json({ success: false, error: 'Kredi güncellenemedi!' });
+    }
+});
+app.post('/api/admins', requireSuperAdminLogin, async (req, res) => {
+    const { username, password, role } = req.body;
+
+    if (!username || !password || password.length < 8) {
+        return res.json({ success: false, error: 'Geçersiz veri! Şifre en az 8 karakter olmalı.' });
+    }
+
+    try {
+        const existingAdmin = await pool.query('SELECT username FROM admins WHERE username = $1', [username]);
+        if (existingAdmin.rows.length > 0) {
+            return res.json({ success: false, error: 'Bu kullanıcı adı zaten kullanılıyor!' });
+        }
+
+        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+        let totpSecret = null;
+
+        if (role === 'super') {
+            totpSecret = generateTOTPSecret();
+        }
+
+        const result = await pool.query(`
+            INSERT INTO admins (username, password_hash, role, totp_secret)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, username, role
+        `, [username, hashedPassword, role, totpSecret]);
+
+        const newAdmin = result.rows[0];
+
+        const response = { success: true, admin: newAdmin };
+        if (totpSecret) {
+            response.totpSecret = totpSecret;
+            response.qrCode = generateTOTPQR(username, totpSecret);
+        }
+
+        res.json(response);
+    } catch (error) {
+        console.log('Admin creation error:', error);
+        res.json({ success: false, error: 'Admin oluşturulamadı!' });
+    }
+});
 app.post('/api/announcement', requireSuperAdminLogin, (req, res) => {
     const { text, type } = req.body;
-    currentAnnouncement = { text, type, createdAt: new Date(), createdBy: req.session.superAdmin.username };
-    broadcastToCustomers({ type: 'announcement-broadcast', announcement: currentAnnouncement });
+
+    currentAnnouncement = {
+        text,
+        type,
+        createdAt: new Date(),
+        createdBy: req.session.superAdmin.username
+    };
+
+    broadcastToCustomers({
+        type: 'announcement-broadcast',
+        announcement: currentAnnouncement
+    });
+
     res.json({ success: true });
 });
-
 app.delete('/api/announcement', requireSuperAdminLogin, (req, res) => {
     currentAnnouncement = null;
-    broadcastToCustomers({ type: 'announcement-deleted' });
+
+    broadcastToCustomers({
+        type: 'announcement-deleted'
+    });
+
     res.json({ success: true });
 });
-
 app.get('/api/announcement', requireSuperAdminLogin, (req, res) => {
-    res.json({ success: true, announcement: currentAnnouncement });
+    res.json({
+        success: true,
+        announcement: currentAnnouncement
+    });
 });
-
-// YENİDEN EKLENDİ: Admin Kazançları API Rotaları
-app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
+app.get('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
     try {
-        const result = await pool.query(`SELECT username, total_earned, last_updated FROM admin_earnings ORDER BY total_earned DESC`);
+        const result = await pool.query('SELECT * FROM approved_users ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
+app.get('/api/admins', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, username, role, is_active, last_login, created_at FROM admins ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+app.get('/api/calls', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT ch.*, au.name as user_name
+            FROM call_history ch
+            LEFT JOIN approved_users au ON ch.user_id = au.id
+            ORDER BY call_time DESC
+            LIMIT 100
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+app.get('/api/stats', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
+        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
+        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
+        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
 
+        res.json({
+            totalUsers: parseInt(totalUsers.rows[0].count),
+            totalCalls: parseInt(totalCalls.rows[0].count),
+            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
+            todayCalls: parseInt(todayCalls.rows[0].count),
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT username, total_earned, last_updated
+            FROM admin_earnings
+            ORDER BY total_earned DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+app.get('/api/my-earnings', async (req, res) => {
+    if (!req.session.normalAdmin && !req.session.superAdmin) {
+        return res.status(401).json({ error: 'Yetkisiz erişim' });
+    }
+    const username = req.session.normalAdmin?.username || req.session.superAdmin?.username;
+    try {
+        const result = await pool.query('SELECT total_earned FROM admin_earnings WHERE username = $1', [username]);
+        const earnings = result.rows[0]?.total_earned || 0;
+        res.json({ earnings });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 app.post('/api/reset-admin-earnings/:username', requireSuperAdminLogin, async (req, res) => {
     const { username } = req.params;
     try {
@@ -927,99 +1118,27 @@ app.post('/api/reset-admin-earnings/:username', requireSuperAdminLogin, async (r
         res.json({ success: false, error: error.message });
     }
 });
-app.get('/api/admins/:username/profile', async (req, res) => {
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+app.put('/api/admins/:username/profile', requireSuperAdminLogin, async (req, res) => {
     const { username } = req.params;
+    const { specialization, bio, profile_picture_url } = req.body;
     try {
-        const profileRes = await pool.query(`SELECT a.username, p.specialization, p.bio, p.profile_picture_url FROM admins a LEFT JOIN admin_profiles p ON a.username = p.admin_username WHERE a.username = $1`, [username]);
-        if (profileRes.rows.length === 0) return res.status(404).json({ success: false, error: 'Admin not found' });
-
-        const reviewsRes = await pool.query(`SELECT id, customer_id, customer_name, rating, comment, tip_amount, created_at FROM admin_reviews WHERE admin_username = $1 ORDER BY created_at DESC`, [username]);
-        const averageRatingRes = await pool.query(`SELECT AVG(rating) as average_rating FROM admin_reviews WHERE admin_username = $1`, [username]);
-
-        const profile = profileRes.rows[0];
-        profile.reviews = reviewsRes.rows.map(review => ({ ...review, customer_name: anonymizeCustomerName(review.customer_name) }));
-        profile.average_rating = parseFloat(averageRatingRes.rows[0].average_rating || 0).toFixed(1);
-        res.json({ success: true, profile });
+        await pool.query(`
+            INSERT INTO admin_profiles (admin_username, specialization, bio, profile_picture_url)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (admin_username)
+            DO UPDATE SET specialization = $2, bio = $3, profile_picture_url = $4, updated_at = CURRENT_TIMESTAMP
+        `, [username, specialization, bio, profile_picture_url]);
+        res.json({ success: true, message: 'Profil güncellendi' });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-});
-
-app.put('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) => {
-    const { reviewId } = req.params;
-    const { rating, comment, tip_amount } = req.body;
-    try {
-        const result = await pool.query(
-            `UPDATE admin_reviews SET rating = $1, comment = $2, tip_amount = $3 WHERE id = $4 RETURNING *`,
-            [rating, comment, tip_amount, reviewId]
-        );
-        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
-        res.json({ success: true, review: result.rows[0] });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Sunucu hatası' });
-    }
-});
-
-app.delete('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) => {
-    const { reviewId } = req.params;
-    try {
-        const result = await pool.query('DELETE FROM admin_reviews WHERE id = $1', [reviewId]);
-        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
-        res.json({ success: true, message: 'Yorum başarıyla silindi' });
-    } catch (error) {
-        res.status(500).json({ success: false, error: 'Sunucu hatası' });
-    }
-});
-
-app.post('/api/approved-users', requireSuperAdminLogin, async (req, res) => {
-    const { id, name, credits } = req.body;
-    if (!id || !name || credits < 0) return res.json({ success: false, error: 'Geçersiz veri!' });
-    try {
-        const existingUser = await pool.query('SELECT id FROM approved_users WHERE id = $1', [id]);
-        if (existingUser.rows.length > 0) return res.json({ success: false, error: 'Bu ID zaten kullanılıyor!' });
-        const result = await pool.query(`INSERT INTO approved_users (id, name, credits) VALUES ($1, $2, $3) RETURNING *`, [id, name, parseInt(credits)]);
-        res.json({ success: true, user: result.rows[0] });
-    } catch (error) {
-        res.json({ success: false, error: 'Kullanıcı oluşturulamadı!' });
-    }
-});
-
-app.delete('/api/approved-users/:userId', requireSuperAdminLogin, async (req, res) => {
-    const { userId } = req.params;
-    try {
-        const result = await pool.query('DELETE FROM approved_users WHERE id = $1', [userId]);
-        if (result.rowCount > 0) {
-            res.json({ success: true });
-        } else {
-            res.json({ success: false, error: 'Kullanıcı bulunamadı!' });
-        }
-    } catch (error) {
-        res.json({ success: false, error: 'Kullanıcı silinemedi!' });
-    }
-});
-
-app.post('/api/approved-users/:userId/credits', requireSuperAdminLogin, async (req, res) => {
-    const { userId } = req.params;
-    const { credits } = req.body;
-    if (credits < 0) return res.json({ success: false, error: 'Kredi negatif olamaz!' });
-    try {
-        await pool.query('UPDATE approved_users SET credits = $1 WHERE id = $2', [parseInt(credits), userId]);
-        broadcastCreditUpdate(userId, parseInt(credits));
-        res.json({ success: true, credits: parseInt(credits) });
-    } catch (error) {
-        res.json({ success: false, error: 'Kredi güncellenemedi!' });
-    }
-});
-
-app.post('/api/admins', requireSuperAdminLogin, async (req, res) => {
-    const { username, password, role } = req.body;
-    if (!username || !password || password.length < 8) return res.json({ success: false, error: 'Geçersiz veri!' });
-    const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
-    try {
-        const result = await pool.query(`INSERT INTO admins (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role`, [username, hashedPassword, role]);
-        res.json({ success: true, admin: result.rows[0] });
-    } catch (error) {
-        res.json({ success: false, error: 'Admin oluşturulamadı!' });
+        res.status(500).json({ success: false, error: 'Profil güncellenemedi' });
     }
 });
 
@@ -1054,57 +1173,29 @@ app.post('/api/admins/:adminUsername/review', async (req, res) => {
     }
 });
 
-app.get('/api/stats', requireSuperAdminLogin, async (req,res) => {
-     try {
-        const totalUsers = await pool.query('SELECT COUNT(*) FROM approved_users');
-        const totalCalls = await pool.query('SELECT COUNT(*) FROM call_history');
-        const totalCredits = await pool.query('SELECT SUM(credits) FROM approved_users');
-        const todayCalls = await pool.query("SELECT COUNT(*) FROM call_history WHERE DATE(call_time) = CURRENT_DATE");
-
-        res.json({
-            totalUsers: parseInt(totalUsers.rows[0].count),
-            totalCalls: parseInt(totalCalls.rows[0].count),
-            totalCredits: parseInt(totalCredits.rows[0].sum || 0),
-            todayCalls: parseInt(todayCalls.rows[0].count),
-        });
+app.put('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) => {
+    const { reviewId } = req.params;
+    const { rating, comment, tip_amount } = req.body;
+    try {
+        const result = await pool.query(
+            `UPDATE admin_reviews SET rating = $1, comment = $2, tip_amount = $3 WHERE id = $4 RETURNING *`,
+            [rating, comment, tip_amount, reviewId]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
+        res.json({ success: true, review: result.rows[0] });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: 'Sunucu hatası' });
     }
 });
 
-app.get('/api/my-earnings', async (req, res) => {
-    if (!req.session.normalAdmin && !req.session.superAdmin) {
-        return res.status(401).json({ error: 'Yetkisiz erişim' });
-    }
-    const username = req.session.normalAdmin?.username || req.session.superAdmin?.username;
+app.delete('/api/reviews/:reviewId', requireSuperAdminLogin, async (req, res) => {
+    const { reviewId } = req.params;
     try {
-        const result = await pool.query('SELECT total_earned FROM admin_earnings WHERE username = $1', [username]);
-        const earnings = result.rows[0]?.total_earned || 0;
-        res.json({ earnings });
+        const result = await pool.query('DELETE FROM admin_reviews WHERE id = $1', [reviewId]);
+        if (result.rowCount === 0) return res.status(404).json({ success: false, error: 'Yorum bulunamadı' });
+        res.json({ success: true, message: 'Yorum başarıyla silindi' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/admins', requireSuperAdminLogin, async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, username, role, is_active, last_login, created_at FROM admins ORDER BY created_at DESC');
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
-    try {
-        const result = await pool.query(`
-            SELECT username, total_earned, last_updated
-            FROM admin_earnings
-            ORDER BY total_earned DESC
-        `);
-        res.json(result.rows);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: 'Sunucu hatası' });
     }
 });
 // ================== WEBSOCKET HANDLER ==================
@@ -1160,7 +1251,7 @@ wss.on('connection', (ws, req) => {
                     if (targetAdmin && !activeCallAdmins.has(targetAdmin.id) && !adminLocks.has(targetAdmin.id)) {
                         adminLocks.set(targetAdmin.id, message.userId);
                         targetAdmin.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
-                        broadcastAdminListToCustomers(); // Update lock status for other customers
+                        broadcastAdminListToCustomers();
                     } else {
                         ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul veya çevrimdışı' }));
                     }
@@ -1177,21 +1268,17 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
                 
-// DOĞRU VE ÇALIŞAN BLOK:
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
                     const targetIdForSignal = message.targetId;
                     const targetClient = clients.get(targetIdForSignal) || Array.from(clients.values()).find(c => c.uniqueId === targetIdForSignal);
-                    
                     if (targetClient && targetClient.ws && targetClient.ws.readyState === WebSocket.OPEN) {
-                        // Göndereni bul
                         const sender = Array.from(clients.values()).find(c => c.ws === ws);
                         if (sender) {
-                            // Orijinal mesajı değiştirmek yerine, doğru bilgileri içeren yeni bir mesaj oluştur
                             const forwardMessage = {
                                 type: message.type,
-                                userId: sender.uniqueId || sender.id // Gönderenin kimliğini ekle
+                                userId: sender.uniqueId || sender.id
                             };
 
                             if (message.offer) forwardMessage.offer = message.offer;
@@ -1273,6 +1360,7 @@ wss.on('connection', (ws, req) => {
         }
     });
 });
+
 // ================== HELPER FUNCTIONS (end of file) ==================
 
 function findClientById(ws) {
@@ -1350,6 +1438,3 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
-
-
-
