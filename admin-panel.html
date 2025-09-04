@@ -53,6 +53,7 @@
 
         .admin-info {
             text-align: right;
+            position: relative; /* Bahşiş balonu için eklendi */
         }
 
         .admin-name {
@@ -68,6 +69,31 @@
             border-radius: 10px;
             margin-top: 5px;
         }
+
+        /* YENİ: Bahşiş Bildirim Balonu Stili */
+        .tip-notification {
+            position: absolute;
+            bottom: -45px;
+            right: 0;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 10;
+        }
+        
+        .tip-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
 
         .logout-btn {
             background: rgba(239, 68, 68, 0.3);
@@ -1053,10 +1079,9 @@
         let isMediaAudioUnlocked = false;
 
         const serverUrl = window.location.hostname === 'localhost' ?
-            'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
+            'ws://localhost:8080' : `wss://${window.location.host}`;
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-        const baseUrl = window.location.hostname === 'localhost' ?
-            'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
+        const baseUrl = ''; // API rotaları için göreceli yol kullan
 
         const cashSound = new Audio('cash.mp3');
 
@@ -1066,7 +1091,7 @@
             isInitializing = true;
             
             setupEventListeners();
-            checkAuthStatus();
+            checkAuthStatus(); // YENİ: Sayfa yüklenir yüklenmez kimlik kontrolü yap
         };
 
         function setupEventListeners() {
@@ -1124,28 +1149,27 @@
                 }
             });
         }
-
-        // Kulaklık tuşu özelliğini destekleyen fonksiyonlar kaldırıldı.
-        // function setupMediaSessionControls() { ... }
-        // function handleMediaAction(details) { ... }
-        // function activateMediaSession() { ... }
-        // function deactivateMediaSession() { ... }
         
+        // YENİ: Kimlik Kontrolü Fonksiyonu
         async function checkAuthStatus() {
             try {
                 console.log('🔐 Oturum kontrol ediliyor...');
-                const response = await fetch(`${baseUrl}/auth/check-session`, { credentials: 'include' });
+                const response = await fetch(`${baseUrl}/auth/check-session`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.authenticated && ['normal', 'super'].includes(data.role)) {
-                        return loginSuccess(data);
+                        // Giriş başarılı ise uygulamayı başlat
+                        loginSuccess(data);
+                        return;
                     }
                 }
-                console.log('❌ Yetkisiz erişim, yönlendiriliyor...');
+                // Giriş başarısız ise ana sayfaya yönlendir
+                console.log('❌ Yetkisiz erişim, giriş sayfasına yönlendiriliyor...');
+                window.location.href = baseUrl + '/';
             } catch (error) {
                 console.error('❌ Auth kontrol hatası:', error);
+                window.location.href = baseUrl + '/';
             }
-            window.location.href = baseUrl;
         }
         function loginSuccess(adminData) {
             console.log('✅ Giriş başarılı:', adminData.username);
@@ -1157,15 +1181,13 @@
             updateAdminStatus('available');
             connectToServer();
             loadMyEarnings(); 
-            // Kulaklık tuşu özelliğini destekleyen fonksiyonlar kaldırıldığı için bu satır da kaldırıldı.
-            // setupMediaSessionControls();
         }
         async function performLogout() {
             if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) return;
             console.log('👋 Çıkış yapılıyor...');
             if (currentCall) endCall();
             try { 
-                await fetch(`${baseUrl}/auth/logout`, { method: 'POST', credentials: 'include' }); 
+                await fetch(`${baseUrl}/auth/logout`, { method: 'POST' }); 
             } catch (error) {
                 console.error('Logout hatası:', error);
             }
@@ -1173,7 +1195,7 @@
                 socket.close();
                 socket = null;
             }
-            window.location.href = baseUrl;
+            window.location.href = baseUrl + '/';
         }
 
         function connectToServer() {
@@ -1271,6 +1293,13 @@
                 case 'callback-list-update':
                     updateCallbacks(message.callbacks || []);
                     break;
+                // YENİ: Bakiye güncelleme ve bahşiş bildirimi
+                case 'admin-earning-update':
+                    updateMyEarningsDisplay(message.newEarnings);
+                    if (message.sourceInfo && message.sourceInfo.source === 'tip') {
+                        showTipNotification(message.sourceInfo);
+                    }
+                    break;
                 case 'admin-call-request':
                     console.log('📞 Gelen arama:', message.userName, '(' + message.userId + ')');
                     if (currentCall || outgoingCallInfo || callState !== 'idle') {
@@ -1290,8 +1319,6 @@
                     if (incomingCallEl) incomingCallEl.classList.remove('hidden');
                     updateAdminStatus('busy');
                     playRingTone();
-                    // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
-                    // activateMediaSession();
                     console.log('📱 Gelen arama UI gösterildi, kullanıcı kararını bekliyor');
                     break;
                 case 'call-connecting': handleCallConnecting(message); break;
@@ -1300,7 +1327,6 @@
                     else console.log('⚠️ Call-accepted mesajı beklenmeyen bir durumda geldi.');
                     break;
                 case 'call-rejected': 
-                    // Yalnızca arama devam ediyorsa veya bekleniyorsa işlem yap
                     if(callState === 'outgoing' || callState === 'incoming') handleCallRejected(message);
                     else console.log('⚠️ Call-rejected mesajı beklenmeyen bir durumda geldi.');
                     break;
@@ -1375,7 +1401,7 @@
             }
             console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
             outgoingCallInfo = { userId: customerId, userName: customerName };
-            currentCall = { userId: customerId, userName: customerName }; // Arama bilgilerini sakla
+            currentCall = { userId: customerId, userName: customerName };
             callState = 'outgoing';
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
@@ -1511,8 +1537,6 @@
             outgoingCallInfo = null;
             incomingCallInfo = null;
             callState = 'idle';
-            // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
-            // deactivateMediaSession();
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
@@ -1528,7 +1552,7 @@
                 localStream = stream;
                 console.log('🎤 Mikrofon erişimi alındı');
                 peerConnection = new RTCPeerConnection(rtcConfig);
-                pendingIceCandidates = []; // Yeni görüşme için bekleyenleri temizle
+                pendingIceCandidates = [];
                 const audioTrack = stream.getAudioTracks()[0];
                 if (audioTrack) audioTrack.enabled = micEnabled;
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -1564,8 +1588,6 @@
                         if (activeCallEl) activeCallEl.classList.remove('hidden');
                         if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
                         if (incomingCallEl) incomingCallEl.classList.add('hidden');
-                        // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
-                        // activateMediaSession();
                         startTimer();
                         console.log('✅ Görüşme başladı:', callInfo.userName);
                     } else if (['failed', 'disconnected'].includes(state)) {
@@ -1643,8 +1665,6 @@
         }
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
-            // Kulaklık tuşu özelliği kaldırıldığı için bu satır da kaldırıldı.
-            // deactivateMediaSession();
             if (callTimer) { clearInterval(callTimer); callTimer = null; }
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { 
@@ -1849,9 +1869,7 @@
 
         async function fetchProfileData() {
             try {
-                const response = await fetch(`${baseUrl}/api/admins/${currentAdmin.username}/profile`, {
-                    credentials: 'include'
-                });
+                const response = await fetch(`${baseUrl}/api/admins/${currentAdmin.username}/profile`);
                 
                 if (!response.ok) throw new Error('Profil verileri sunucudan alınamadı.');
                 
@@ -1926,9 +1944,7 @@
         
         async function loadMyEarnings() {
             try {
-                const response = await fetch(`${baseUrl}/api/my-earnings`, { 
-                    credentials: 'include' 
-                });
+                const response = await fetch(`${baseUrl}/api/my-earnings`);
                 
                 if (response.ok) {
                     const result = await response.json();
@@ -1946,6 +1962,38 @@
             if (earningsElement) {
                 earningsElement.textContent = earnings || 0;
             }
+        }
+        
+        // YENİ: Bahşiş Bildirimini Gösteren Fonksiyon
+        function showTipNotification(sourceInfo) {
+            const adminInfoDiv = document.querySelector('.admin-info');
+            if (!adminInfoDiv) return;
+
+            // Önceki balonu temizle (varsa)
+            const existingNotif = document.getElementById('tipNotif');
+            if(existingNotif) existingNotif.remove();
+
+            const notification = document.createElement('div');
+            notification.id = 'tipNotif';
+            notification.className = 'tip-notification';
+            notification.innerHTML = `<strong>+${sourceInfo.amount} kredi</strong> (${sourceInfo.customerName}'dan bahşiş)`;
+            
+            adminInfoDiv.appendChild(notification);
+
+            // Animasyonla göster
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // 3 saniye sonra animasyonla gizle ve DOM'dan kaldır
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
         }
         
         console.log('🎯 VIPCEP Admin Panel - STABİL VERSİYON');
