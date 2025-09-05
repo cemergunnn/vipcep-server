@@ -1069,8 +1069,14 @@
             
             document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
             document.getElementById('connectingAdminName').textContent = `Bağlanıyor...`;
-
-            setState('connecting');
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'customer-accepted-call',
+                    adminId: lastCallInfo.adminId, // Arayan adminin ID'si
+                    customerId: userInfo.id       // Müşterinin kendi ID'si
+                }));
+            }
+                    setState('connecting');
 
             await setupPeerConnection(false);
         }
@@ -1554,6 +1560,7 @@
     </script>
 </body>
 </html>
+
 
 
 
