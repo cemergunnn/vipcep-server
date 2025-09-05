@@ -954,8 +954,11 @@
                     if (callState === 'connecting') handleCallAccepted(message); 
                     break;
                 case 'callback-success':
-                    showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
-                    break;
+                // showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
+                const confirmationBox = document.getElementById('callback-confirmation-message');
+                confirmationBox.innerHTML = `✅ <strong>${message.adminName}</strong> için geri arama talebiniz alındı. Usta sizi müsait olduğunda arayacaktır.`;
+                confirmationBox.classList.remove('hidden');
+                break;
                 case 'callback-failed':
                     showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
                     break;
@@ -999,7 +1002,7 @@
                         </div>
                         <div class="admin-actions">
                             <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
-                            ${admin.status === 'available' ? `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>` : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}')">📝 Çağrı Bırak</button>`}
+                            ${admin.status === 'available' ? `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>` : `<button class="btn btn-callback" onclick="makeCallbackRequest(this, '${admin.id}')">📝 Çağrı Bırak</button>`}
                         </div>
                     </div>
                 `).join('');
@@ -1034,10 +1037,24 @@
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
         }
 
-        function makeCallbackRequest(adminId) {
+        function makeCallbackRequest(buttonElement, adminId) {
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
             }
+            
+            // Animasyonu başlat
+            buttonElement.disabled = true; // Butonu geçici olarak devre dışı bırak
+            const phoneEmoji = document.createElement('span');
+            phoneEmoji.textContent = '📞';
+            phoneEmoji.className = 'fly-away-animation';
+            buttonElement.style.position = 'relative'; // Emoji'nin konumlanması için
+            buttonElement.appendChild(phoneEmoji);
+        
+            setTimeout(() => {
+                phoneEmoji.remove();
+                buttonElement.disabled = false;
+            }, 800); // Animasyon süresiyle aynı
+        
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
 
@@ -1605,6 +1622,7 @@
     </script>
 </body>
 </html>
+
 
 
 
