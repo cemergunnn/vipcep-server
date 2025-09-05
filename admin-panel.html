@@ -1571,6 +1571,9 @@
         // DOSYA: admin-panel.html -> <script> içinde
         // --- ESKİ setupPeerConnection FONKSİYONUNU SİLİP BUNU EKLEYİN ---
         
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ 4 FONKSİYONU SİLİP BU TEK BLOK İLE DEĞİŞTİRİN ---
+        
         async function setupPeerConnection(callInfo, isInitiator) {
             if (peerConnection) {
                 console.log('⚠️ Mevcut PeerConnection temizleniyor...');
@@ -1612,7 +1615,6 @@
                     }
                 };
         
-                // Eğer admin görüşmeyi başlatan taraf ise "offer" oluşturup gönderir.
                 if (isInitiator) {
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -1627,56 +1629,69 @@
                 endCall();
             }
         }
-      async function handleWebRTCMessage(message) {
-        try {
-            switch (message.type) {
-                case 'offer':
-                    console.log('📨 Müşteriden "offer" alındı, cevap hazırlanıyor...');
-                    // Gelen arama olduğu için görüşmeyi başlatan taraf değil (initiator = false).
-                    await setupPeerConnection({ userId: message.userId, userName: currentCall?.userName || 'Müşteri' }, false);
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'answer', answer: answer, targetId: message.userId }));
-                        console.log('📤 Admin "answer" gönderdi.');
-                    }
-                    processPendingIceCandidates();
-                    break;
-                case 'answer':
-                    if (peerConnection && peerConnection.remoteDescription) {
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                        processPendingIceCandidates();
-                    }
-                    break;
-                case 'ice-candidate':
-                    if (message.candidate) {
-                        if (peerConnection && peerConnection.remoteDescription) {
-                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                        } else {
-                            pendingIceCandidates.push(message.candidate);
-                        }
-                    }
-                    break;
+        
+        function handleCallAccepted(message) {
+            console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
+            if (callState === 'outgoing') {
+                const callInfo = { userId: message.customerId, userName: message.customerName };
+                currentCall = callInfo;
+                outgoingCallInfo = null;
+                setupPeerConnection(callInfo, true);
             }
-        } catch (error) {
-            console.error('❌ WebRTC Mesaj Hatası (Admin):', error);
         }
+        
+        async function handleWebRTCMessage(message) {
+            try {
+                switch (message.type) {
+                    case 'offer':
+                        console.log('📨 Müşteriden "offer" alındı, cevap hazırlanıyor...');
+                        await setupPeerConnection({ userId: message.userId, userName: currentCall?.userName || 'Müşteri' }, false);
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: 'answer', answer: answer, targetId: message.userId }));
+                            console.log('📤 Admin "answer" gönderdi.');
+                        }
+                        processPendingIceCandidates();
+                        break;
+                    case 'answer':
+                        if (peerConnection && !peerConnection.currentRemoteDescription) {
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                            processPendingIceCandidates();
+                        }
+                        break;
+                    case 'ice-candidate':
+                        if (message.candidate) {
+                            if (peerConnection && peerConnection.remoteDescription) {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                            } else {
+                                pendingIceCandidates.push(message.candidate);
+                            }
+                        }
+                        break;
+                }
+            } catch (error) {
+                console.error('❌ WebRTC Mesaj Hatası (Admin):', error);
+            }
+        }
+        
         function processPendingIceCandidates() {
-            if (pendingIceCandidates.length === 0) return;
-            console.log(`🧊 ${pendingIceCandidates.length} bekleyen ICE candidate işleniyor`);
+            if (!peerConnection || !peerConnection.remoteDescription || pendingIceCandidates.length === 0) {
+                return;
+            }
+            console.log(`🧊 ${pendingIceCandidates.length} bekleyen ICE adayı işleniyor...`);
             pendingIceCandidates.forEach(async (candidate) => {
                 try {
-                    if (peerConnection && peerConnection.remoteDescription) {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                        console.log('🧊 Bekleyen ICE candidate eklendi');
-                    }
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch (error) {
-                    console.error('❌ Bekleyen ICE candidate hatası:', error);
+                    console.error('❌ Bekleyen ICE adayı eklenirken hata:', error);
                 }
             });
             pendingIceCandidates = [];
         }
+        
+        // --- DEĞİŞTİRMEYİ BURADA BİTİRİN ---
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
             if (callTimer) { clearInterval(callTimer); callTimer = null; }
@@ -2014,6 +2029,7 @@
     </script>
 </body>
 </html>
+
 
 
 
