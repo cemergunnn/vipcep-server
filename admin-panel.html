@@ -1488,16 +1488,18 @@
             console.log('🔗 Arama bağlanıyor...');
             showNotification('Arama bağlanıyor...', 'info', 3000);
         }
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ handleCallAccepted FONKSİYONUNU SİLİP BUNU EKLEYİN ---
+        
         function handleCallAccepted(message) {
-            console.log('✅ Arama kabul edildi:', message.customerName || message.customerId);
-            if (outgoingCallInfo) {
-                const outgoingCallEl = document.getElementById('outgoingCall');
-                if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
-                const callInfo = { userId: outgoingCallInfo.userId, userName: outgoingCallInfo.userName };
+            console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
+            if (callState === 'outgoing') {
+                const callInfo = { userId: currentCall.userId, userName: currentCall.userName };
                 currentCall = callInfo;
                 outgoingCallInfo = null;
-                callState = 'connected';
-                setupPeerConnection(callInfo);
+                
+                // setupPeerConnection fonksiyonunu görüşmeyi başlatan (initiator) olarak çağır.
+                setupPeerConnection(callInfo, true);
             }
         }
         function handleCallRejected(message) {
@@ -1566,113 +1568,99 @@
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
-        async function setupPeerConnection(callInfo) {
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ setupPeerConnection FONKSİYONUNU SİLİP BUNU EKLEYİN ---
+        
+        async function setupPeerConnection(callInfo, isInitiator) {
             if (peerConnection) {
-                console.log('⚠️ PeerConnection zaten var, yeniden oluşturulmayacak');
-                return;
+                console.log('⚠️ Mevcut PeerConnection temizleniyor...');
+                cleanupCall();
             }
             try {
-                console.log('🔗 WebRTC bağlantısı kuruluyor...', callInfo.userName);
+                console.log(`🔗 Admin WebRTC bağlantısı kuruluyor... Başlatan: ${isInitiator}`);
                 updateAdminStatus('busy');
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: noiseSuppression, autoGainControl: true } });
-                localStream = stream;
-                console.log('🎤 Mikrofon erişimi alındı');
+                
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-                const audioTrack = stream.getAudioTracks()[0];
-                if (audioTrack) audioTrack.enabled = micEnabled;
+        
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
                 peerConnection.ontrack = (event) => { 
-                    console.log('🎵 Remote stream alındı');
-                    if (event.streams && event.streams[0]) {
-                        const remoteAudio = document.getElementById('remoteAudio');
-                        if (remoteAudio) {
-                            remoteAudio.srcObject = event.streams[0];
-                            remoteAudio.volume = speakerEnabled ? document.getElementById('volumeSlider').value / 100 : 0;
-                        }
-                    }
+                    console.log('🎵 Müşteriden ses akışı alındı');
+                    document.getElementById('remoteAudio').srcObject = event.streams[0];
                 };
+        
                 peerConnection.onicecandidate = (event) => { 
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
-                        console.log('🧊 ICE candidate gönderildi');
                     }
                 };
+        
                 peerConnection.onconnectionstatechange = () => {
                     if (!peerConnection) return;
                     const state = peerConnection.connectionState;
-                    console.log('🔗 Bağlantı durumu:', state);
-                    updateConnectionQuality(state);
+                    console.log('🔗 Admin Bağlantı durumu:', state);
                     if (state === 'connected') {
-                        const tempCard = document.getElementById('tempConnectingCard');
-                        if (tempCard) tempCard.remove();
-                        const activeCallerEl = document.getElementById('activeCaller');
-                        const activeCallEl = document.getElementById('activeCall');
-                        const outgoingCallEl = document.getElementById('outgoingCall');
-                        const incomingCallEl = document.getElementById('incomingCall');
-                        if (activeCallerEl) activeCallerEl.textContent = callInfo.userName;
-                        if (activeCallEl) activeCallEl.classList.remove('hidden');
-                        if (outgoingCallEl) outgoingCallEl.classList.add('hidden');
-                        if (incomingCallEl) incomingCallEl.classList.add('hidden');
+                        document.getElementById('outgoingCall').classList.add('hidden');
+                        document.getElementById('incomingCall').classList.add('hidden');
+                        document.getElementById('activeCall').classList.remove('hidden');
+                        document.getElementById('activeCaller').textContent = callInfo.userName;
                         startTimer();
-                        console.log('✅ Görüşme başladı:', callInfo.userName);
-                    } else if (['failed', 'disconnected'].includes(state)) {
-                        console.log('❌ Bağlantı koptu');
-                        handleCallEnded({ reason: 'connection_lost' });
+                    } else if (['failed', 'disconnected', 'closed'].includes(state)) {
+                        handleCallEnded({ reason: 'Bağlantı koptu' });
                     }
                 };
-                
-            } catch (error) {
-                console.error('❌ WebRTC kurulum hatası:', error);
-                showNotification('Mikrofon erişimi gerekli!', 'error');
-                resetCallState();
-            }
-        }
-        async function handleWebRTCMessage(message) {
-            console.log('📨 WebRTC mesajı:', message.type, 'from', message.userId);
-            if (!peerConnection && message.type !== 'offer') {
-                console.log('⚠️ PeerConnection yok ve mesaj offer değil, bekleniyor...');
-                return;
-            }
-            
-            try {
-                switch (message.type) {
-                    case 'offer':
-                        if (!peerConnection) {
-                           console.log('🔗 Offer alındı, PeerConnection kuruluyor...');
-                           await setupPeerConnection({userId: message.userId, userName: currentCall?.userName || 'Müşteri'});
-                        }
-                        console.log('📨 Offer alındı, answer gönderiliyor...');
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
-                        if (socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: 'answer', answer: answer, targetId: message.userId }));
-                            console.log('📤 Answer gönderildi');
-                        }
-                        processPendingIceCandidates();
-                        break;
-                    case 'answer':
-                        console.log('📨 Answer alındı');
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                        processPendingIceCandidates();
-                        break;
-                    case 'ice-candidate':
-                        if (message.candidate) {
-                            if (!peerConnection || !peerConnection.remoteDescription) {
-                                console.log('⏳ ICE candidate bekletiliyor, remote description yok');
-                                pendingIceCandidates.push(message.candidate);
-                                return;
-                            }
-                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-                            console.log('🧊 ICE candidate eklendi');
-                        }
-                        break;
+        
+                // Eğer admin görüşmeyi başlatan taraf ise "offer" oluşturup gönderir.
+                if (isInitiator) {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'offer', offer: offer, targetId: callInfo.userId }));
+                        console.log('📤 Admin "offer" gönderdi.');
+                    }
                 }
             } catch (error) {
-                console.error('❌ WebRTC hata:', error);
-                showNotification('WebRTC bağlantı hatası: ' + error.message, 'error');
+                console.error('❌ WebRTC kurulum hatası (Admin):', error);
+                showNotification('Mikrofon erişimi gerekli veya bir hata oluştu!', 'error');
+                endCall();
             }
+        }
+      async function handleWebRTCMessage(message) {
+        try {
+            switch (message.type) {
+                case 'offer':
+                    console.log('📨 Müşteriden "offer" alındı, cevap hazırlanıyor...');
+                    // Gelen arama olduğu için görüşmeyi başlatan taraf değil (initiator = false).
+                    await setupPeerConnection({ userId: message.userId, userName: currentCall?.userName || 'Müşteri' }, false);
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'answer', answer: answer, targetId: message.userId }));
+                        console.log('📤 Admin "answer" gönderdi.');
+                    }
+                    processPendingIceCandidates();
+                    break;
+                case 'answer':
+                    if (peerConnection && peerConnection.remoteDescription) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                        processPendingIceCandidates();
+                    }
+                    break;
+                case 'ice-candidate':
+                    if (message.candidate) {
+                        if (peerConnection && peerConnection.remoteDescription) {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
+                        } else {
+                            pendingIceCandidates.push(message.candidate);
+                        }
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('❌ WebRTC Mesaj Hatası (Admin):', error);
         }
         function processPendingIceCandidates() {
             if (pendingIceCandidates.length === 0) return;
@@ -2026,6 +2014,7 @@
     </script>
 </body>
 </html>
+
 
 
 
