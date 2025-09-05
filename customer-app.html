@@ -1030,26 +1030,34 @@
             const connectingView = document.getElementById('connectingStateView');
             const connectedView = document.getElementById('connectedStateView');
             const incomingView = document.getElementById('incomingCallView');
-            
             const mainApp = document.getElementById('mainApp');
-
-            // Hide all overlay views first
+        
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
             
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                mainApp.classList.add('hidden'); // Hide main content
-
+                mainApp.classList.add('hidden');
+        
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
+                    // İptal et butonu için de hedef ID'yi dinamik olarak ata
+                    const cancelBtn = connectingView.querySelector('.call-action-btn');
+                    if (cancelBtn) {
+                        cancelBtn.onclick = () => endCall(true, lastCallInfo.adminId);
+                    }
                 } else if (newState === 'connected') {
                     connectedView.classList.remove('hidden');
+                    // GÖRÜŞME BAŞLADIĞI ANDA, DOĞRU HEDEF ID İLE BUTONU GÜNCELLE
+                    const endCallBtn = connectedView.querySelector('.call-action-btn');
+                    if (endCallBtn) {
+                        endCallBtn.onclick = () => endCall(false, lastCallInfo.adminId);
+                    }
                 } else if (newState === 'incoming') {
                     incomingView.classList.remove('hidden');
                 }
-            } else { // idle state
+            } else {
                  callOverlay.classList.add('hidden');
                  mainApp.classList.remove('hidden');
             }
@@ -1238,22 +1246,27 @@
             callTimer = null;
         }
 
-        function endCall(isCancel = false) {
+        function endCall(isCancel = false, explicitTargetId = null) {
+            // Fonksiyon artık bir hedef ID'si alabiliyor, eğer verilmezse genel bilgiyi kullanır.
             const reason = isCancel ? 'cancelled' : 'user_ended';
-            const target = lastCallInfo.adminId;
-            
+            const target = explicitTargetId || lastCallInfo.adminId;
+        
             cleanupCall();
-
+        
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
                     targetId: target, 
                     userId: userInfo.id, 
-                    reason: reason 
+                    reason: reason,
+                    userType: 'customer' // Sunucuya kimin sonlandırdığını bildirelim
                 }));
             } else {
+                // Eğer hedef veya soket yoksa bile arayüzü sıfırla.
                 setState('idle');
-                showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
+                if (!target) {
+                    console.warn("Arama sonlandırılamadı çünkü hedef admin ID'si bulunamadı.");
+                }
             }
         }
 
@@ -1575,6 +1588,7 @@
     </script>
 </body>
 </html>
+
 
 
 
