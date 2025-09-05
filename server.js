@@ -1122,7 +1122,38 @@ app.get('/health', (req, res) => {
         uptime: process.uptime()
     });
 });
+app.get('/api/admins/:username/profile', requireSuperAdminLogin, async (req, res) => {
+    const { username } = req.params;
+    try {
+        // İlgili adminin profil bilgilerini veritabanından çek
+        const profileRes = await pool.query(
+            `SELECT p.*, COALESCE(AVG(r.rating), 0) as average_rating
+             FROM admins a
+             LEFT JOIN admin_profiles p ON a.username = p.admin_username
+             LEFT JOIN admin_reviews r ON a.username = r.admin_username
+             WHERE a.username = $1
+             GROUP BY p.id`,
+            [username]
+        );
 
+        // İlgili admin için yazılmış tüm yorumları çek
+        const reviewsRes = await pool.query(
+            `SELECT * FROM admin_reviews WHERE admin_username = $1 ORDER BY created_at DESC`,
+            [username]
+        );
+
+        // Profil ve yorum verilerini birleştir
+        // Eğer adminin profili henüz oluşturulmamışsa bile boş bir obje ve kullanıcı adını gönder
+        const profileData = profileRes.rows[0] || { admin_username: username };
+        profileData.reviews = reviewsRes.rows; // Yorumları profile ekle
+
+        res.json({ success: true, profile: profileData });
+
+    } catch (error) {
+        console.error(`Admin profili alınırken hata oluştu (${username}):`, error);
+        res.status(500).json({ success: false, error: 'Sunucu hatası nedeniyle profil verileri alınamadı.' });
+    }
+});
 app.put('/api/admins/:username/profile', requireSuperAdminLogin, async (req, res) => {
     const { username } = req.params;
     const { specialization, bio, profile_picture_url } = req.body;
@@ -1467,3 +1498,4 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
