@@ -1122,7 +1122,7 @@ app.get('/health', (req, res) => {
         uptime: process.uptime()
     });
 });
-app.get('/api/admins/:username/profile', requireSuperAdminLogin, async (req, res) => {
+app.get('/api/admins/:username/profile', async (req, res) => {
     const { username } = req.params;
     try {
         // İlgili adminin profil bilgilerini veritabanından çek
@@ -1498,4 +1498,5 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
