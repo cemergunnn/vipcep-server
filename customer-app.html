@@ -593,7 +593,26 @@
 .tip-buttons-container .form-label {
     animation: breathing-label 2.5s infinite ease-in-out;
 }
+.temporary-message-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 22px 35px;
+    border-radius: 12px;
+    z-index: 2000;
+    text-align: center;
+    font-size: 16px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+}
 
+.temporary-message-popup.fade-out {
+    opacity: 0;
+}
         /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
         /* @keyframes fly-up-strong {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
@@ -1190,18 +1209,17 @@
             }
         }
 
+        /* --- ESKİ showReviewModal FONKSİYONUNU BU BLOK İLE DEĞİŞTİRİN --- */
+        
         function showReviewModal(callData) {
-            // DÜZELTME: Ses çalma işlemi modal açılırken buraya taşındı.
             playSound(endedSound);
-
+        
             const existingModal = document.getElementById('reviewOverlay');
-            if (existingModal) {
-                existingModal.remove();
-            }
+            if (existingModal) existingModal.remove();
             
             let totalTipAmount = 0;
             let currentRating = 0;
-
+        
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
@@ -1219,75 +1237,75 @@
                         <div class="tip-buttons-container">
                             <label class="form-label" style="margin-top:10px;">USTAYA DESTEK OL!</label>
                             <div class="tip-buttons">
-                                <button class="btn tip-btn" data-tip="10" data-active="false">10 Kredi</button>
-                                <button class="btn tip-btn" data-tip="30" data-active="false">30 Kredi</button>
-                                <button class="btn tip-btn" data-tip="50" data-active="false">50 Kredi</button>
+                                <button class="btn tip-btn" data-tip="10">10 Kredi</button>
+                                <button class="btn tip-btn" data-tip="30">30 Kredi</button>
+                                <button class="btn tip-btn" data-tip="50">50 Kredi</button>
                             </div>
                             <div class="particle-container" id="tipParticleContainer"></div>
                         </div>
                         <p style="text-align: center; color: var(--gray-500); font-size: 14px; margin-top: 10px; position: relative; z-index: 2;">Toplam Destek: <strong id="totalTipAmountDisplay">0</strong> kredi</p>
-
+        
                         <button id="reviewActionBtn" class="btn btn-login" style="background: var(--gray-500); position: relative; z-index: 2;">Çıkış Yap</button>
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
-
+        
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
             const actionBtn = document.getElementById('reviewActionBtn');
             const tipButtons = document.querySelectorAll('.tip-btn');
             const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
             
-            // Konfeti başlangıçta tip container'ının içinde oluşturulacak
-            // createParticles(30, ['🪙', '🎉']); // Bu çağrıyı kaldırıyoruz, tip butonuna basınca oluşturulacak
-
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
             };
-
+        
             const submitReview = async () => {
                 actionBtn.disabled = true;
-
-                if (currentRating === 0 && totalTipAmount === 0) {
-                    closeReviewModal();
-                    return;
-                }
-                
-                if (totalTipAmount > 0) {
-                    currentRating = 5;
-                }
-                
-                const reviewData = {
-                    customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                    comment: commentInput.value, tipAmount: totalTipAmount, callId: lastCallInfo.callId
-                };
-                
+                const commentValue = commentInput.value.trim();
+        
+                // Modal'ı hemen kapat
+                closeReviewModal();
+        
                 try {
-                    await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(reviewData)
-                    });
+                    // Sadece gönderilecek bir veri varsa API isteği yap
+                    if (currentRating > 0 || commentValue !== '' || totalTipAmount > 0) {
+                        await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
+                                comment: commentValue, tipAmount: totalTipAmount, callId: lastCallInfo.callId
+                            })
+                        });
+                    }
+        
+                    // API isteğinden sonra mesajı göster
+                    if (currentRating > 0 || commentValue !== '' || totalTipAmount > 0) {
+                        showTemporaryMessage("Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
+                    } else {
+                        showTemporaryMessage("Hayırlı işler dileriz.", 3000);
+                    }
                 } catch(e) {
                     console.error("Review submission failed", e);
-                } finally {
-                    closeReviewModal();
+                    showTemporaryMessage("Değerlendirme gönderilirken bir hata oluştu.", 3000);
                 }
             };
-
+        
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasTip = totalTipAmount > 0;
-
-                if (hasRating || hasTip) {
+                const hasComment = commentInput.value.trim() !== '';
+        
+                if (hasRating || hasTip || hasComment) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
                     actionBtn.onclick = submitReview;
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.onclick = closeReviewModal;
+                    actionBtn.onclick = submitReview; // Boş gönderim için de aynı fonksiyona yönlendiriyoruz
                 }
             };
             
@@ -1301,43 +1319,33 @@
                     updateReviewButtonState();
                 });
             });
-
+        
             tipButtons.forEach(button => {
-                button.addEventListener('click', () => {
+                button.addEventListener('click', (e) => {
                     const tip = parseInt(button.dataset.tip);
+                    const isActive = button.classList.contains('active');
                     
-                    if (totalTipAmount + tip > userInfo.credits) {
+                    if (!isActive && (totalTipAmount + tip > userInfo.credits)) {
                         showNotification('Yetersiz kredi!', 'error');
                         return;
                     }
-
-                    if (button.dataset.active === 'true') {
+        
+                    if (isActive) {
                         totalTipAmount -= tip;
-                        button.classList.remove('active');
-                        button.dataset.active = 'false';
                     } else {
                         totalTipAmount += tip;
-                        button.classList.add('active');
-                        button.dataset.active = 'true';
-                        // Bahşiş sesi için yeni bir Audio nesnesi oluşturarak `endedSound` ile çakışmasını engelliyoruz.
-                        new Audio('cash.mp3').play().catch(e => console.error("Cash sound error", e));
+                        new Audio('cash.mp3').play().catch(err => console.error("Ses çalma hatası:", err));
                     }
+                    button.classList.toggle('active');
                     
                     totalTipDisplay.textContent = totalTipAmount;
                     updateReviewButtonState();
                 });
-
-                button.addEventListener('mouseover', () => {
-                    const tip = parseInt(button.dataset.tip);
-                    let amount = 30; 
-                    if (tip === 30) amount = 60;
-                    if (tip === 50) amount = 100;
-                    createParticles(amount, ['🪙', '🎉']);
-                });
+                button.addEventListener('mouseover', () => createParticles(30, ['🪙', '🎉']));
             });
-
+        
             commentInput.addEventListener('input', updateReviewButtonState);
-            updateReviewButtonState();
+            actionBtn.onclick = submitReview; // Başlangıçta "Çıkış Yap" butonu da submitReview'i çağıracak
         }
         
         function createParticles(amount, icons) {
@@ -1491,9 +1499,35 @@
             }
             return stars;
         }
+        function showTemporaryMessage(message, duration = 3000) {
+            // Varsa önceki mesajı kaldır
+            const existingPopup = document.getElementById('temp-message');
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+        
+            const popup = document.createElement('div');
+            popup.id = 'temp-message';
+            popup.className = 'temporary-message-popup';
+            popup.innerHTML = message.replace(/\n/g, '<br>'); // Mesajdaki \n'leri <br>'ye çevirerek alt satıra geçmeyi sağlar
+        
+            document.body.appendChild(popup);
+        
+            // Belirtilen sürenin sonunda pencereyi yavaşça yok et
+            setTimeout(() => {
+                popup.classList.add('fade-out');
+                // Animasyon bittikten sonra HTML'den tamamen kaldır
+                setTimeout(() => {
+                    if (popup.parentElement) {
+                        popup.parentElement.removeChild(popup);
+                    }
+                }, 500); // CSS'teki transition süresiyle aynı olmalı
+            }, duration - 500); // Toplam süreden 500ms önce solmaya başla
+        }         
     </script>
 </body>
 </html>
+
 
 
 
