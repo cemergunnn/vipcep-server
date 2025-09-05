@@ -597,6 +597,32 @@
         }
     }
 
+                // YENİ EKLENECEK FONKSİYON
+        async function saveAdminProfile(username) {
+            const specialization = document.getElementById('edit-specialization').value;
+            const profile_picture_url = document.getElementById('edit-pfp-url').value;
+            const bio = document.getElementById('edit-bio').value;
+    
+            try {
+                const response = await fetch(`/api/admins/${username}/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ specialization, bio, profile_picture_url })
+                });
+    
+                const result = await response.json();
+                if (result.success) {
+                    alert('Profil başarıyla güncellendi!');
+                    closeAdminProfileModal();
+                } else {
+                    throw new Error(result.error || 'Profil güncellenemedi.');
+                }
+            } catch (error) {
+                alert(`Hata: ${error.message}`);
+            }
+        }
+
+
         function closeAdminProfileModal() { document.getElementById('adminProfileModal').classList.add('hidden'); }
 
         async function deleteReview(reviewId) {
