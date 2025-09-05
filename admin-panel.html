@@ -1411,7 +1411,7 @@
             list.innerHTML = myCallbacks.map(callback => {
                 const waitTime = Date.now() - callback.timestamp;
                 const minutes = Math.floor(waitTime / 60000);
-                return `<div class="callback-item"><div class="callback-info"><div class="callback-name">${callback.customerName}</div><div class="callback-details"><span>ID: ${callback.customerId}</span><span>⏰ ${minutes} dk önce</span></div></div><div class="callback-actions"><button class="btn btn-call btn-small" onclick="callCustomer('${callback.customerId}', '${callback.customerName}', true)">📞 Ara</button><button class="btn btn-delete btn-small" onclick="removeCallback('${callback.customerId}')">🗑️</button></div></div>`;
+                return `<div class="callback-item"><div class="callback-info"><div class="callback-name">${callback.customerName}</div><div class="callback-details"><span>ID: ${callback.customerId}</span><span>⏰ ${minutes} dk önce</span></div></div><div class="callback-actions"><button class="btn btn-call btn-small" onclick="callCustomer('${callback.customerId}', '${callback.customerName}')">📞 Ara</button><button class="btn btn-delete btn-small" onclick="removeCallback('${callback.customerId}')">🗑️</button></div></div>`;
             }).join('');
         }
         function removeCallback(customerId) {
@@ -1420,27 +1420,26 @@
                 console.log('🗑️ Callback silindi:', customerId);
             }
         }
-        function callCustomer(customerId, customerName, isCallback = false) {
+        function callCustomer(customerId, customerName) {
             if (currentCall || outgoingCallInfo || callState !== 'idle') {
                 showNotification('Zaten bir aramada bulunuyorsunuz!', 'warning');
                 return;
             }
-            console.log(`📞 Müşteri aranıyor: ${customerName} (Callback: ${isCallback})`);
-            
-            // Görüşme nesnesine, bunun bir geri arama olup olmadığını ekliyoruz.
-            currentCall = { userId: customerId, userName: customerName, isCallback: isCallback };
+            console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
             outgoingCallInfo = { userId: customerId, userName: customerName };
-            
+            currentCall = { userId: customerId, userName: customerName };
             callState = 'outgoing';
-            document.getElementById('outgoingName').textContent = customerName;
-            document.getElementById('outgoingId').textContent = customerId;
-            document.getElementById('outgoingCall').classList.remove('hidden');
+            const outgoingNameEl = document.getElementById('outgoingName');
+            const outgoingIdEl = document.getElementById('outgoingId');
+            const outgoingCallEl = document.getElementById('outgoingCall');
+            if (outgoingNameEl) outgoingNameEl.textContent = customerName;
+            if (outgoingIdEl) outgoingIdEl.textContent = customerId;
+            if (outgoingCallEl) outgoingCallEl.classList.remove('hidden');
             updateAdminStatus('busy');
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
             }
         }
-
         function cancelOutgoingCall() {
             if (!outgoingCallInfo) return;
             console.log('❌ Giden arama iptal edildi:', outgoingCallInfo.userName);
@@ -1510,23 +1509,12 @@
         }
         function handleCallEnded(message) {
             console.log('📞 Arama sonlandı:', message.reason);
-            
-            // KONTROL: Eğer sonlanan arama bir geri arama ise, sunucuya listeden silmesini söyle.
-            if (currentCall && currentCall.isCallback) {
-                console.log(`📝 Callback araması tamamlandı, ${currentCall.userName} listeden siliniyor.`);
-                socket.send(JSON.stringify({
-                    type: 'remove-callback',
-                    customerId: currentCall.userId,
-                    adminId: currentAdmin.username
-                }));
-            }
-        
             if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
             
-            if (message.duration !== undefined && message.creditsUsed !== undefined) {
+            if (message.reason !== 'cancelled' && message.reason !== 'rejected') {
                 showCallSummaryModal(message.duration, message.creditsUsed);
             }
-        
+
             cleanupCall();
             resetCallState();
         }
@@ -2041,8 +2029,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
