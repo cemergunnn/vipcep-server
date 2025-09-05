@@ -1259,6 +1259,9 @@ app.get('/api/export-data', requireSuperAdminLogin, async (req, res) => {
     }
 });
 // ================== WEBSOCKET HANDLER ==================
+// DOSYA: server.js
+// --- MEVCUT ws.on('message',...) FONKSİYONUNU SİLİP BU BLOK İLE DEĞİŞTİRİN ---
+
 ws.on('message', async (data) => {
     try {
         const message = JSON.parse(data);
@@ -1302,8 +1305,8 @@ ws.on('message', async (data) => {
             }
             case 'direct-call-request': {
                 const targetAdmin = Array.from(clients.values()).find(c => c.id === message.targetAdminId && c.userType === 'admin' && c.ws.readyState === WebSocket.OPEN);
-                if (targetAdmin && !activeCallAdmins.has(targetAdmin.id) && !adminLocks.has(targetAdmin.id)) {
-                    adminLocks.set(targetAdmin.id, message.userId);
+                if (targetAdmin && !activeCallAdmins.has(targetAdmin.uniqueId) && !adminLocks.has(targetAdmin.uniqueId)) {
+                    adminLocks.set(targetAdmin.uniqueId, message.userId);
                     targetAdmin.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
                     broadcastAdminListToCustomers();
                 } else {
@@ -1313,7 +1316,7 @@ ws.on('message', async (data) => {
             }
             case 'accept-incoming-call': {
                 const customerToCall = clients.get(message.userId);
-                const adminCalling = Array.from(clients.values()).find(c => c.ws === ws && c.userType === 'admin');
+                const adminCalling = senderInfo;
                 if (customerToCall && adminCalling) {
                     adminLocks.delete(adminCalling.uniqueId);
                     customerToCall.ws.send(JSON.stringify({ type: 'call-accepted', adminId: adminCalling.uniqueId, adminName: adminCalling.name }));
@@ -1328,7 +1331,7 @@ ws.on('message', async (data) => {
                 const targetIdForSignal = message.targetId;
                 const targetClient = clients.get(targetIdForSignal) || Array.from(clients.values()).find(c => c.uniqueId === targetIdForSignal);
                 if (targetClient && targetClient.ws && targetClient.ws.readyState === WebSocket.OPEN) {
-                    const sender = Array.from(clients.values()).find(c => c.ws === ws);
+                    const sender = senderInfo;
                     if (sender) {
                         const forwardMessage = {
                             type: message.type,
@@ -1366,14 +1369,14 @@ ws.on('message', async (data) => {
                 break;
             }
             case 'reject-incoming-call': {
-                const adminIdForReject = senderInfo.uniqueId;
-                if(adminIdForReject){
-                    const customerToInformId = adminLocks.get(adminIdForReject);
+                const { adminId } = message; // Düzeltme: ID'yi doğrudan mesajdan alıyoruz.
+                if(adminId){
+                    const customerToInformId = adminLocks.get(adminId);
                     const customerToInform = clients.get(customerToInformId);
                     if(customerToInform){
                         customerToInform.ws.send(JSON.stringify({type: 'call-rejected', reason: 'Usta aramayı reddetti.'}));
                     }
-                    adminLocks.delete(adminIdForReject);
+                    adminLocks.delete(adminId);
                     broadcastAdminListToCustomers();
                 }
                 break;
@@ -1556,6 +1559,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
