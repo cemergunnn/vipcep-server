@@ -1298,19 +1298,27 @@ wss.on('connection', (ws, req) => {
                     break;
                     case 'customer-accepted-call':
                         const { adminId, customerId } = message;
-                        // Müşterinin kim olduğunu ve hangi admini aradığını bul
                         const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
                         const customerClient = clients.get(customerId);
                     
-                        // Eğer admin hala online ise
                         if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
+                            // Admini meşgul eden kilidi kaldır, çünkü arama artık aktif seansa dönüşüyor.
+                            adminLocks.delete(adminId);
+                    
                             // Admine, müşterinin kabul ettiğini ve WebRTC görüşmesini başlatabileceğini bildir.
-                            // admin-panel'in zaten anladığı 'call-accepted' mesajını yeniden kullanabiliriz.
                             adminClient.ws.send(JSON.stringify({
                                 type: 'call-accepted',
                                 customerId: customerId,
                                 customerName: customerClient ? customerClient.name : customerId
                             }));
+                    
+                            // KRİTİK EKSİK ADIM: Aktif arama seansını ve kalp atışını (kredi düşme) başlat.
+                            const callKey = `${customerId}-${adminId}`;
+                            startHeartbeat(customerId, adminId, callKey);
+                            
+                        } else {
+                            // Eğer admin bu sırada bağlantıyı kopardıysa, kilidi temizle.
+                            adminLocks.delete(adminId);
                         }
                         break;
                     // --- BU KOD BLOĞUNU server.js'deki switch içine EKLEYİN ---
@@ -1405,12 +1413,36 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
                 
-                case 'end-call':
-                    const callInfo = findActiveCall(message.userId, message.targetId);
-                    if (callInfo) {
-                        stopHeartbeat(callInfo.callKey, message.reason || 'user_ended');
-                    }
-                    break;
+                    case 'end-call':
+                        const endedByAdmin = message.userType === 'admin';
+                        const userId1 = message.userId;
+                        const userId2 = message.targetId;
+                    
+                        let callInfo = findActiveCall(userId1, userId2);
+                    
+                        if (callInfo) {
+                            // Normal durum: Arama başlamış ve kalp atışı devam ediyor.
+                            stopHeartbeat(callInfo.callKey, message.reason || 'user_ended');
+                        } else {
+                            // Hata durumu (B Planı): Arama kalp atışı başlamadan sonlandırıldı (örn: mikrofon hatası).
+                            console.log('⚠️ Kalp atışı başlamamış bir arama sonlandırılıyor (örn: mikrofon hatası).');
+                            
+                            // Tarafların kim olduğunu belirle
+                            const customerId = endedByAdmin ? userId2 : userId1;
+                            const adminUniqueId = endedByAdmin ? userId1 : userId2;
+                    
+                            // Her iki tarafa da aramanın bittiğini bildir
+                            broadcastCallEnd(customerId, adminUniqueId, message.reason || 'ended_before_start');
+                            
+                            // Adminin durumunu sıfırlamak için kilitleri ve aktif aramaları temizle
+                            adminLocks.delete(adminUniqueId);
+                            activeCallAdmins.delete(adminUniqueId);
+                            
+                            // Adminin durumunu 'müsait' olarak güncelle
+                            broadcastAdminListToCustomers();
+                            broadcastSystemStateToSuperAdmins();
+                        }
+                        break;
                 
                 case 'reject-incoming-call':
                     const adminIdForReject = message.adminId;
@@ -1551,6 +1583,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
