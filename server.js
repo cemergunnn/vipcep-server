@@ -1296,6 +1296,42 @@ wss.on('connection', (ws, req) => {
                     console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
                     broadcastAdminListToCustomers();
                     break;
+                    // --- BU KOD BLOĞUNU server.js'deki switch içine EKLEYİN ---
+                    
+                    case 'admin-call-customer':
+                        const { targetCustomerId, adminName } = message;
+                        const targetCustomerClient = clients.get(targetCustomerId);
+                        const callingAdmin = senderInfo; // 'senderInfo' zaten o kapsamda mevcut
+                    
+                        // Müşterinin çevrimiçi olup olmadığını kontrol et
+                        if (targetCustomerClient && targetCustomerClient.ws && targetCustomerClient.ws.readyState === WebSocket.OPEN) {
+                            
+                            // Adminin zaten bir arama veya arama işlemi içinde olup olmadığını kontrol et
+                            if (activeCallAdmins.has(callingAdmin.uniqueId) || adminLocks.has(callingAdmin.uniqueId)) {
+                                callingAdmin.ws.send(JSON.stringify({ type: 'call-failed', reason: 'Zaten başka bir işlemdesiniz.' }));
+                                return;
+                            }
+                            
+                            // Admini bu arama denemesi için kilitle
+                            adminLocks.set(callingAdmin.uniqueId, targetCustomerId);
+                    
+                            // Müşteriye arama isteğini gönder
+                            targetCustomerClient.ws.send(JSON.stringify({
+                                type: 'admin-call-request',
+                                adminId: callingAdmin.uniqueId,
+                                adminName: adminName || callingAdmin.name
+                            }));
+                            
+                            // Tüm müşterilere admin listesini yayınlayarak bu adminin meşgul olduğunu bildir
+                            broadcastAdminListToCustomers();
+                    
+                        } else {
+                            // Müşteri çevrimdışı ise admini bilgilendir
+                            callingAdmin.ws.send(JSON.stringify({ type: 'call-failed', reason: 'Müşteri şu anda çevrimdışı.' }));
+                        }
+                        break;
+                    
+                    // --- KOPYALAMAYI BURADA BİTİRİN ---
                 
                 case 'login-request':
                     const approval = await isUserApproved(message.userId, message.userName);
@@ -1498,5 +1534,6 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
