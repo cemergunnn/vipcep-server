@@ -598,21 +598,46 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 22px 35px;
-    border-radius: 12px;
+    background-color: var(--card-bg); /* Mevcut kart arka plan renginizi kullanır */
+    color: var(--text-color);       /* Mevcut metin renginizi kullanır */
+    padding: 30px 40px;
+    border-radius: 15px;
     z-index: 2000;
     text-align: center;
-    font-size: 16px;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+    font-size: 17px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3); /* Daha belirgin gölge */
     opacity: 1;
-    transition: opacity 0.5s ease-out;
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out; /* Animasyon ekle */
+    max-width: 320px;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Hafif çerçeve */
+}
+
+.temporary-message-popup .icon {
+    font-size: 48px; /* İkon boyutu */
+    margin-bottom: 15px;
+    display: block;
+    line-height: 1;
+}
+
+.temporary-message-popup h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color); /* Başlık rengi */
+    font-weight: 600;
+    font-size: 20px;
+}
+
+.temporary-message-popup p {
+    margin: 0;
+    color: var(--gray-400); /* Paragraf rengi */
+    line-height: 1.4;
 }
 
 .temporary-message-popup.fade-out {
     opacity: 0;
+    transform: translate(-50%, -60%); /* Kaybolurken yukarı doğru kayma efekti */
 }
+
         /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
         /* @keyframes fly-up-strong {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
@@ -1283,13 +1308,16 @@
         
                     // API isteğinden sonra mesajı göster
                     if (currentRating > 0 || commentValue !== '' || totalTipAmount > 0) {
-                        showTemporaryMessage("Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
+                        // Eski: showTemporaryMessage("Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
+                        showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
                     } else {
-                        showTemporaryMessage("Hayırlı işler dileriz.", 3000);
+                        // Eski: showTemporaryMessage("Hayırlı işler dileriz.", 3000);
+                        showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
                     }
                 } catch(e) {
                     console.error("Review submission failed", e);
-                    showTemporaryMessage("Değerlendirme gönderilirken bir hata oluştu.", 3000);
+                    // Eski: showTemporaryMessage("Değerlendirme gönderilirken bir hata oluştu.", 3000);
+                    showTemporaryMessage("⚠️", "Hata Oluştu", "Değerlendirme gönderilirken bir hata oluştu.", 4000);
                 }
             };
         
@@ -1499,34 +1527,32 @@
             }
             return stars;
         }
-        function showTemporaryMessage(message, duration = 3000) {
-            // Varsa önceki mesajı kaldır
+         function showTemporaryMessage(icon, title, message, duration = 3000) {
             const existingPopup = document.getElementById('temp-message');
-            if (existingPopup) {
-                existingPopup.remove();
-            }
-        
+            if (existingPopup) existingPopup.remove();
+            
             const popup = document.createElement('div');
             popup.id = 'temp-message';
             popup.className = 'temporary-message-popup';
-            popup.innerHTML = message.replace(/\n/g, '<br>'); // Mesajdaki \n'leri <br>'ye çevirerek alt satıra geçmeyi sağlar
-        
+            popup.innerHTML = `
+                <span class="icon" style="color: var(--primary-color);">${icon}</span>
+                <h4>${title}</h4>
+                <p>${message.replace(/\n/g, '<br>')}</p>
+            `;
             document.body.appendChild(popup);
         
-            // Belirtilen sürenin sonunda pencereyi yavaşça yok et
             setTimeout(() => {
                 popup.classList.add('fade-out');
-                // Animasyon bittikten sonra HTML'den tamamen kaldır
                 setTimeout(() => {
-                    if (popup.parentElement) {
-                        popup.parentElement.removeChild(popup);
-                    }
-                }, 500); // CSS'teki transition süresiyle aynı olmalı
-            }, duration - 500); // Toplam süreden 500ms önce solmaya başla
-        }         
+                    if (popup.parentElement) popup.parentElement.removeChild(popup);
+                }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
+            }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
+        }
+
     </script>
 </body>
 </html>
+
 
 
 
