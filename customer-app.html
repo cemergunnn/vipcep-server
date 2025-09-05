@@ -1366,7 +1366,7 @@
         async function showAdminDetails(adminId) {
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) return;
-
+        
             const modalHTML = `
                 <div id="detailsModalOverlay" class="modal-overlay">
                     <div class="modal-content" style="text-align: left; max-width: 380px;">
@@ -1375,12 +1375,12 @@
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-
+        
             try {
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
-
+        
                 const profile = result.profile;
                 const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
                     <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
@@ -1390,14 +1390,25 @@
                         <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
                     </div>
                 `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
-
+        
                 document.getElementById('detailsModalBody').innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
-                        <h3 style="margin-top: 10px; margin-bottom: 5px;">${profile.username}</h3>
-                        <p style="color: #555;">${profile.specialization || 'Genel Teknik Servis'}</p>
+                        
+                        <h3 style="margin-top: 10px; margin-bottom: 5px;">${admin.name}</h3>
+                        
+                        <p style="color: #555; font-weight: 500;">${profile.specialization || 'Genel Teknik Servis'}</p>
+                        
                         <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
                     </div>
+        
+                    ${profile.bio ? `
+                    <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 8px;">
+                        <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Hakkında</h4>
+                        <p style="color: #333; font-size: 14px; line-height: 1.5;">${profile.bio}</p>
+                    </div>
+                    ` : ''}
+        
                     <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Değerlendirmeler (${profile.reviews.length})</h4>
                     <div style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
                         ${reviewsHtml}
@@ -1418,6 +1429,7 @@
     </script>
 </body>
 </html>
+
 
 
 
