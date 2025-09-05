@@ -598,45 +598,47 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: var(--card-bg); /* Mevcut kart arka plan renginizi kullanır */
-    color: var(--text-color);       /* Mevcut metin renginizi kullanır */
+    background-color: white; /* DÜZELTME: Opak beyaz arka plan */
+    color: #374151; /* DÜZELTME: Ana metin rengi (var(--gray-700)) */
     padding: 30px 40px;
-    border-radius: 15px;
+    border-radius: 16px;
     z-index: 2000;
     text-align: center;
-    font-size: 17px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3); /* Daha belirgin gölge */
+    font-size: 16px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
     opacity: 1;
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out; /* Animasyon ekle */
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
     max-width: 320px;
-    border: 1px solid rgba(255, 255, 255, 0.1); /* Hafif çerçeve */
+    width: 90%;
 }
 
-.temporary-message-popup .icon {
-    font-size: 48px; /* İkon boyutu */
-    margin-bottom: 15px;
-    display: block;
-    line-height: 1;
-}
+    .temporary-message-popup .icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        display: block;
+        line-height: 1;
+    }
+    
+    .temporary-message-popup h4 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: #2563eb; /* DÜZELTME: Başlık için direkt renk kodu (var(--primary-color)) */
+        font-weight: 600;
+        font-size: 20px;
+    }
+    
+    .temporary-message-popup p {
+        margin: 0;
+        color: #64748b; /* DÜZELTME: Paragraf için direkt renk kodu (var(--gray-500)) */
+        line-height: 1.5;
+        font-size: 15px;
+    }
+    
+    .temporary-message-popup.fade-out {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
 
-.temporary-message-popup h4 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: var(--primary-color); /* Başlık rengi */
-    font-weight: 600;
-    font-size: 20px;
-}
-
-.temporary-message-popup p {
-    margin: 0;
-    color: var(--gray-400); /* Paragraf rengi */
-    line-height: 1.4;
-}
-
-.temporary-message-popup.fade-out {
-    opacity: 0;
-    transform: translate(-50%, -60%); /* Kaybolurken yukarı doğru kayma efekti */
-}
 
         /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
         /* @keyframes fly-up-strong {
@@ -1552,6 +1554,7 @@
     </script>
 </body>
 </html>
+
 
 
 
