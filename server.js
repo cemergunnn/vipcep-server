@@ -1296,31 +1296,25 @@ wss.on('connection', (ws, req) => {
                     console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
                     broadcastAdminListToCustomers();
                     break;
-                    case 'customer-accepted-call':
-                        const { adminId, customerId } = message;
-                        const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
-                        const customerClient = clients.get(customerId);
-                    
-                        if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
-                            // Admini meşgul eden kilidi kaldır, çünkü arama artık aktif seansa dönüşüyor.
-                            adminLocks.delete(adminId);
-                    
-                            // Admine, müşterinin kabul ettiğini ve WebRTC görüşmesini başlatabileceğini bildir.
-                            adminClient.ws.send(JSON.stringify({
-                                type: 'call-accepted',
-                                customerId: customerId,
-                                customerName: customerClient ? customerClient.name : customerId
-                            }));
-                    
-                            // KRİTİK EKSİK ADIM: Aktif arama seansını ve kalp atışını (kredi düşme) başlat.
-                            const callKey = `${customerId}-${adminId}`;
-                            startHeartbeat(customerId, adminId, callKey);
-                            
-                        } else {
-                            // Eğer admin bu sırada bağlantıyı kopardıysa, kilidi temizle.
-                            adminLocks.delete(adminId);
-                        }
-                        break;
+                case 'customer-accepted-call': {
+                    const { adminId, customerId } = message;
+                    const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
+                    const customerClient = clients.get(customerId);
+                
+                    if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
+                        adminLocks.delete(adminId);
+                        adminClient.ws.send(JSON.stringify({
+                            type: 'call-accepted',
+                            customerId: customerId,
+                            customerName: customerClient ? customerClient.name : customerId
+                        }));
+                        const callKey = `${customerId}-${adminId}`;
+                        startHeartbeat(customerId, adminId, callKey);
+                    } else {
+                        adminLocks.delete(adminId);
+                    }
+                    break;
+                }
                     // --- BU KOD BLOĞUNU server.js'deki switch içine EKLEYİN ---
                     
                     case 'admin-call-customer':
@@ -1479,16 +1473,14 @@ wss.on('connection', (ws, req) => {
                         break;
                     
                     // --- YENİ 'remove-callback' BLOĞUNU EKLEYİN ---
-                    case 'remove-callback':
+                    case 'remove-callback': {
                         const { customerId, adminId } = message;
                         let currentCallbacks = adminCallbacks.get(adminId) || [];
-                        // İlgili müşteriyi listeden filtrele
                         const updatedCallbacks = currentCallbacks.filter(cb => cb.customerId !== customerId);
                         adminCallbacks.set(adminId, updatedCallbacks);
-                        // Admin paneline güncel listeyi gönder
                         broadcastCallbacksToAdmin(adminId);
                         break;
-            }
+                    }
         } catch (error) {
             console.error("Mesaj işlenirken hata:", error);
         }
@@ -1602,6 +1594,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
