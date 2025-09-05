@@ -1367,6 +1367,7 @@
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) return;
         
+            // Modalın ana yapısı oluşturuluyor
             const modalHTML = `
                 <div id="detailsModalOverlay" class="modal-overlay">
                     <div class="modal-content" style="text-align: left; max-width: 380px;">
@@ -1377,28 +1378,51 @@
             document.body.insertAdjacentHTML('beforeend', modalHTML);
         
             try {
+                // Sunucudan profil verileri çekiliyor
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
         
                 const profile = result.profile;
-                const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
-                    <div style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
-                        <p><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
-                        <p style="font-style: italic; color: #555;">"${review.comment || 'Yorum yok.'}"</p>
-                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
-                        <p style="font-size: 11px; color: #999; text-align: right;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
-                    </div>
-                `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
+                const reviews = profile.reviews; // Yorumları bir değişkende saklıyoruz
         
+                // Yorumları sıralayıp HTML'e dönüştüren fonksiyon
+                const renderReviews = (sortKey) => {
+                    const reviewsContainer = document.getElementById('reviews-container');
+                    if (!reviewsContainer) return;
+        
+                    let sortedReviews = [...reviews]; // Orijinal diziyi bozmamak için kopyasını oluşturuyoruz
+        
+                    if (sortKey === 'rating_asc') {
+                        // Puana göre düşükten yükseğe sırala
+                        sortedReviews.sort((a, b) => a.rating - b.rating);
+                    } else if (sortKey === 'date_asc') {
+                        // Tarihe göre eskiden yeniye sırala
+                        sortedReviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    } else if (sortKey === 'tip_desc') {
+                        // Desteğe (bahşiş) göre çoktan aza sırala
+                        sortedReviews.sort((a, b) => (b.tip_amount || 0) - (a.tip_amount || 0));
+                    }
+                    // 'default' durumu sunucudan geldiği gibi (genellikle en yeni) kalır
+        
+                    const reviewsHtml = sortedReviews.length > 0 ? sortedReviews.map(review => `
+                        <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
+                            <p style="margin: 0 0 4px 0;"><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
+                            <p style="font-style: italic; color: #555; margin: 0 0 4px 0; font-size: 13px;">"${review.comment || 'Yorum yok.'}"</p>
+                            ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold; font-size: 11px; margin: 2px 0;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                            <p style="font-size: 10px; color: #999; text-align: right; margin: 4px 0 0 0;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
+                        </div>
+                    `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
+        
+                    reviewsContainer.innerHTML = reviewsHtml;
+                };
+        
+                // Modalın içini dolduruyoruz
                 document.getElementById('detailsModalBody').innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
-                        
                         <h3 style="margin-top: 10px; margin-bottom: 5px;">${admin.name}</h3>
-                        
                         <p style="color: #555; font-weight: 500;">${profile.specialization || 'Genel Teknik Servis'}</p>
-                        
                         <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
                     </div>
         
@@ -1409,16 +1433,31 @@
                     </div>
                     ` : ''}
         
-                    <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Değerlendirmeler (${profile.reviews.length})</h4>
-                    <div style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
-                        ${reviewsHtml}
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
+                        <h4 style="margin: 0;">Değerlendirmeler (${reviews.length})</h4>
+                        <select id="review-sort-select" style="font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; background-color: #f9f9f9; font-weight: 500;">
+                            <option value="default">SIRALA</option>
+                            <option value="rating_asc">Puana Göre (Düşükten Yükseğe)</option>
+                            <option value="date_asc">Tarihe Göre (Eskiden Yeniye)</option>
+                            <option value="tip_desc">Desteğe Göre (En Yüksek)</option>
+                        </select>
                     </div>
+                    <div id="reviews-container" style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
+                        </div>
                 `;
+        
+                // Sıralama menüsüne "değişim" olayını ekliyoruz
+                document.getElementById('review-sort-select').addEventListener('change', function() {
+                    renderReviews(this.value);
+                });
+        
+                // Sayfa ilk açıldığında yorumları varsayılan sıralama ile gösteriyoruz
+                renderReviews('default');
+        
             } catch (error) {
                 document.getElementById('detailsModalBody').innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
             }
         }
-
         function generateStars(rating) {
             let stars = '';
             for (let i = 1; i <= 5; i++) {
@@ -1429,6 +1468,7 @@
     </script>
 </body>
 </html>
+
 
 
 
