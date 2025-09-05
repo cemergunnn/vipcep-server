@@ -548,34 +548,54 @@
         }
 
         async function openAdminProfileModal(username) {
-            const modal = document.getElementById('adminProfileModal');
-            const content = document.getElementById('adminProfileModalContent');
-            modal.classList.remove('hidden');
-            content.innerHTML = `<div class="empty-state">Profil bilgileri yükleniyor...</div>`;
+        const modal = document.getElementById('adminProfileModal');
+        const content = document.getElementById('adminProfileModalContent');
+        modal.classList.remove('hidden');
+        content.innerHTML = `<div class="empty-state">Profil bilgileri yükleniyor...</div>`;
 
-            try {
-                const response = await fetch(`/api/admins/${username}/profile`);
-                const result = await response.json();
-                if (!result.success) throw new Error(result.error);
-                const profile = result.profile;
-                const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
-                    <div class="review-item" id="review-${review.id}" 
-                         data-rating="${review.rating}" data-comment="${review.comment || ''}" data-tip="${review.tip_amount}">
-                        <div class="review-header">
-                            <div><strong>${review.customer_name}</strong> - ⭐ ${review.rating} (${review.tip_amount} kredi bahşiş)</div>
-                            <div class="review-actions">
-                                <button onclick="editReview(${review.id})">Düzenle</button>
-                                <button onclick="deleteReview(${review.id})">Sil</button>
-                            </div>
-                        </div>
-                        <p>${review.comment || '<i>Yorum yok.</i>'}</p>
+        try {
+            const response = await fetch(`/api/admins/${username}/profile`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error);
+            const profile = result.profile;
+
+            const profileFormHtml = `
+                <form id="editProfileForm" onsubmit="event.preventDefault(); saveAdminProfile('${username}');">
+                    <h4>Profil Bilgilerini Düzenle</h4>
+                    <div style="display: grid; gap: 15px; margin-bottom: 20px;">
+                        <input type="text" id="edit-specialization" class="form-input" placeholder="Uzmanlık Alanı" value="${profile.specialization || ''}">
+                        <input type="text" id="edit-pfp-url" class="form-input" placeholder="Profil Fotoğrafı URL" value="${profile.profile_picture_url || ''}">
+                        <textarea id="edit-bio" class="form-input" placeholder="Hakkında">${profile.bio || ''}</textarea>
+                        <button type="submit" class="btn btn-primary">Profili Kaydet</button>
                     </div>
-                `).join('') : '<div class="empty-state">Henüz değerlendirme yok.</div>';
-                content.innerHTML = `<h3>✏️ ${username} Profili & Yorumları</h3><div>${reviewsHtml}</div>`;
-            } catch (error) {
-                content.innerHTML = `<div class="empty-state" style="color: red;">${error.message}</div>`;
-            }
+                </form>
+            `;
+
+            const reviewsHtml = profile.reviews.length > 0 ? profile.reviews.map(review => `
+                <div class="review-item" id="review-${review.id}"
+                     data-rating="${review.rating}" data-comment="${review.comment || ''}" data-tip="${review.tip_amount}">
+                    <div class="review-header">
+                        <div><strong>${review.customer_name || 'Müşteri'}</strong> - ⭐ ${review.rating} (${review.tip_amount || 0} kredi bahşiş)</div>
+                        <div class="review-actions">
+                            <button onclick="editReview(${review.id})">Düzenle</button>
+                            <button onclick="deleteReview(${review.id})">Sil</button>
+                        </div>
+                    </div>
+                    <p>${review.comment || '<i>Yorum yok.</i>'}</p>
+                </div>
+            `).join('') : '<div class="empty-state">Henüz değerlendirme yok.</div>';
+
+            content.innerHTML = `
+                <h3>✏️ ${username} Profili & Yorumları</h3>
+                ${profileFormHtml}
+                <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 0;">
+                <h4>Gelen Yorumlar</h4>
+                <div>${reviewsHtml}</div>
+            `;
+        } catch (error) {
+            content.innerHTML = `<div class="empty-state" style="color: red;">${error.message}</div>`;
         }
+    }
 
         function closeAdminProfileModal() { document.getElementById('adminProfileModal').classList.add('hidden'); }
 
