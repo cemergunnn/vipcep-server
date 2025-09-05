@@ -1296,6 +1296,23 @@ wss.on('connection', (ws, req) => {
                     console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
                     broadcastAdminListToCustomers();
                     break;
+                    case 'customer-accepted-call':
+                        const { adminId, customerId } = message;
+                        // Müşterinin kim olduğunu ve hangi admini aradığını bul
+                        const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
+                        const customerClient = clients.get(customerId);
+                    
+                        // Eğer admin hala online ise
+                        if (adminClient && adminClient.ws && adminClient.ws.readyState === WebSocket.OPEN) {
+                            // Admine, müşterinin kabul ettiğini ve WebRTC görüşmesini başlatabileceğini bildir.
+                            // admin-panel'in zaten anladığı 'call-accepted' mesajını yeniden kullanabiliriz.
+                            adminClient.ws.send(JSON.stringify({
+                                type: 'call-accepted',
+                                customerId: customerId,
+                                customerName: customerClient ? customerClient.name : customerId
+                            }));
+                        }
+                        break;
                     // --- BU KOD BLOĞUNU server.js'deki switch içine EKLEYİN ---
                     
                     case 'admin-call-customer':
@@ -1534,6 +1551,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
