@@ -1127,10 +1127,21 @@
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-                
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                
+        
+                // --- YENİ MİKROFON KONTROL MANTIĞI BAŞLANGICI ---
+                try {
+                    // Önce mikrofonu almayı dene
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                    console.log("🎤 Mikrofon bulundu ve ses akışına eklendi.");
+                } catch (micError) {
+                    // Eğer mikrofon bulunamazsa veya izin verilmezse, hatayı yakala ama aramayı sonlandırma
+                    console.warn("Mikrofon hatası, görüşme tek yönlü olacak:", micError.name);
+                    showNotification("Mikrofon bulunamadı. Görüşme tek yönlü (sadece dinleme) olarak devam edecek.", "info", 5000);
+                    localStream = null; // Lokal akışın boş olduğundan emin ol
+                }
+                // --- YENİ MİKROFON KONTROL MANTIĞI BİTİŞİ ---
+        
                 peerConnection.ontrack = event => {
                     const remoteAudio = document.getElementById('remoteAudio');
                     if (remoteAudio) remoteAudio.srcObject = event.streams[0];
@@ -1143,16 +1154,19 @@
                 };
                 
                 peerConnection.onconnectionstatechange = () => {
-                    if (peerConnection?.connectionState === 'connected') {
+                    if (!peerConnection) return;
+                    const state = peerConnection.connectionState;
+                    if (state === 'connected') {
                         document.getElementById('connectedAdminPicOverlay').src = lastCallInfo.adminPic;
                         document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
                         setState('connected');
                         startCallTimer();
+                    } else if (['failed', 'disconnected', 'closed'].includes(state)) {
+                        handleCallEnded({ reason: 'Bağlantı koptu' });
                     }
                 };
-
+        
                 if (isInitiator) {
-                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1160,8 +1174,9 @@
                     }
                 }
             } catch (err) {
-                console.error("PeerConnection veya mikrofon hatası:", err);
-                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
+                // Bu blok artık sadece kritik bağlantı hatalarını yakalar
+                console.error("Kritik PeerConnection hatası:", err);
+                showNotification("Görüşme başlatılırken kritik bir hata oluştu.", "error");
                 endCall(true);
             }
         }
@@ -1560,6 +1575,7 @@
     </script>
 </body>
 </html>
+
 
 
 
