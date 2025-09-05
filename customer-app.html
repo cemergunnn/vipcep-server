@@ -1030,34 +1030,26 @@
             const connectingView = document.getElementById('connectingStateView');
             const connectedView = document.getElementById('connectedStateView');
             const incomingView = document.getElementById('incomingCallView');
+            
             const mainApp = document.getElementById('mainApp');
-        
+
+            // Hide all overlay views first
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
             
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                mainApp.classList.add('hidden');
-        
+                mainApp.classList.add('hidden'); // Hide main content
+
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
-                    // İptal et butonu için de hedef ID'yi dinamik olarak ata
-                    const cancelBtn = connectingView.querySelector('.call-action-btn');
-                    if (cancelBtn) {
-                        cancelBtn.onclick = () => endCall(true, lastCallInfo.adminId);
-                    }
                 } else if (newState === 'connected') {
                     connectedView.classList.remove('hidden');
-                    // GÖRÜŞME BAŞLADIĞI ANDA, DOĞRU HEDEF ID İLE BUTONU GÜNCELLE
-                    const endCallBtn = connectedView.querySelector('.call-action-btn');
-                    if (endCallBtn) {
-                        endCallBtn.onclick = () => endCall(false, lastCallInfo.adminId);
-                    }
                 } else if (newState === 'incoming') {
                     incomingView.classList.remove('hidden');
                 }
-            } else {
+            } else { // idle state
                  callOverlay.classList.add('hidden');
                  mainApp.classList.remove('hidden');
             }
@@ -1135,21 +1127,10 @@
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-        
-                // --- YENİ MİKROFON KONTROL MANTIĞI BAŞLANGICI ---
-                try {
-                    // Önce mikrofonu almayı dene
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                    console.log("🎤 Mikrofon bulundu ve ses akışına eklendi.");
-                } catch (micError) {
-                    // Eğer mikrofon bulunamazsa veya izin verilmezse, hatayı yakala ama aramayı sonlandırma
-                    console.warn("Mikrofon hatası, görüşme tek yönlü olacak:", micError.name);
-                    showNotification("Mikrofon bulunamadı. Görüşme tek yönlü (sadece dinleme) olarak devam edecek.", "info", 5000);
-                    localStream = null; // Lokal akışın boş olduğundan emin ol
-                }
-                // --- YENİ MİKROFON KONTROL MANTIĞI BİTİŞİ ---
-        
+                
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
                 peerConnection.ontrack = event => {
                     const remoteAudio = document.getElementById('remoteAudio');
                     if (remoteAudio) remoteAudio.srcObject = event.streams[0];
@@ -1162,19 +1143,16 @@
                 };
                 
                 peerConnection.onconnectionstatechange = () => {
-                    if (!peerConnection) return;
-                    const state = peerConnection.connectionState;
-                    if (state === 'connected') {
+                    if (peerConnection?.connectionState === 'connected') {
                         document.getElementById('connectedAdminPicOverlay').src = lastCallInfo.adminPic;
                         document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
                         setState('connected');
                         startCallTimer();
-                    } else if (['failed', 'disconnected', 'closed'].includes(state)) {
-                        handleCallEnded({ reason: 'Bağlantı koptu' });
                     }
                 };
-        
+
                 if (isInitiator) {
+                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1182,9 +1160,8 @@
                     }
                 }
             } catch (err) {
-                // Bu blok artık sadece kritik bağlantı hatalarını yakalar
-                console.error("Kritik PeerConnection hatası:", err);
-                showNotification("Görüşme başlatılırken kritik bir hata oluştu.", "error");
+                console.error("PeerConnection veya mikrofon hatası:", err);
+                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
                 endCall(true);
             }
         }
@@ -1246,27 +1223,22 @@
             callTimer = null;
         }
 
-        function endCall(isCancel = false, explicitTargetId = null) {
-            // Fonksiyon artık bir hedef ID'si alabiliyor, eğer verilmezse genel bilgiyi kullanır.
+        function endCall(isCancel = false) {
             const reason = isCancel ? 'cancelled' : 'user_ended';
-            const target = explicitTargetId || lastCallInfo.adminId;
-        
+            const target = lastCallInfo.adminId;
+            
             cleanupCall();
-        
+
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
                     targetId: target, 
                     userId: userInfo.id, 
-                    reason: reason,
-                    userType: 'customer' // Sunucuya kimin sonlandırdığını bildirelim
+                    reason: reason 
                 }));
             } else {
-                // Eğer hedef veya soket yoksa bile arayüzü sıfırla.
                 setState('idle');
-                if (!target) {
-                    console.warn("Arama sonlandırılamadı çünkü hedef admin ID'si bulunamadı.");
-                }
+                showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
 
@@ -1588,6 +1560,15 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 
