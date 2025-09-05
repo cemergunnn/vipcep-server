@@ -757,7 +757,33 @@
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
-        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+        const rtcConfig = {
+          iceServers: [
+              {
+                urls: "stun:stun.relay.metered.ca:80",
+              },
+              {
+                urls: "turn:global.relay.metered.ca:80",
+                username: "2cd6997bdf9666187e5c41e1",
+                credential: "vjN0huj/wkeKHu8f",
+              },
+              {
+                urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                username: "2cd6997bdf9666187e5c41e1",
+                credential: "vjN0huj/wkeKHu8f",
+              },
+              {
+                urls: "turn:global.relay.metered.ca:443",
+                username: "2cd6997bdf9666187e5c41e1",
+                credential: "vjN0huj/wkeKHu8f",
+              },
+              {
+                urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                username: "2cd6997bdf9666187e5c41e1",
+                credential: "vjN0huj/wkeKHu8f",
+              },
+          ],
+        };
         const baseUrl = window.location.hostname === 'localhost' ? 
             'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
         
@@ -1468,6 +1494,7 @@
     </script>
 </body>
 </html>
+
 
 
 
