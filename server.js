@@ -1457,18 +1457,37 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
-                case 'callback-request':
-                    const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
-                    if(targetAdminForCallback){
-                        let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
-                        callbacks.push({ customerId: message.userId, customerName: message.userName, timestamp: Date.now() });
-                        adminCallbacks.set(targetAdminForCallback.id, callbacks);
-                        ws.send(JSON.stringify({ type: 'callback-success' }));
-                        broadcastCallbacksToAdmin(targetAdminForCallback.id);
-                    } else {
-                        ws.send(JSON.stringify({ type: 'callback-failed' }));
-                    }
-                    break;
+                    case 'callback-request':
+                        const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
+                        if (targetAdminForCallback) {
+                            let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
+                            
+                            // KONTROL: Müşteri zaten listede var mı?
+                            if (callbacks.some(cb => cb.customerId === message.userId)) {
+                                // Eğer varsa, zaten talepte bulunduğunu bildir.
+                                ws.send(JSON.stringify({ type: 'callback-failed', reason: 'Zaten bir geri arama talebiniz mevcut.' }));
+                            } else {
+                                // Eğer yoksa, listeye ekle.
+                                callbacks.push({ customerId: message.userId, customerName: message.userName, timestamp: Date.now() });
+                                adminCallbacks.set(targetAdminForCallback.id, callbacks);
+                                ws.send(JSON.stringify({ type: 'callback-success', adminName: targetAdminForCallback.name }));
+                                broadcastCallbacksToAdmin(targetAdminForCallback.id);
+                            }
+                        } else {
+                            ws.send(JSON.stringify({ type: 'callback-failed', reason: 'Usta şu anda çevrimdışı.' }));
+                        }
+                        break;
+                    
+                    // --- YENİ 'remove-callback' BLOĞUNU EKLEYİN ---
+                    case 'remove-callback':
+                        const { customerId, adminId } = message;
+                        let currentCallbacks = adminCallbacks.get(adminId) || [];
+                        // İlgili müşteriyi listeden filtrele
+                        const updatedCallbacks = currentCallbacks.filter(cb => cb.customerId !== customerId);
+                        adminCallbacks.set(adminId, updatedCallbacks);
+                        // Admin paneline güncel listeyi gönder
+                        broadcastCallbacksToAdmin(adminId);
+                        break;
             }
         } catch (error) {
             console.error("Mesaj işlenirken hata:", error);
@@ -1583,6 +1602,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
