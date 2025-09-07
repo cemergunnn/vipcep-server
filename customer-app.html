@@ -1237,13 +1237,16 @@
             }
             callTimer = null;
         }
-
+        
         function endCall(isCancel = false) {
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
             // cleanupCall, peerConnection'ı ve localStream'ı temizler.
             cleanupCall();
+            
+            // Arayüzü hemen sıfırla, böylece donma yaşanmaz
+            setState('idle');
         
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
@@ -1254,10 +1257,9 @@
                 }));
             } else {
                 // Sunucu bağlantısı yoksa, arama ekranını yerel olarak temizle
-                setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
-        } 
+        }
         function showReviewModal(callData) {
             playSound(endedSound);
         
@@ -1578,6 +1580,7 @@
     </script>
 </body>
 </html>
+
 
 
 
