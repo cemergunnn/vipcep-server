@@ -800,6 +800,7 @@
         let lastCallInfo = { adminId: null, callId: null, adminName: '', adminPic: '' };
         let availableAdmins = [];
         let pendingIceCandidates = [];
+        let isCallbackPending = false;
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -937,10 +938,14 @@
                     if (callState === 'connecting') handleCallAccepted(message); 
                     break;
                 case 'callback-success':
-                    showNotification(`${message.adminName} için geri arama talebiniz alındı.`, 'success');
+                    isCallbackPending = false; // Bekleyen talebi sıfırla
+                    showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
+                    updateAdminList(availableAdmins); // Butonları yeniden aktif hale getir
                     break;
                 case 'callback-failed':
-                    showNotification(message.reason || 'Geri arama talebi oluşturulamadı.', 'error');
+                    isCallbackPending = false; // Bekleyen talebi sıfırla
+                    showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
+                    updateAdminList(availableAdmins); // Butonları yeniden aktif hale getir
                     break;
                 case 'call-ended': 
                     handleCallEnded(message); 
@@ -982,7 +987,9 @@
                         </div>
                         <div class="admin-actions">
                             <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
-                            ${admin.status === 'available' ? `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>` : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}')">📝 Çağrı Bırak</button>`}
+                            ${admin.status === 'available' 
+                                ? `<button class="btn btn-call" onclick="makeCall('${admin.id}', event)">📞 Ara</button>`
+                                : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)" ${isCallbackPending ? 'disabled' : ''}>📝 Çağrı Bırak</button>`}
                         </div>
                     </div>
                 `).join('');
@@ -1017,13 +1024,29 @@
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
         }
 
-        function makeCallbackRequest(adminId) {
+        function makeCallbackRequest(adminId, event) {
+            if (isCallbackPending) {
+                return; // Zaten bekleyen bir talep varsa işlem yapma
+            }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
             }
+        
+            isCallbackPending = true;
+            const callbackButton = event.target;
+            callbackButton.disabled = true;
+            callbackButton.textContent = 'İsteniyor...';
+        
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
-
+        
+            isCallbackPending = true;
+            const callbackButton = event.target;
+            callbackButton.disabled = true;
+            callbackButton.textContent = 'İsteniyor...';
+        
+            socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
+        }
         function setState(newState) {
             callState = newState;
             const callOverlay = document.getElementById('callOverlay');
@@ -1564,4 +1587,5 @@
     </script>
 </body>
 </html>
+
 
