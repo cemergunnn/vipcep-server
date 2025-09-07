@@ -1414,35 +1414,35 @@ wss.on('connection', (ws, req) => {
                     break;
                 
                     case 'end-call':
-                        const endedByAdmin = message.userType === 'admin';
-                        const userId1 = message.userId;
-                        const userId2 = message.targetId;
-                    
-                        let callInfo = findActiveCall(userId1, userId2);
-                    
-                        if (callInfo) {
-                            // Normal durum: Arama başlamış ve kalp atışı devam ediyor.
-                            stopHeartbeat(callInfo.callKey, message.reason || 'user_ended');
-                        } else {
-                            // Hata durumu (B Planı): Arama kalp atışı başlamadan sonlandırıldı (örn: mikrofon hatası).
-                            console.log('⚠️ Kalp atışı başlamamış bir arama sonlandırılıyor (örn: mikrofon hatası).');
-                            
-                            // Tarafların kim olduğunu belirle
-                            const customerId = endedByAdmin ? userId2 : userId1;
-                            const adminUniqueId = endedByAdmin ? userId1 : userId2;
-                    
-                            // Her iki tarafa da aramanın bittiğini bildir
-                            broadcastCallEnd(customerId, adminUniqueId, message.reason || 'ended_before_start');
-                            
-                            // Adminin durumunu sıfırlamak için kilitleri ve aktif aramaları temizle
-                            adminLocks.delete(adminUniqueId);
-                            activeCallAdmins.delete(adminUniqueId);
-                            
-                            // Adminin durumunu 'müsait' olarak güncelle
-                            broadcastAdminListToCustomers();
-                            broadcastSystemStateToSuperAdmins();
-                        }
-                        break;
+                    const endedByAdmin = message.userType === 'admin';
+                    const userId1 = message.userId;
+                    const userId2 = message.targetId;
+                
+                    let callInfo = findActiveCall(userId1, userId2);
+                
+                    if (callInfo) {
+                        // Normal durum: Arama başlamış ve kalp atışı devam ediyor.
+                        stopHeartbeat(callInfo.callKey, message.reason || 'user_ended');
+                    } else {
+                        // Hata durumu (B Planı): Arama kalp atışı başlamadan sonlandırıldı (örn: mikrofon hatası).
+                        console.log('⚠️ Kalp atışı başlamamış bir arama sonlandırılıyor (örn: mikrofon hatası).');
+                        
+                        // Tarafların kim olduğunu belirle
+                        const customerId = endedByAdmin ? userId2 : userId1;
+                        const adminUniqueId = endedByAdmin ? userId1 : userId2;
+                
+                        // Her iki tarafa da aramanın bittiğini bildir
+                        broadcastCallEnd(customerId, adminUniqueId, message.reason || 'ended_before_start');
+                        
+                        // Adminin durumunu sıfırlamak için kilitleri ve aktif aramaları temizle
+                        adminLocks.delete(adminUniqueId);
+                        activeCallAdmins.delete(adminUniqueId);
+                        
+                        // Adminin durumunu 'müsait' olarak güncelle
+                        broadcastAdminListToCustomers();
+                        broadcastSystemStateToSuperAdmins();
+                    }
+                    break;
                 
                 case 'reject-incoming-call':
                     const adminIdForReject = message.adminId;
@@ -1588,6 +1588,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
