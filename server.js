@@ -1461,12 +1461,17 @@ wss.on('connection', (ws, req) => {
                     const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
                     if(targetAdminForCallback){
                         let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
-                        callbacks.push({ customerId: message.userId, customerName: message.userName, timestamp: Date.now() });
-                        adminCallbacks.set(targetAdminForCallback.id, callbacks);
-                        ws.send(JSON.stringify({ type: 'callback-success' }));
-                        broadcastCallbacksToAdmin(targetAdminForCallback.id);
+                        // Müşterinin zaten listede olup olmadığını kontrol et
+                        if (callbacks.some(c => c.customerId === message.userId)) {
+                            ws.send(JSON.stringify({ type: 'callback-failed', reason: 'Geri dönüş listenize zaten eklenmişsiniz.' }));
+                        } else {
+                            callbacks.push({ customerId: message.userId, customerName: message.userName, timestamp: Date.now() });
+                            adminCallbacks.set(targetAdminForCallback.id, callbacks);
+                            ws.send(JSON.stringify({ type: 'callback-success' }));
+                            broadcastCallbacksToAdmin(targetAdminForCallback.id);
+                        }
                     } else {
-                        ws.send(JSON.stringify({ type: 'callback-failed' }));
+                        ws.send(JSON.stringify({ type: 'callback-failed', reason: 'Usta şu anda çevrimdışı.' }));
                     }
                     break;
             }
