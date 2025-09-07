@@ -1297,35 +1297,39 @@
             const submitReview = async () => {
                 actionBtn.disabled = true;
                 const commentValue = commentInput.value.trim();
-        
-                // Modal'ı hemen kapat
+                const tipAmount = totalTipAmount;
+            
+                // Hata çözümü: Eğer bahşiş verilmişse ancak derecelendirme yapılmamışsa,
+                // varsayılan olarak 5 yıldız atayın.
+                let finalRating = currentRating;
+                if (tipAmount > 0 && finalRating === 0) {
+                    finalRating = 5;
+                }
+            
                 closeReviewModal();
-        
+            
                 try {
-                    // Sadece gönderilecek bir veri varsa API isteği yap
-                    if (currentRating > 0 || commentValue !== '' || totalTipAmount > 0) {
+                    if (finalRating > 0 || commentValue !== '' || tipAmount > 0) {
                         await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                customerId: userInfo.id, customerName: userInfo.name, rating: currentRating,
-                                comment: commentValue, tipAmount: totalTipAmount, callId: lastCallInfo.callId
+                                customerId: userInfo.id,
+                                customerName: userInfo.name,
+                                rating: finalRating, // Buraya yeni finalRating değerini gönderiyoruz
+                                comment: commentValue,
+                                tipAmount: tipAmount
                             })
                         });
                     }
-        
-                    // API isteğinden sonra mesajı göster
-                    if (currentRating > 0 || commentValue !== '' || totalTipAmount > 0) {
-                        // Eski: showTemporaryMessage("Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
-                        showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz.\nHayırlı işler dileriz.", 3000);
-                    } else {
-                        // Eski: showTemporaryMessage("Hayırlı işler dileriz.", 3000);
-                        showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
-                    }
                 } catch(e) {
                     console.error("Review submission failed", e);
-                    // Eski: showTemporaryMessage("Değerlendirme gönderilirken bir hata oluştu.", 3000);
-                    showTemporaryMessage("⚠️", "Hata Oluştu", "Değerlendirme gönderilirken bir hata oluştu.", 4000);
+                }
+            
+                if (finalRating > 0 || commentValue !== '' || tipAmount > 0) {
+                    showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz.\\nHayırlı işler dileriz.", 3000);
+                } else {
+                    showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
                 }
             };
         
@@ -1560,3 +1564,4 @@
     </script>
 </body>
 </html>
+
