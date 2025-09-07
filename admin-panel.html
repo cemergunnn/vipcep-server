@@ -1509,16 +1509,17 @@
         }
         function handleCallEnded(message) {
             console.log('📞 Arama sonlandı:', message.reason);
+            // Yalnızca aktif bir çağrı varsa bildirim göster
             if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
             
-            if (message.reason !== 'cancelled' && message.reason !== 'rejected') {
+            // Yalnızca normal sonlanan çağrılarda özet ekranını göster
+            if (message.reason !== 'cancelled' && message.reason !== 'rejected' && message.reason !== 'ended_before_start') {
                 showCallSummaryModal(message.duration, message.creditsUsed);
             }
-
+        
             cleanupCall();
             resetCallState();
         }
-
         function showCallSummaryModal(durationInSeconds, creditsUsed) {
             const minutes = Math.floor(durationInSeconds / 60);
             const seconds = durationInSeconds % 60;
@@ -2029,4 +2030,5 @@
     </script>
 </body>
 </html>
+
 
