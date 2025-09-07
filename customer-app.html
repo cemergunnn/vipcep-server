@@ -1242,8 +1242,9 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
+            // cleanupCall, peerConnection'ı ve localStream'ı temizler.
             cleanupCall();
-
+        
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1252,13 +1253,11 @@
                     reason: reason 
                 }));
             } else {
+                // Sunucu bağlantısı yoksa, arama ekranını yerel olarak temizle
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
-        }
-
-        /* --- ESKİ showReviewModal FONKSİYONUNU BU BLOK İLE DEĞİŞTİRİN --- */
-        
+        } 
         function showReviewModal(callData) {
             playSound(endedSound);
         
@@ -1579,6 +1578,7 @@
     </script>
 </body>
 </html>
+
 
 
 
