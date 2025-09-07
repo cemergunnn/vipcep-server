@@ -1466,36 +1466,18 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
-                    case 'callback-request':
-                        const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
-                        if(targetAdminForCallback){
-                            let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
-                            
-                            // YENI: Müşterinin bu admin'e zaten çağrı bırakıp bırakmadığını kontrol et
-                            const existingCallback = callbacks.find(cb => cb.customerId === message.userId);
-                            if (existingCallback) {
-                                ws.send(JSON.stringify({ 
-                                    type: 'callback-exists', 
-                                    adminName: message.targetAdminId 
-                                }));
-                                return;
-                            }
-                            
-                            callbacks.push({ 
-                                customerId: message.userId, 
-                                customerName: message.userName, 
-                                timestamp: Date.now() 
-                            });
-                            adminCallbacks.set(targetAdminForCallback.id, callbacks);
-                            ws.send(JSON.stringify({ 
-                                type: 'callback-success',
-                                adminName: targetAdminForCallback.name || targetAdminForCallback.id
-                            }));
-                            broadcastCallbacksToAdmin(targetAdminForCallback.id);
-                        } else {
-                            ws.send(JSON.stringify({ type: 'callback-failed' }));
-                        }
-                        break;
+                case 'callback-request':
+                    const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
+                    if(targetAdminForCallback){
+                        let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
+                        callbacks.push({ customerId: message.userId, customerName: message.userName, timestamp: Date.now() });
+                        adminCallbacks.set(targetAdminForCallback.id, callbacks);
+                        ws.send(JSON.stringify({ type: 'callback-success' }));
+                        broadcastCallbacksToAdmin(targetAdminForCallback.id);
+                    } else {
+                        ws.send(JSON.stringify({ type: 'callback-failed' }));
+                    }
+                    break;
             }
         } catch (error) {
             console.error("Mesaj işlenirken hata:", error);
@@ -1610,4 +1592,3 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
-
