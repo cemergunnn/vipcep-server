@@ -665,8 +665,11 @@
         async function saveReview(reviewId) {
             const rating = document.getElementById(`edit-rating-${reviewId}`).value;
             const comment = document.getElementById(`edit-comment-${reviewId}`).value;
-            const tip_amount = document.getElementById(`edit-tip-${reviewId}`).value;
-
+            const tip_amount_str = document.getElementById(`edit-tip-${reviewId}`).value; // Metin olarak alıyoruz
+        
+            // Düzeltme: tip_amount değerini sayıya çeviriyoruz
+            const tip_amount = parseInt(tip_amount_str) || 0; 
+            
             try {
                 const response = await fetch(`/api/reviews/${reviewId}`, {
                     method: 'PUT',
@@ -678,8 +681,12 @@
                     alert('Yorum başarıyla güncellendi.');
                     const username = document.querySelector('#adminProfileModal h3').textContent.split(' ')[1];
                     openAdminProfileModal(username);
-                } else { throw new Error(result.error || 'Güncelleme başarısız.'); }
-            } catch (error) { alert(`Hata: ${error.message}`); }
+                } else {
+                    throw new Error(result.error || 'Güncelleme başarısız.');
+                }
+            } catch (error) {
+                alert(`Hata: ${error.message}`);
+            }
         }
         
         function searchUsers() {
