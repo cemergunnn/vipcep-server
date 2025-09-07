@@ -1039,14 +1039,6 @@
         
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
-        
-            isCallbackPending = true;
-            const callbackButton = event.target;
-            callbackButton.disabled = true;
-            callbackButton.textContent = 'İsteniyor...';
-        
-            socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
-        }
         function setState(newState) {
             callState = newState;
             const callOverlay = document.getElementById('callOverlay');
@@ -1587,5 +1579,6 @@
     </script>
 </body>
 </html>
+
 
 
