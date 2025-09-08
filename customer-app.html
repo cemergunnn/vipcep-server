@@ -1005,19 +1005,25 @@
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
             }
-
+        
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) {
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
-
+        
+            // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
+            if (admin.status === 'busy') {
+                 // showNotification("Usta şu anda meşgul, geri dönüş talebi bırakılıyor...", "info");
+                 return makeCallbackRequest(adminId);
+            }
+        
             lastCallInfo.adminId = admin.id;
             lastCallInfo.adminName = admin.name || 'Usta';
             lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-
+        
             document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
             document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
-
+        
             setState('connecting');
             playSound(ringingSound);
             
@@ -1580,6 +1586,7 @@
     </script>
 </body>
 </html>
+
 
 
 
