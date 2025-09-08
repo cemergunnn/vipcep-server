@@ -911,16 +911,16 @@
         function handleServerMessage(message) {
             switch (message.type) {
                 case 'callback-success':
-                    isCallbackPending = false;
-                    pendingCallbackAdminId = null;
+                    isCallbackPending = false; 
+                    // pendingCallbackAdminId'yi sıfırlama, çünkü updateAdminList bu ID'yi kullanacak
                     showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
-                    updateAdminList(availableAdmins); // Bu fonksiyon butonu doğru şekilde güncelleyecektir.
+                    updateAdminList(availableAdmins); 
                     break;
                 case 'callback-failed':
-                    isCallbackPending = false;
+                    isCallbackPending = false; 
                     pendingCallbackAdminId = null;
                     showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
-                    updateAdminList(availableAdmins); // Bu fonksiyon butonu eski haline döndürecektir.
+                    updateAdminList(availableAdmins); 
                     break;
                 case 'login-response':
                     if(message.success) {
@@ -1030,33 +1030,7 @@
                 container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
             }
         }
-        
-        function makeCallbackRequest(adminId, event) {
-            if (pendingCallbackAdminId) {
-                return; // Zaten bekleyen bir talep varsa işlem yapma
-            }
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                return showNotification('Sunucu bağlantısı hazır değil.', 'error');
-            }
-    
-            pendingCallbackAdminId = adminId;
-            isCallbackPending = true; // Bu satırı ekleyelim.
-    
-            // Butonun durumunu hemen değiştiren aşağıdaki kod bloğunu YORUM SATIRI YAPIN VEYA SİLİN
-            /*
-            if (event && event.currentTarget) {
-                const button = event.currentTarget;
-                button.textContent = '✅ Geri Dönüş Alındı';
-                button.disabled = true;
-                button.classList.remove('btn-callback');
-                button.classList.add('btn-callback-sent');
-            }
-            */
-    
-            socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
-        }
 
-        
         function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
@@ -1090,25 +1064,25 @@
         }
 
         function makeCallbackRequest(adminId, event) {
-            if (isCallbackPending) {
+            if (pendingCallbackAdminId) {
                 return; // Zaten bekleyen bir talep varsa işlem yapma
             }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
             }
-        
-            isCallbackPending = true;
+    
             pendingCallbackAdminId = adminId;
+            isCallbackPending = true;
             
-            // Butonu doğrudan "Geri Dönüş Alındı" olarak güncelle
+            // Bu kod bloğu, butona anında görsel geri bildirim sağlar.
             if (event && event.currentTarget) {
                 const button = event.currentTarget;
-                button.textContent = '✅ Geri Dönüş Alındı';
+                button.textContent = '📝 Talebiniz Gönderiliyor...';
                 button.disabled = true;
                 button.classList.remove('btn-callback');
                 button.classList.add('btn-callback-sent');
             }
-        
+    
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
         
@@ -1653,6 +1627,7 @@
     </script>
 </body>
 </html>
+
 
 
 
