@@ -1019,6 +1019,28 @@
             }
         }
         
+        function makeCallbackRequest(adminId, event) {
+            if (pendingCallbackAdminId) {
+                return; // Zaten bekleyen bir talep varsa işlem yapma
+            }
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return showNotification('Sunucu bağlantısı hazır değil.', 'error');
+            }
+        
+            pendingCallbackAdminId = adminId;
+            
+            // Butonu doğrudan "Geri Dönüş Alındı" olarak güncelle
+            if (event && event.currentTarget) {
+                const button = event.currentTarget;
+                button.textContent = '✅ Geri Dönüş Alındı';
+                button.disabled = true;
+                button.classList.remove('btn-callback');
+                button.classList.add('btn-callback-sent');
+            }
+        
+            socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
+        }
+        
         function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
@@ -1615,3 +1637,4 @@
     </script>
 </body>
 </html>
+
