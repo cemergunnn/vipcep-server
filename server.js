@@ -1367,14 +1367,19 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
-                case 'direct-call-request':
-                    const targetAdmin = Array.from(clients.values()).find(c => c.id === message.targetAdminId && c.userType === 'admin' && c.ws.readyState === WebSocket.OPEN);
-                    if (targetAdmin && !activeCallAdmins.has(targetAdmin.id) && !adminLocks.has(targetAdmin.id)) {
-                        adminLocks.set(targetAdmin.id, message.userId);
-                        targetAdmin.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
-                        broadcastAdminListToCustomers(); // Update lock status for other customers
+            case 'direct-call-request':
+                    const targetAdminForDirectCall = Array.from(clients.values()).find(c => c.id === message.targetAdminId && c.userType === 'admin' && c.ws.readyState === WebSocket.OPEN);
+                    
+                    // Adminin müsait olup olmadığını kontrol et
+                    if (targetAdminForDirectCall && !activeCallAdmins.has(targetAdminForDirectCall.id) && !adminLocks.has(targetAdminForDirectCall.id)) {
+                        // Admin müsaitse, normal arama akışını başlat
+                        adminLocks.set(targetAdminForDirectCall.id, message.userId); // Admini bu arama için kilitle
+                        targetAdminForDirectCall.ws.send(JSON.stringify({ type: 'admin-call-request', userId: message.userId, userName: message.userName }));
+                        broadcastAdminListToCustomers(); // Tüm müşterilere adminin meşgul olduğunu bildir
+                        ws.send(JSON.stringify({ type: 'call-status-update', status: 'connecting', adminName: targetAdminForDirectCall.name }));
                     } else {
-                        ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul veya çevrimdışı' }));
+                        // Admin meşgulse, doğrudan reddet
+                        ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul, lütfen geri dönüş talebi bırakın.' }));
                     }
                     break;
 
@@ -1475,6 +1480,13 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'callback-request':
+                    const callingCustomer = senderInfo;
+                    // Müşteri zaten başka bir arama işlemindeyse geri dönüş talebini reddet
+                    if (callingCustomer && callingCustomer.userType === 'customer' && adminLocks.has(message.targetAdminId) && adminLocks.get(message.targetAdminId) === callingCustomer.id) {
+                         ws.send(JSON.stringify({ type: 'callback-failed', reason: 'Zaten aktif bir arama isteğiniz var, lütfen bekleyin veya aramayı iptal edin.' }));
+                         return;
+                    }
+            
                     const targetAdminForCallback = Array.from(clients.values()).find(c => c.id === message.targetAdminId);
                     if(targetAdminForCallback){
                         let callbacks = adminCallbacks.get(targetAdminForCallback.id) || [];
@@ -1605,6 +1617,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
