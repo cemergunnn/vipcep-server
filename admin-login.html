@@ -331,6 +331,12 @@
             
             try {
                 // Backend'e istek gönder
+            console.log("Gönderilen data:", {
+                accessCode,
+                username,
+                password,
+                rememberMe
+            });
                 const response = await fetch('/auth/admin-login', {
                     method: 'POST',
                     headers: {
@@ -345,6 +351,7 @@
                         expectedCaptcha: captchaValue // Güvenlik için hash'lenmeli
                     })
                 });
+                console.log("Server cevabı:", await response.text());
                 
                 const result = await response.json();
                 
