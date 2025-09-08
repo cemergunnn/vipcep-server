@@ -737,7 +737,27 @@
             VIPCEP Teknik Servis © 2025
         </div>
     </div>
-    
+    <div id="announcementBubble" class="hidden" style="
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    z-index: 999;
+    animation: breathing-label 2.5s infinite ease-in-out;
+    border: 2px solid white;
+    max-width: 250px;
+    text-align: center;
+">
+    <div style="font-size: 24px; margin-bottom: 5px;">📣</div>
+    <div id="announcementBubbleText">Yeni Duyuru</div>
+</div>
     <div id="callOverlay" class="call-overlay hidden">
         <div class="call-ui-container">
             <div id="connectingStateView" class="hidden">
@@ -782,6 +802,7 @@
     <script>
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
+        const announcementSound = new Audio('connected.mp3');
         const endedSound = document.getElementById('endedSound');
 
         function playSound(sound) {
@@ -985,14 +1006,27 @@
                     handleWebRTCMessage(message);
                     break;
                 case 'announcement-broadcast':
-                    // Duyuru mesajı, müşteri uygulamasında gösterilecek
-                    // showNotification fonksiyonunu kullanabiliriz
-                    showNotification(message.announcement.text, message.announcement.type);
+        // Duyuru mesajını yakala ve balonu göster
+                    if (message.announcement && message.announcement.text) {
+                        const bubble = document.getElementById('announcementBubble');
+                        const bubbleText = document.getElementById('announcementBubbleText');
+                        
+                        // Balonu görünür yap ve metni ayarla
+                        bubble.classList.remove('hidden');
+                        bubbleText.innerHTML = message.announcement.text.replace(/\\n/g, '<br>');
+        
+                        // İlk duyuru geldiğinde ses çal
+                        announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı", e));
+                    }
                     break;
+                
         
                 case 'announcement-deleted':
-                    // Eğer duyuru silindiyse, kullanıcıya bilgi ver veya duyuru ekranını kapat.
-                    showNotification('Mevcut duyuru silindi.', 'info');
+                   // Duyuru silindiğinde balonu gizle
+                    const bubble = document.getElementById('announcementBubble');
+                    if (bubble) {
+                        bubble.classList.add('hidden');
+                    }
                     break;
                     }
                 }
@@ -1637,6 +1671,7 @@
     </script>
 </body>
 </html>
+
 
 
 
