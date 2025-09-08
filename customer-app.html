@@ -910,6 +910,18 @@
 
         function handleServerMessage(message) {
             switch (message.type) {
+                case 'callback-success':
+                    isCallbackPending = false;
+                    pendingCallbackAdminId = null;
+                    showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
+                    updateAdminList(availableAdmins); // Bu fonksiyon butonu doğru şekilde güncelleyecektir.
+                    break;
+                case 'callback-failed':
+                    isCallbackPending = false;
+                    pendingCallbackAdminId = null;
+                    showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
+                    updateAdminList(availableAdmins); // Bu fonksiyon butonu eski haline döndürecektir.
+                    break;
                 case 'login-response':
                     if(message.success) {
                         isLoggedIn = true;
@@ -1026,10 +1038,12 @@
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
             }
-        
+    
             pendingCallbackAdminId = adminId;
-            
-            // Butonu doğrudan "Geri Dönüş Alındı" olarak güncelle
+            isCallbackPending = true; // Bu satırı ekleyelim.
+    
+            // Butonun durumunu hemen değiştiren aşağıdaki kod bloğunu YORUM SATIRI YAPIN VEYA SİLİN
+            /*
             if (event && event.currentTarget) {
                 const button = event.currentTarget;
                 button.textContent = '✅ Geri Dönüş Alındı';
@@ -1037,7 +1051,8 @@
                 button.classList.remove('btn-callback');
                 button.classList.add('btn-callback-sent');
             }
-        
+            */
+    
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
 
@@ -1638,6 +1653,7 @@
     </script>
 </body>
 </html>
+
 
 
 
