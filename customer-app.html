@@ -1020,7 +1020,7 @@
         }
         
         function makeCallbackRequest(adminId, event) {
-            if (pendingCallbackAdminId && pendingCallbackAdminId === adminId) {
+            if (pendingCallbackAdminId) {
                 return; // Zaten bekleyen bir talep varsa işlem yapma
             }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -1638,6 +1638,7 @@
     </script>
 </body>
 </html>
+
 
 
 
