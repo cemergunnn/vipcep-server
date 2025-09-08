@@ -1242,11 +1242,9 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // cleanupCall, peerConnection'ı ve localStream'ı temizler.
-            cleanupCall();
-            
-            // Arayüzü hemen sıfırla, böylece donma yaşanmaz
-            setState('idle');
+            // cleanupCall() ve setState('idle') artık bu fonksiyonda çağrılmıyor.
+            // Bu işlemler, sunucudan gelecek 'call-ended' mesajıyla handleCallEnded içinde yapılacak.
+            // Bu sayede modal açılmadan ekran kapanmaz.
         
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
@@ -1257,6 +1255,8 @@
                 }));
             } else {
                 // Sunucu bağlantısı yoksa, arama ekranını yerel olarak temizle
+                cleanupCall();
+                setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
@@ -1580,6 +1580,7 @@
     </script>
 </body>
 </html>
+
 
 
 
