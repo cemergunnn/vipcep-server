@@ -659,6 +659,18 @@
 <body>
     <div class="app-container">
         <div class="app-header">
+    <div id="announcementBanner" class="hidden" style="
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        animation: breathing-label 2.5s infinite ease-in-out;
+    ">
+        <div id="announcementText"></div>
+    </div>
             <div class="connection-status">
                 <div class="status-dot" id="connectionDot"></div>
                 <span id="connectionText">Bağlanıyor...</span>
@@ -928,7 +940,27 @@
                 setTimeout(connectToServer, 3000);
             };
         }
-
+        function showAnnouncement(announcementData) {
+            const announcementBanner = document.getElementById('announcementBanner');
+            const announcementTextDiv = document.getElementById('announcementText');
+        
+            if (!announcementData || !announcementBanner || !announcementTextDiv) return;
+        
+            // URL'leri otomatik olarak tıklanabilir bağlantılara dönüştürme.
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            let message = announcementData.text || '';
+            message = message.replace(urlRegex, (url) => {
+                return `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">${url}</a>`;
+            });
+        
+            announcementTextDiv.innerHTML = message;
+            announcementBanner.classList.remove('hidden');
+        
+            // Duyuru geldiğinde sesi çal
+            // connected.mp3 dosyasının projenizde bulunduğundan emin olun.
+            const announcementSound = new Audio('connected.mp3');
+            announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
+        }
         function handleServerMessage(message) {
             switch (message.type) {
                 case 'callback-success':
@@ -1006,26 +1038,15 @@
                     handleWebRTCMessage(message);
                     break;
                 case 'announcement-broadcast':
-        // Duyuru mesajını yakala ve balonu göster
-                    if (message.announcement && message.announcement.text) {
-                        const bubble = document.getElementById('announcementBubble');
-                        const bubbleText = document.getElementById('announcementBubbleText');
-                        
-                        // Balonu görünür yap ve metni ayarla
-                        bubble.classList.remove('hidden');
-                        bubbleText.innerHTML = message.announcement.text.replace(/\\n/g, '<br>');
-        
-                        // İlk duyuru geldiğinde ses çal
-                        announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı", e));
-                    }
+                    // Duyuru mesajını yeni fonksiyona yönlendir
+                    showAnnouncement(message.announcement);
                     break;
-                
-        
+                    
                 case 'announcement-deleted':
-                   // Duyuru silindiğinde balonu gizle
-                    const bubble = document.getElementById('announcementBubble');
-                    if (bubble) {
-                        bubble.classList.add('hidden');
+                    // Duyuru silindiğinde banner'ı gizle
+                    const announcementBanner = document.getElementById('announcementBanner');
+                    if (announcementBanner) {
+                        announcementBanner.classList.add('hidden');
                     }
                     break;
                     }
@@ -1671,6 +1692,7 @@
     </script>
 </body>
 </html>
+
 
 
 
