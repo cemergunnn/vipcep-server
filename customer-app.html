@@ -938,14 +938,14 @@
                     if (callState === 'connecting') handleCallAccepted(message); 
                     break;
                 case 'callback-success':
-                    isCallbackPending = false; // Bekleyen talebi sıfırla
-                    showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
-                    updateAdminList(availableAdmins); // Butonları yeniden aktif hale getir
+                    isCallbackPending = false;
+                    showNotification('Çağrınız alınmıştır. Usta müsait olduğunda size dönüş yapacaktır.', 'success');
+                    updateAdminList(availableAdmins);
                     break;
                 case 'callback-failed':
-                    isCallbackPending = false; // Bekleyen talebi sıfırla
+                    isCallbackPending = false;
                     showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
-                    updateAdminList(availableAdmins); // Butonları yeniden aktif hale getir
+                    updateAdminList(availableAdmins);
                     break;
                 case 'call-ended': 
                     handleCallEnded(message); 
@@ -1042,6 +1042,9 @@
             const callbackButton = event.target;
             callbackButton.disabled = true;
             callbackButton.textContent = 'İsteniyor...';
+            
+            // Sunucu yanıtını beklemek yerine hemen bildirimi göster
+            showNotification('Çağrınız gönderiliyor, lütfen bekleyiniz...', 'info');
         
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
@@ -1586,6 +1589,7 @@
     </script>
 </body>
 </html>
+
 
 
 
