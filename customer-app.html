@@ -984,8 +984,18 @@
                 case 'ice-candidate':
                     handleWebRTCMessage(message);
                     break;
-            }
-        }
+                case 'announcement-broadcast':
+                    // Duyuru mesajı, müşteri uygulamasında gösterilecek
+                    // showNotification fonksiyonunu kullanabiliriz
+                    showNotification(message.announcement.text, message.announcement.type);
+                    break;
+        
+                case 'announcement-deleted':
+                    // Eğer duyuru silindiyse, kullanıcıya bilgi ver veya duyuru ekranını kapat.
+                    showNotification('Mevcut duyuru silindi.', 'info');
+                    break;
+                    }
+                }
         
         function updateUserDisplay() {
             document.getElementById('displayUserName').textContent = userInfo.name;
@@ -1627,6 +1637,7 @@
     </script>
 </body>
 </html>
+
 
 
 
