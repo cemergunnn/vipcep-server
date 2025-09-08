@@ -288,7 +288,14 @@
             background: linear-gradient(135deg, #fbbf24, var(--warning-color));
             color: #92400e;
         }
-         .btn-details {
+        .btn-callback-sent {
+             background: var(--gray-200);
+             color: var(--gray-500);
+             pointer-events: none;
+             cursor: not-allowed;
+             box-shadow: none;
+        }
+        .btn-details {
             background: var(--gray-100);
             color: var(--gray-700);
             font-size: 12px;
@@ -801,6 +808,7 @@
         let availableAdmins = [];
         let pendingIceCandidates = [];
         let isCallbackPending = false;
+        let pendingCallbackAdminId = null;
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -938,14 +946,16 @@
                     if (callState === 'connecting') handleCallAccepted(message); 
                     break;
                 case 'callback-success':
-                    isCallbackPending = false;
-                    showNotification('Çağrınız alınmıştır. Usta müsait olduğunda size dönüş yapacaktır.', 'success');
-                    updateAdminList(availableAdmins);
+                    isCallbackPending = false; 
+                    pendingCallbackAdminId = null;
+                    showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
+                    updateAdminList(availableAdmins); 
                     break;
                 case 'callback-failed':
-                    isCallbackPending = false;
+                    isCallbackPending = false; 
+                    pendingCallbackAdminId = null;
                     showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
-                    updateAdminList(availableAdmins);
+                    updateAdminList(availableAdmins); 
                     break;
                 case 'call-ended': 
                     handleCallEnded(message); 
@@ -977,27 +987,38 @@
             availableAdmins = admins;
             const container = document.getElementById('adminListContainer');
             if (admins && admins.length > 0) {
-                container.innerHTML = admins.map(admin => `
-                    <div class="admin-card ${admin.status}">
-                        <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
-                        <div class="admin-details">
-                            <div class="admin-name">${admin.name}</div>
-                            <div class="admin-specialization">${admin.specialization || 'Genel Teknik Servis'}</div>
-                            <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
+                container.innerHTML = admins.map(admin => {
+                    const isCallbackSentToThisAdmin = pendingCallbackAdminId === admin.id;
+
+                    let buttonHtml;
+                    if (admin.status === 'available') {
+                        buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>`;
+                    } else if (isCallbackSentToThisAdmin) {
+                        buttonHtml = `<button class="btn btn-callback-sent" disabled>✅ Geri Dönüş Alındı</button>`;
+                    } else {
+                        buttonHtml = `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)">📝 Çağrı Bırak</button>`;
+                    }
+                    
+                    return `
+                        <div class="admin-card ${admin.status}" data-admin-id="${admin.id}">
+                            <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
+                            <div class="admin-details">
+                                <div class="admin-name">${admin.name}</div>
+                                <div class="admin-specialization">${admin.specialization || 'Genel Teknik Servis'}</div>
+                                <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
+                            </div>
+                            <div class="admin-actions">
+                                <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
+                                ${buttonHtml}
+                            </div>
                         </div>
-                        <div class="admin-actions">
-                            <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
-                            ${admin.status === 'available' 
-                                ? `<button class="btn btn-call" onclick="makeCall('${admin.id}', event)">📞 Ara</button>`
-                                : `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)" ${isCallbackPending ? 'disabled' : ''}>📝 Çağrı Bırak</button>`}
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
                 container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
             }
         }
-
+        
         function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
@@ -1005,25 +1026,25 @@
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
             }
-        
+
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) {
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
-        
+
             // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
             if (admin.status === 'busy') {
                  // showNotification("Usta şu anda meşgul, geri dönüş talebi bırakılıyor...", "info");
                  return makeCallbackRequest(adminId);
             }
-        
+
             lastCallInfo.adminId = admin.id;
             lastCallInfo.adminName = admin.name || 'Usta';
             lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-        
+
             document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
             document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
-        
+
             setState('connecting');
             playSound(ringingSound);
             
@@ -1039,15 +1060,20 @@
             }
         
             isCallbackPending = true;
-            const callbackButton = event.target;
-            callbackButton.disabled = true;
-            callbackButton.textContent = 'İsteniyor...';
+            pendingCallbackAdminId = adminId;
             
-            // Sunucu yanıtını beklemek yerine hemen bildirimi göster
-            showNotification('Çağrınız gönderiliyor, lütfen bekleyiniz...', 'info');
+            // Butonu doğrudan "Geri Dönüş Alındı" olarak güncelle
+            if (event && event.currentTarget) {
+                const button = event.currentTarget;
+                button.textContent = '✅ Geri Dönüş Alındı';
+                button.disabled = true;
+                button.classList.remove('btn-callback');
+                button.classList.add('btn-callback-sent');
+            }
         
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
+        
         function setState(newState) {
             callState = newState;
             const callOverlay = document.getElementById('callOverlay');
@@ -1441,30 +1467,26 @@
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
-                const container = document.getElementById('notification-container');
-                if (!container) return; // Kapsayıcı yoksa işlemi durdur
-        
-                const notif = document.createElement('div');
-                notif.className = `notification ${type}`;
-                notif.textContent = message;
-                
-                // Bildirimi kapsayıcıya ekle
-                container.appendChild(notif);
-        
-                // Bir sonraki frame'de animasyonu başlat
+            const container = document.getElementById('notification-container');
+            if (!container) return;
+
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            
+            container.appendChild(notif);
+
+            setTimeout(() => {
+                notif.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                notif.classList.remove('show');
                 setTimeout(() => {
-                    notif.classList.add('show');
-                }, 10);
-        
-                // Süre sonunda bildirimi kaldır
-                setTimeout(() => {
-                    notif.classList.remove('show');
-                    // Animasyon bittikten sonra elemanı DOM'dan kaldır
-                    setTimeout(() => {
-                        if(notif.parentNode) container.removeChild(notif);
-                    }, 500); // CSS geçiş süresi ile uyumlu olmalı
-                }, duration - 500);
-            }
+                    if(notif.parentNode) container.removeChild(notif);
+                }, 500);
+            }, duration);
+        }
 
         async function showAdminDetails(adminId) {
             const admin = availableAdmins.find(a => a.id === adminId);
@@ -1593,12 +1615,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
