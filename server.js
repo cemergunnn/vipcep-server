@@ -796,7 +796,7 @@ app.post('/auth/admin-login', async (req, res) => {
     
     // Access code kontrolü ekleyin
     if (accessCode) {
-        const VALID_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || "ADM724";
+        const VALID_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || "VIPCEP";
         if (accessCode !== VALID_ACCESS_CODE) {
             return res.status(401).json({ success: false, error: 'Geçersiz giriş kodu!' });
         }
@@ -1628,6 +1628,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
