@@ -351,10 +351,9 @@
                         expectedCaptcha: captchaValue // Güvenlik için hash'lenmeli
                     })
                 });
-                console.log("Server cevabı:", await response.text());
                 
                 const result = await response.json();
-                
+                console.log("Server cevabı:", result);
                 if (result.success) {
                     showMessage('Giriş başarılı! Yönlendiriliyorsunuz...', 'success');
                     setTimeout(() => {
