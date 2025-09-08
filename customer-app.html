@@ -1441,26 +1441,30 @@
         }
 
         function showNotification(message, type = 'info', duration = 3000) {
-            const container = document.getElementById('notification-container');
-            if (!container) return;
-
-            const notif = document.createElement('div');
-            notif.className = `notification ${type}`;
-            notif.textContent = message;
-            
-            container.appendChild(notif);
-
-            setTimeout(() => {
-                notif.classList.add('show');
-            }, 10);
-
-            setTimeout(() => {
-                notif.classList.remove('show');
+                const container = document.getElementById('notification-container');
+                if (!container) return; // Kapsayıcı yoksa işlemi durdur
+        
+                const notif = document.createElement('div');
+                notif.className = `notification ${type}`;
+                notif.textContent = message;
+                
+                // Bildirimi kapsayıcıya ekle
+                container.appendChild(notif);
+        
+                // Bir sonraki frame'de animasyonu başlat
                 setTimeout(() => {
-                    if(notif.parentNode) container.removeChild(notif);
-                }, 500);
-            }, duration);
-        }
+                    notif.classList.add('show');
+                }, 10);
+        
+                // Süre sonunda bildirimi kaldır
+                setTimeout(() => {
+                    notif.classList.remove('show');
+                    // Animasyon bittikten sonra elemanı DOM'dan kaldır
+                    setTimeout(() => {
+                        if(notif.parentNode) container.removeChild(notif);
+                    }, 500); // CSS geçiş süresi ile uyumlu olmalı
+                }, duration - 500);
+            }
 
         async function showAdminDetails(adminId) {
             const admin = availableAdmins.find(a => a.id === adminId);
@@ -1589,6 +1593,7 @@
     </script>
 </body>
 </html>
+
 
 
 
