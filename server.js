@@ -641,7 +641,9 @@ const requireSuperAdminLogin = (req, res, next) => {
     res.redirect('/');
 };
 // ================== ROUTES ==================
-
+app.get('/admin-secure', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-login.html'));
+});
 app.get('/', (req, res) => {
     if (req.session.superAdmin) return res.redirect(SECURITY_CONFIG.SUPER_ADMIN_PATH);
     if (req.session.normalAdmin) return res.redirect(SECURITY_CONFIG.NORMAL_ADMIN_PATH);
@@ -790,7 +792,15 @@ app.get(SECURITY_CONFIG.CUSTOMER_PATH, (req, res) => {
 });
 
 app.post('/auth/admin-login', async (req, res) => {
-    const { username, password, rememberMe } = req.body;
+    const { accessCode, username, password, rememberMe } = req.body;
+    
+    // Access code kontrolü ekleyin
+    if (accessCode) {
+        const VALID_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || "ADM724";
+        if (accessCode !== VALID_ACCESS_CODE) {
+            return res.status(401).json({ success: false, error: 'Geçersiz giriş kodu!' });
+        }
+    }
     const admin = await authenticateAdmin(username, password);
     if (admin && admin.role === 'normal') {
         req.session.normalAdmin = { id: admin.id, username: admin.username };
@@ -1618,6 +1628,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
