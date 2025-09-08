@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIPCEP Müşteri Uygulaması</title>
     <style>
-            :root {
-                --primary-color: #2563eb;
-                --primary-dark: #1e40af;
-                --primary-light: #dbeafe;
-                --secondary-color: #16a34a;
-                --warning-color: #f59e0b;
-                --danger-color: #ef4444;
-                --gray-100: #f8fafc;
-                --gray-200: #e5e7eb;
-                --gray-500: #64748b;
-                --gray-700: #374151;
-                --gray-800: #1e293b;
-            }
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #dbeafe;
+            --secondary-color: #16a34a;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --gray-100: #f8fafc;
+            --gray-200: #e5e7eb;
+            --gray-500: #64748b;
+            --gray-700: #374151;
+            --gray-800: #1e293b;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -646,7 +646,83 @@
         transform: translate(-50%, -60%);
     }
 
+        /* Yeni Animasyonlu Bildirim Stilleri */
+        .notification-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1500;
+            max-width: 350px;
+            width: 90%;
+            text-align: center;
+            pointer-events: none;
+            transition: all 0.5s ease-in-out;
+        }
 
+        #onlineAvatarContainer {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            transform: scale(0.8);
+            transition: all 0.5s ease-in-out;
+        }
+        
+        #onlineAdminAvatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid var(--primary-color);
+            object-fit: cover;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+        }
+
+        #pulseCircle {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #rotatingBorder {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-top-color: white;
+            animation: rotate 1.5s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .show-online-notification {
+            transform: translate(-50%, -50%) !important;
+            opacity: 1;
+            pointer-events: auto !important;
+        }
+
+        .notification-active #onlineAvatarContainer {
+            transform: translateX(0) scale(1.2);
+        }
+
+        .notification-active #onlineAdminMessage {
+            transform: translateX(0);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
         /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
         /* @keyframes fly-up-strong {
             0% { transform: translateY(0) rotate(0); opacity: 1; }
@@ -659,18 +735,6 @@
 <body>
     <div class="app-container">
         <div class="app-header">
-    <div id="announcementBanner" class="hidden" style="
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: white;
-        padding: 10px 15px;
-        text-align: center;
-        font-size: 14px;
-        font-weight: 600;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        animation: breathing-label 2.5s infinite ease-in-out;
-    ">
-        <div id="announcementText"></div>
-    </div>
             <div class="connection-status">
                 <div class="status-dot" id="connectionDot"></div>
                 <span id="connectionText">Bağlanıyor...</span>
@@ -682,6 +746,19 @@
             </div>
             <div class="app-title">USTAMA SOR</div>
             <div class="app-subtitle">Teknik Servis Danışmanlığı</div>
+        </div>
+        
+        <div id="announcementBanner" class="hidden" style="
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            animation: breathing-label 2.5s infinite ease-in-out;
+        ">
+            <div id="announcementText"></div>
         </div>
         
         <div class="app-content">
@@ -749,27 +826,7 @@
             VIPCEP Teknik Servis © 2025
         </div>
     </div>
-    <div id="announcementBubble" class="hidden" style="
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 20px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    z-index: 999;
-    animation: breathing-label 2.5s infinite ease-in-out;
-    border: 2px solid white;
-    max-width: 250px;
-    text-align: center;
-">
-    <div style="font-size: 24px; margin-bottom: 5px;">📣</div>
-    <div id="announcementBubbleText">Yeni Duyuru</div>
-</div>
+    
     <div id="callOverlay" class="call-overlay hidden">
         <div class="call-ui-container">
             <div id="connectingStateView" class="hidden">
@@ -810,11 +867,72 @@
     <audio id="ringingSound" src="ringing.mp3" loop></audio>
     <audio id="connectedSound" src="connected.mp3"></audio>
     <audio id="endedSound" src="ended.mp3"></audio>
+
+    <div id="adminOnlineNotification" class="notification-container hidden" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1500;
+        max-width: 350px;
+        width: 90%;
+        text-align: center;
+        pointer-events: none;
+        transition: all 0.5s ease-in-out;
+    ">
+        <div id="onlineAvatarContainer" style="
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            transform: scale(0.8);
+            transition: all 0.5s ease-in-out;
+        ">
+            <img id="onlineAdminAvatar" src="" style="
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                border: 4px solid var(--primary-color);
+                object-fit: cover;
+                box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+            ">
+            <div id="pulseCircle" style="
+                position: absolute;
+                top: -10px;
+                left: -10px;
+                right: -10px;
+                bottom: -10px;
+                border-radius: 50%;
+                border: 4px solid rgba(255, 255, 255, 0.2);
+            "></div>
+            <div id="rotatingBorder" style="
+                position: absolute;
+                top: -10px;
+                left: -10px;
+                right: -10px;
+                bottom: -10px;
+                border-radius: 50%;
+                border: 4px solid transparent;
+                border-top-color: white;
+                animation: rotate 1.5s linear infinite;
+            "></div>
+        </div>
+        <div id="onlineAdminMessage" style="
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transform: translateX(0);
+            transition: all 0.5s ease-in-out;
+        ">
+            <h4 style="color: var(--primary-color); margin-bottom: 5px;"></h4>
+            <p style="color: var(--gray-700); font-size: 14px;"></p>
+        </div>
+    </div>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
-        const announcementSound = new Audio('connected.mp3');
         const endedSound = document.getElementById('endedSound');
 
         function playSound(sound) {
@@ -940,27 +1058,7 @@
                 setTimeout(connectToServer, 3000);
             };
         }
-        function showAnnouncement(announcementData) {
-            const announcementBanner = document.getElementById('announcementBanner');
-            const announcementTextDiv = document.getElementById('announcementText');
-        
-            if (!announcementData || !announcementBanner || !announcementTextDiv) return;
-        
-            // URL'leri otomatik olarak tıklanabilir bağlantılara dönüştürme.
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            let message = announcementData.text || '';
-            message = message.replace(urlRegex, (url) => {
-                return `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">${url}</a>`;
-            });
-        
-            announcementTextDiv.innerHTML = message;
-            announcementBanner.classList.remove('hidden');
-        
-            // Duyuru geldiğinde sesi çal
-            // connected.mp3 dosyasının projenizde bulunduğundan emin olun.
-            const announcementSound = new Audio('connected.mp3');
-            announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
-        }
+
         function handleServerMessage(message) {
             switch (message.type) {
                 case 'callback-success':
@@ -989,7 +1087,15 @@
                     }
                     break;
                 case 'admin-list-update': 
-                    updateAdminList(message.admins); 
+                    // YENİ: Animatasyonlu online bildirimi
+                    const previouslyOnlineAdmins = new Set(availableAdmins.filter(a => a.status === 'available').map(a => a.id));
+                    const newAdmins = message.admins || [];
+                    newAdmins.forEach(admin => {
+                        if (admin.status === 'available' && !previouslyOnlineAdmins.has(admin.id)) {
+                            showAnimatedOnlineNotification(admin);
+                        }
+                    });
+                    updateAdminList(newAdmins); 
                     break;
                 case 'admin-call-request':
                     if (callState !== 'idle') {
@@ -1038,19 +1144,16 @@
                     handleWebRTCMessage(message);
                     break;
                 case 'announcement-broadcast':
-                    // Duyuru mesajını yeni fonksiyona yönlendir
                     showAnnouncement(message.announcement);
                     break;
-                    
                 case 'announcement-deleted':
-                    // Duyuru silindiğinde banner'ı gizle
                     const announcementBanner = document.getElementById('announcementBanner');
                     if (announcementBanner) {
                         announcementBanner.classList.add('hidden');
                     }
                     break;
-                    }
-                }
+            }
+        }
         
         function updateUserDisplay() {
             document.getElementById('displayUserName').textContent = userInfo.name;
@@ -1564,6 +1667,62 @@
                 }, 500);
             }, duration);
         }
+        
+        // YENİ EKLENECEK FONKSİYON: Duyuru Banner'ını Göster
+        function showAnnouncement(announcementData) {
+            const announcementBanner = document.getElementById('announcementBanner');
+            const announcementTextDiv = document.getElementById('announcementText');
+
+            if (!announcementData || !announcementBanner || !announcementTextDiv) return;
+
+            // URL'leri otomatik olarak tıklanabilir bağlantılara dönüştürme.
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            let message = announcementData.text || '';
+            message = message.replace(urlRegex, (url) => {
+                return `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">${url}</a>`;
+            });
+
+            announcementTextDiv.innerHTML = message;
+            announcementBanner.classList.remove('hidden');
+
+            // Duyuru geldiğinde sesi çal
+            const announcementSound = new Audio('connected.mp3');
+            announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
+        }
+
+        // YENİ EKLENECEK FONKSİYON: Animasyonlu Online Bildirimi Göster
+        function showAnimatedOnlineNotification(admin) {
+            const notificationEl = document.getElementById('adminOnlineNotification');
+            const avatarEl = document.getElementById('onlineAdminAvatar');
+            const messageEl = document.getElementById('onlineAdminMessage');
+            const h4El = messageEl.querySelector('h4');
+            const pEl = messageEl.querySelector('p');
+
+            if (!notificationEl || !avatarEl || !messageEl) return;
+
+            // Avatar resmi ve metinleri ayarla
+            avatarEl.src = admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta';
+            h4El.textContent = `${admin.name} şuan müsait!`;
+            pEl.textContent = 'Yardım için hemen arayabilirsiniz.';
+
+            // Bildirim sesini çal
+            const onlineSound = new Audio('notification.mp3'); // Notification sesi çalınabilir
+            onlineSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
+
+            // Animasyonu başlatmak için sınıfı ekle
+            notificationEl.classList.remove('hidden');
+            
+            // Pencereyi ortada gösterecek ve animasyonu başlatacak sınıfı ekle
+            notificationEl.classList.add('show-online-notification');
+
+            // 5 saniye sonra bildirimi gizle
+            setTimeout(() => {
+                notificationEl.classList.remove('show-online-notification');
+                setTimeout(() => {
+                    notificationEl.classList.add('hidden');
+                }, 500); // CSS geçiş süresi kadar bekle
+            }, 5000);
+        }
 
         async function showAdminDetails(adminId) {
             const admin = availableAdmins.find(a => a.id === adminId);
@@ -1692,12 +1851,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
