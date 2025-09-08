@@ -1426,23 +1426,24 @@ wss.on('connection', (ws, req) => {
                     let callInfo = findActiveCall(userId1, userId2);
                 
                     if (callInfo) {
-            // Arama sona erdiğinde, callback listesini kontrol et ve temizle
+            
+                // Arama sona erdiğinde, callback listesini kontrol et ve temizle
                     if (message.reason === 'normal' || message.reason === 'user_ended') {
-                    const customerIdForCallback = endedByAdmin ? message.targetId : message.userId;
-                    const adminIdForCallback = endedByAdmin ? message.userId : message.targetId;
-                    
-                    if (adminCallbacks.has(adminIdForCallback)) {
-                        let callbacks = adminCallbacks.get(adminIdForCallback);
-                        const initialLength = callbacks.length;
-                        callbacks = callbacks.filter(c => c.customerId !== customerIdForCallback);
-                        adminCallbacks.set(adminIdForCallback, callbacks);
+                        const customerIdForCallback = endedByAdmin ? message.targetId : message.userId;
+                        const adminIdForCallback = endedByAdmin ? message.userId : message.targetId;
                         
-                        if (callbacks.length < initialLength) {
+                        // Bu görüşmenin, geri dönüş listesindeki bir müşteriyle mi yapıldığını kontrol ediyoruz
+                        const callbacks = adminCallbacks.get(adminIdForCallback) || [];
+                        const isFromCallbackList = callbacks.some(c => c.customerId === customerIdForCallback);
+                        
+                        if (isFromCallbackList) {
+                            let filteredCallbacks = callbacks.filter(c => c.customerId !== customerIdForCallback);
+                            adminCallbacks.set(adminIdForCallback, filteredCallbacks);
+                            
                             console.log(`🗑️ Callback removed for customer ${customerIdForCallback} from admin ${adminIdForCallback}`);
                             broadcastCallbacksToAdmin(adminIdForCallback);
                         }
                     }
-                }
                         // Normal durum: Arama başlamış ve kalp atışı devam ediyor.
                         stopHeartbeat(callInfo.callKey, message.reason || 'user_ended');
                     } else {
@@ -1617,6 +1618,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
