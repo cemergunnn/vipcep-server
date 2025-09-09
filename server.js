@@ -1306,6 +1306,7 @@ wss.on('connection', (ws, req) => {
                     console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
                     broadcastAdminListToCustomers();
                     break;
+
                     case 'customer-accepted-call':
                         const { adminId, customerId } = message;
                         const adminClient = Array.from(clients.values()).find(c => c.uniqueId === adminId);
@@ -1392,7 +1393,13 @@ wss.on('connection', (ws, req) => {
                         ws.send(JSON.stringify({ type: 'call-rejected', reason: 'Usta meşgul, lütfen geri dönüş talebi bırakın.' }));
                     }
                     break;
-
+                case 'heartbeat':
+                    const client = clients.get(message.userId);
+                    if (client) {
+                        client.lastHeartbeat = Date.now();
+                        console.log(`❤️ Kalp atışı alındı: ${client.name} (${client.id})`);
+                    }
+                    break;
                 case 'accept-incoming-call':
                     const customerToCall = clients.get(message.userId);
                     const adminCalling = Array.from(clients.values()).find(c => c.ws === ws && c.userType === 'admin');
@@ -1628,6 +1635,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
