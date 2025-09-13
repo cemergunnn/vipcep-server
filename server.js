@@ -1091,6 +1091,17 @@ app.get('/api/stats', requireSuperAdminLogin, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+app.get('/api/online-customers', requireSuperAdminLogin, (req, res) => {
+    const onlineCustomers = Array.from(clients.values())
+        .filter(c => c.userType === 'customer')
+        .map(c => ({ 
+            id: c.id, 
+            name: c.name, 
+            userType: c.userType,
+            online: true 
+        }));
+    res.json(onlineCustomers);
+});
 app.get('/api/admin-earnings', requireSuperAdminLogin, async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1635,6 +1646,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
