@@ -836,6 +836,54 @@
             text-align: center;
         }
 
+        /* Yeni video stil ve butonları */
+        .call-video-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px; /* Daha geniş alan */
+            margin: 0 auto 20px;
+            aspect-ratio: 16 / 9; /* Video için 16:9 oranında alan ayarla */
+            background-color: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        #remoteVideo, #localVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Videonun oranı bozmadan sığmasını sağlar */
+            display: block;
+        }
+        #localVideo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 100px;
+            height: auto;
+            border: 2px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 10;
+        }
+        .btn-video-toggle {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease;
+            margin-top: 10px;
+        }
+        .btn-video-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
 
         @media (max-width: 1200px) {
             .main-content {
@@ -960,9 +1008,21 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="call-video-container">
+                        <video id="remoteVideo" autoplay playsinline></video>
+                        <video id="localVideo" muted playsinline></video>
+                    </div>
+                    
                     <div class="call-buttons">
                         <button class="btn btn-end" onclick="endCall()">📞 Görüşmeyi Bitir</button>
                         <button class="btn btn-primary" onclick="muteCall()" id="muteButton">🔇 Sessize Al</button>
+                    </div>
+                    <div class="call-buttons">
+                        <button id="videoToggleBtn" class="btn btn-primary" onclick="toggleVideo()">
+                            <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                            <span id="videoToggleText">Görüntüyü Başlat</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1206,7 +1266,7 @@
                 adminData.role === 'super' ? '🔴 Süper Admin' : '🟡 Normal Admin';
             updateAdminStatus('available');
             connectToServer();
-            loadMyEarnings(); 
+            loadMyEarnings();
         }
         async function performLogout() {
             if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) return;
@@ -1319,7 +1379,6 @@
                 case 'callback-list-update':
                     updateCallbacks(message.callbacks || []);
                     break;
-                // YENİ: Bakiye güncelleme ve bahşiş bildirimi
                 case 'admin-earning-update':
                     updateMyEarningsDisplay(message.newEarnings);
                     if (message.sourceInfo && message.sourceInfo.source === 'tip') {
@@ -1420,26 +1479,41 @@
                 console.log('🗑️ Callback silindi:', customerId);
             }
         }
-        function callCustomer(customerId, customerName) {
+        async function callCustomer(customerId, customerName) {
             if (currentCall || outgoingCallInfo || callState !== 'idle') {
                 showNotification('Zaten bir aramada bulunuyorsunuz!', 'warning');
                 return;
             }
             console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
+            
             outgoingCallInfo = { userId: customerId, userName: customerName };
             currentCall = { userId: customerId, userName: customerName };
             callState = 'outgoing';
+            
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
             const outgoingCallEl = document.getElementById('outgoingCall');
             if (outgoingNameEl) outgoingNameEl.textContent = customerName;
             if (outgoingIdEl) outgoingIdEl.textContent = customerId;
             if (outgoingCallEl) outgoingCallEl.classList.remove('hidden');
+            
             updateAdminStatus('busy');
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
+            
+            try {
+                // Hem ses hem de video için izin iste
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: true });
+                localStream.getVideoTracks()[0].enabled = false; // Video akışını başlangıçta kapat
+            
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
+                }
+            } catch (err) {
+                console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
+                showNotification("Mikrofon ve kamera izni gerekli.", "error");
+                resetCallState();
             }
         }
+
         function cancelOutgoingCall() {
             if (!outgoingCallInfo) return;
             console.log('❌ Giden arama iptal edildi:', outgoingCallInfo.userName);
@@ -1488,17 +1562,14 @@
             console.log('🔗 Arama bağlanıyor...');
             showNotification('Arama bağlanıyor...', 'info', 3000);
         }
-        // DOSYA: admin-panel.html -> <script> içinde
-        // --- ESKİ handleCallAccepted FONKSİYONUNU SİLİP BUNU EKLEYİN ---
         
         function handleCallAccepted(message) {
             console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
             if (callState === 'outgoing') {
-                const callInfo = { userId: currentCall.userId, userName: currentCall.userName };
+                const callInfo = { userId: message.customerId, userName: message.customerName };
                 currentCall = callInfo;
                 outgoingCallInfo = null;
                 
-                // setupPeerConnection fonksiyonunu görüşmeyi başlatan (initiator) olarak çağır.
                 setupPeerConnection(callInfo, true);
             }
         }
@@ -1509,14 +1580,13 @@
         }
         function handleCallEnded(message) {
             console.log('📞 Arama sonlandı:', message.reason);
-            // Yalnızca aktif bir çağrı varsa bildirim göster
+            
             if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
             
-            // Yalnızca normal sonlanan çağrılarda özet ekranını göster
             if (message.reason !== 'cancelled' && message.reason !== 'rejected' && message.reason !== 'ended_before_start') {
                 showCallSummaryModal(message.duration, message.creditsUsed);
             }
-        
+            
             cleanupCall();
             resetCallState();
         }
@@ -1569,11 +1639,6 @@
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
-        // DOSYA: admin-panel.html -> <script> içinde
-        // --- ESKİ setupPeerConnection FONKSİYONUNU SİLİP BUNU EKLEYİN ---
-        
-        // DOSYA: admin-panel.html -> <script> içinde
-        // --- ESKİ 4 FONKSİYONU SİLİP BU TEK BLOK İLE DEĞİŞTİRİN ---
         
         async function setupPeerConnection(callInfo, isInitiator) {
             if (peerConnection) {
@@ -1586,31 +1651,52 @@
                 
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-        
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+                
+                // localStream zaten callCustomer veya acceptIncomingCall içinde alınmış olmalı.
+                if (!localStream) {
+                   localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: true });
+                   localStream.getVideoTracks()[0].enabled = false;
+                }
+                
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = (event) => { 
-                    console.log('🎵 Müşteriden ses akışı alındı');
-                    document.getElementById('remoteAudio').srcObject = event.streams[0];
+                    console.log('🎵 Gelen medya akışı alındı:', event.track.kind);
+                    if (event.track.kind === 'video') {
+                        const remoteVideo = document.getElementById('remoteVideo');
+                        if (remoteVideo) {
+                            remoteVideo.srcObject = event.streams[0];
+                            remoteVideo.style.display = 'block';
+                            console.log('▶️ Müşteri videosu oynatılıyor.');
+                        }
+                    } else if (event.track.kind === 'audio') {
+                        const remoteAudio = document.getElementById('remoteAudio');
+                        if (remoteAudio) {
+                            remoteAudio.srcObject = event.streams[0];
+                        }
+                    }
                 };
-        
+                
                 peerConnection.onicecandidate = (event) => { 
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
                     }
                 };
-        
+                
                 peerConnection.onconnectionstatechange = () => {
                     if (!peerConnection) return;
                     const state = peerConnection.connectionState;
                     console.log('🔗 Admin Bağlantı durumu:', state);
+                    updateConnectionQuality(state);
                     if (state === 'connected') {
                         document.getElementById('outgoingCall').classList.add('hidden');
                         document.getElementById('incomingCall').classList.add('hidden');
                         document.getElementById('activeCall').classList.remove('hidden');
                         document.getElementById('activeCaller').textContent = callInfo.userName;
                         startTimer();
+                        // Video akışını lokal video elementine atayın
+                        document.getElementById('localVideo').srcObject = localStream;
+                        document.getElementById('localVideo').style.display = 'none'; // Başlangıçta gizli tut
                     } else if (['failed', 'disconnected', 'closed'].includes(state)) {
                         handleCallEnded({ reason: 'Bağlantı koptu' });
                     }
@@ -1626,18 +1712,44 @@
                 }
             } catch (error) {
                 console.error('❌ WebRTC kurulum hatası (Admin):', error);
-                showNotification('Mikrofon erişimi gerekli veya bir hata oluştu!', 'error');
+                showNotification('Mikrofon/kamera erişimi gerekli veya bir hata oluştu!', 'error');
                 endCall();
             }
         }
         
-        function handleCallAccepted(message) {
-            console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
-            if (callState === 'outgoing') {
-                const callInfo = { userId: message.customerId, userName: message.customerName };
-                currentCall = callInfo;
-                outgoingCallInfo = null;
-                setupPeerConnection(callInfo, true);
+        // Görüntüyü Aç/Kapat fonksiyonu
+        function toggleVideo() {
+            if (!localStream) return;
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (!videoTrack) return;
+            
+            const isVideoEnabled = videoTrack.enabled;
+            videoTrack.enabled = !isVideoEnabled;
+            
+            const videoToggleBtn = document.getElementById('videoToggleBtn');
+            const videoIcon = videoToggleBtn.querySelector('svg');
+            const videoToggleText = document.getElementById('videoToggleText');
+            const localVideoEl = document.getElementById('localVideo');
+            
+            if (videoTrack.enabled) {
+                videoToggleText.textContent = 'Görüntüyü Kapat';
+                videoIcon.innerHTML = `<path d="M16 16.92V21a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8.92M16 16.92L23 12l-7-4.92M22.5 14L10 14" stroke="currentColor"></path>`;
+                localVideoEl.srcObject = localStream;
+                localVideoEl.style.display = 'block';
+            } else {
+                videoToggleText.textContent = 'Görüntüyü Başlat';
+                videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
+                localVideoEl.style.display = 'none';
+            }
+            
+            // Karşı tarafa video durumunun değiştiğini bildirmek için sinyalleşme sunucusuna mesaj gönderilebilir.
+            // Bu, müşteri tarafında da video akışını açıp kapatmayı sağlar.
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'video-toggle',
+                    targetId: currentCall.userId,
+                    enabled: videoTrack.enabled
+                }));
             }
         }
         
@@ -1692,7 +1804,6 @@
             pendingIceCandidates = [];
         }
         
-        // --- DEĞİŞTİRMEYİ BURADA BİTİRİN ---
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
             if (callTimer) { clearInterval(callTimer); callTimer = null; }
@@ -1708,6 +1819,10 @@
             const remoteAudio = document.getElementById('remoteAudio');
             if (localAudio) localAudio.srcObject = null;
             if (remoteAudio) remoteAudio.srcObject = null;
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            if (remoteVideo) remoteVideo.srcObject = null;
+            if (localVideo) localVideo.srcObject = null;
             callDuration = 0;
             callStartTime = null;
             pendingIceCandidates = [];
@@ -1751,7 +1866,7 @@
                 const button = document.getElementById('muteButton');
                 if (button) {
                     button.textContent = audioTrack.enabled ? '🔇 Sessize Al' : '🔊 Sesi Aç';
-                    button.className = audioTrack.enabled ? 'btn btn-primary' : 'btn btn-success';
+                    button.className = audioTrack.enabled ? 'btn btn-primary' : 'btn btn-accept';
                     showNotification(audioTrack.enabled ? 'Mikrofon açıldı' : 'Mikrofon kapatıldı', audioTrack.enabled ? 'success' : 'info', 2000);
                 }
                 console.log(audioTrack.enabled ? '🔊 Mikrofon açıldı' : '🔇 Mikrofon kapatıldı');
@@ -2030,5 +2145,3 @@
     </script>
 </body>
 </html>
-
-
