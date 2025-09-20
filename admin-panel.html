@@ -53,7 +53,7 @@
 
         .admin-info {
             text-align: right;
-            position: relative;
+            position: relative; /* Bahşiş balonu için eklendi */
         }
 
         .admin-name {
@@ -69,7 +69,8 @@
             border-radius: 10px;
             margin-top: 5px;
         }
-        
+
+        /* YENİ: Bahşiş Bildirim Balonu Stili */
         .tip-notification {
             position: absolute;
             bottom: -45px;
@@ -341,7 +342,6 @@
             gap: 12px;
             justify-content: center;
             margin-top: 20px;
-            flex-wrap: wrap; /* Butonların taşmasını engellemek için */
         }
 
         .btn {
@@ -386,12 +386,6 @@
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
 
-        .btn-secondary {
-            background: linear-gradient(135deg, #64748b, #475569);
-            color: white;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3);
-        }
-
         .btn-call {
             background: linear-gradient(135deg, #059669, #047857);
             color: white;
@@ -405,7 +399,7 @@
             padding: 8px 16px;
             font-size: 12px;
         }
-        
+
         .btn-end {
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
@@ -842,54 +836,6 @@
             text-align: center;
         }
 
-        /* Yeni video stil ve butonları */
-        .call-video-container {
-            position: relative;
-            width: 100%;
-            max-width: 450px;
-            margin: 0 auto 20px;
-            aspect-ratio: 16 / 9;
-            background-color: #1e293b;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        #remoteVideo, #localVideo {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-        }
-        #localVideo {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            width: 100px;
-            height: auto;
-            border: 2px solid white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            border-radius: 8px;
-            z-index: 10;
-        }
-        .btn-video-toggle {
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(5px);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 50px;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.3s ease;
-            margin-top: 10px;
-        }
-        .btn-video-toggle:hover {
-            background: rgba(255,255,255,0.3);
-        }
 
         @media (max-width: 1200px) {
             .main-content {
@@ -1014,27 +960,9 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="call-video-container">
-                        <video id="remoteVideo" autoplay playsinline></video>
-                        <video id="localVideo" muted playsinline></video>
-                    </div>
-                    
                     <div class="call-buttons">
                         <button class="btn btn-end" onclick="endCall()">📞 Görüşmeyi Bitir</button>
                         <button class="btn btn-primary" onclick="muteCall()" id="muteButton">🔇 Sessize Al</button>
-                        <button id="screenShareBtn" class="btn btn-secondary" onclick="toggleScreenShare()">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-monitor">
-                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>
-                            </svg>
-                            <span id="screenShareText">Ekranı Paylaş</span>
-                        </button>
-                    </div>
-                    <div class="call-buttons">
-                        <button id="videoToggleBtn" class="btn btn-primary" onclick="toggleVideo()">
-                            <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                            <span id="videoToggleText">Görüntüyü Başlat</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1126,7 +1054,6 @@
         let socket = null;
         let peerConnection = null;
         let localStream = null;
-        let screenShareStream = null;
         let currentCall = null;
         let callTimer = null;
         let callDuration = 0;
@@ -1137,7 +1064,6 @@
         let filteredUsers = [];
         let outgoingCallInfo = null;
         let incomingCallInfo = null;
-        let isScreenSharing = false;
 
         let isLoggedIn = false;
         let currentAdmin = null;
@@ -1154,34 +1080,34 @@
 
         const serverUrl = window.location.hostname === 'localhost' ?
             'ws://localhost:8080' : `wss://${window.location.host}`;
-        const rtcConfig = {
-            iceServers: [
-                {
-                    urls: "stun:stun.relay.metered.ca:80",
-                },
-                {
-                    urls: "turn:global.relay.metered.ca:80",
-                    username: "2cd6997bdf9666187e5c41e1",
-                    credential: "vjN0huj/wkeKHu8f",
-                },
-                {
-                    urls: "turn:global.relay.metered.ca:80?transport=tcp",
-                    username: "2cd6997bdf9666187e5c41e1",
-                    credential: "vjN0huj/wkeKHu8f",
-                },
-                {
-                    urls: "turn:global.relay.metered.ca:443",
-                    username: "2cd6997bdf9666187e5c41e1",
-                    credential: "vjN0huj/wkeKHu8f",
-                },
-                {
-                    urls: "turns:global.relay.metered.ca:443?transport=tcp",
-                    username: "2cd6997bdf9666187e5c41e1",
-                    credential: "vjN0huj/wkeKHu8f",
-                },
-            ],
-        };
-        const baseUrl = '';
+       const rtcConfig = {
+      iceServers: [
+          {
+            urls: "stun:stun.relay.metered.ca:80",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80",
+            username: "2cd6997bdf9666187e5c41e1",
+            credential: "vjN0huj/wkeKHu8f",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
+            username: "2cd6997bdf9666187e5c41e1",
+            credential: "vjN0huj/wkeKHu8f",
+          },
+          {
+            urls: "turn:global.relay.metered.ca:443",
+            username: "2cd6997bdf9666187e5c41e1",
+            credential: "vjN0huj/wkeKHu8f",
+          },
+          {
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
+            username: "2cd6997bdf9666187e5c41e1",
+            credential: "vjN0huj/wkeKHu8f",
+          },
+      ],
+    };
+        const baseUrl = ''; // API rotaları için göreceli yol kullan
 
         const cashSound = new Audio('cash.mp3');
 
@@ -1191,7 +1117,7 @@
             isInitializing = true;
             
             setupEventListeners();
-            checkAuthStatus();
+            checkAuthStatus(); // YENİ: Sayfa yüklenir yüklenmez kimlik kontrolü yap
         };
 
         function setupEventListeners() {
@@ -1250,6 +1176,7 @@
             });
         }
         
+        // YENİ: Kimlik Kontrolü Fonksiyonu
         async function checkAuthStatus() {
             try {
                 console.log('🔐 Oturum kontrol ediliyor...');
@@ -1257,10 +1184,12 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.authenticated && ['normal', 'super'].includes(data.role)) {
+                        // Giriş başarılı ise uygulamayı başlat
                         loginSuccess(data);
                         return;
                     }
                 }
+                // Giriş başarısız ise ana sayfaya yönlendir
                 console.log('❌ Yetkisiz erişim, giriş sayfasına yönlendiriliyor...');
                 window.location.href = baseUrl + '/';
             } catch (error) {
@@ -1268,7 +1197,6 @@
                 window.location.href = baseUrl + '/';
             }
         }
-
         function loginSuccess(adminData) {
             console.log('✅ Giriş başarılı:', adminData.username);
             isLoggedIn = true;
@@ -1278,9 +1206,8 @@
                 adminData.role === 'super' ? '🔴 Süper Admin' : '🟡 Normal Admin';
             updateAdminStatus('available');
             connectToServer();
-            loadMyEarnings();
+            loadMyEarnings(); 
         }
-
         async function performLogout() {
             if (!confirm('Çıkış yapmak istediğinizden emin misiniz?')) return;
             console.log('👋 Çıkış yapılıyor...');
@@ -1356,7 +1283,6 @@
                 console.log('📝 Admin kaydedildi:', registerMessage);
             }
         }
-
         function updateConnectionStatus(status) {
             const statusDot = document.getElementById('statusDot');
             const statusText = document.getElementById('statusText');
@@ -1379,7 +1305,6 @@
                     break;
             }
         }
-
         function handleServerMessage(message) {
             console.log('📨 Sunucu mesajı:', message.type);
             switch (message.type) {
@@ -1394,6 +1319,7 @@
                 case 'callback-list-update':
                     updateCallbacks(message.callbacks || []);
                     break;
+                // YENİ: Bakiye güncelleme ve bahşiş bildirimi
                 case 'admin-earning-update':
                     updateMyEarningsDisplay(message.newEarnings);
                     if (message.sourceInfo && message.sourceInfo.source === 'tip') {
@@ -1437,9 +1363,7 @@
                 case 'call-ended': handleCallEnded(message); break;
                 case 'offer': case 'answer': case 'ice-candidate': handleWebRTCMessage(message); break;
                 case 'auto-credit-update':
-                    break;
-                case 'video-toggle':
-                    handleVideoToggle(message.enabled);
+                    // Bu bildirimler artık admin panelinde gösterilmeyecek
                     break;
                 default: console.log('❓ Bilinmeyen mesaj tipi:', message.type); break;
             }
@@ -1452,12 +1376,11 @@
                 renderConnectedUsers();
             }
         }
-
         function loadInitialData() {
             console.log('📊 İlk veri yükleme başlatılıyor...');
+            // loadOnlineUsers(); // Bu satır kaldırıldı veya yorum satırı yapıldı
             isInitializing = false;
         }
-
         function updateAdminStatus(status) {
             const statusElement = document.getElementById('adminStatus');
             if (!statusElement) return;
@@ -1471,7 +1394,6 @@
             }
             console.log('📊 Admin durumu güncellendi:', status);
         }
-
         function updateCallbacks(callbacks) {
             console.log('📝 Callback listesi güncellendi:', callbacks.length);
             myCallbacks = callbacks || [];
@@ -1479,7 +1401,6 @@
             if (counterElement) counterElement.textContent = myCallbacks.length;
             renderCallbacks();
         }
-
         function renderCallbacks() {
             const list = document.getElementById('callbackList');
             if (!list) return;
@@ -1499,37 +1420,24 @@
                 console.log('🗑️ Callback silindi:', customerId);
             }
         }
-        async function callCustomer(customerId, customerName) {
+        function callCustomer(customerId, customerName) {
             if (currentCall || outgoingCallInfo || callState !== 'idle') {
                 showNotification('Zaten bir aramada bulunuyorsunuz!', 'warning');
                 return;
             }
             console.log('📞 Müşteri aranıyor:', customerName, '(' + customerId + ')');
-            
             outgoingCallInfo = { userId: customerId, userName: customerName };
             currentCall = { userId: customerId, userName: customerName };
             callState = 'outgoing';
-            
             const outgoingNameEl = document.getElementById('outgoingName');
             const outgoingIdEl = document.getElementById('outgoingId');
             const outgoingCallEl = document.getElementById('outgoingCall');
             if (outgoingNameEl) outgoingNameEl.textContent = customerName;
             if (outgoingIdEl) outgoingIdEl.textContent = customerId;
             if (outgoingCallEl) outgoingCallEl.classList.remove('hidden');
-            
             updateAdminStatus('busy');
-            
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: true });
-                localStream.getVideoTracks()[0].enabled = false;
-                
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
-                }
-            } catch (err) {
-                console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
-                showNotification("Mikrofon ve kamera izni gerekli.", "error");
-                resetCallState();
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'admin-call-customer', targetCustomerId: customerId, adminName: currentAdmin.username || 'Admin' }));
             }
         }
         function cancelOutgoingCall() {
@@ -1580,14 +1488,17 @@
             console.log('🔗 Arama bağlanıyor...');
             showNotification('Arama bağlanıyor...', 'info', 3000);
         }
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ handleCallAccepted FONKSİYONUNU SİLİP BUNU EKLEYİN ---
         
         function handleCallAccepted(message) {
             console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
             if (callState === 'outgoing') {
-                const callInfo = { userId: message.customerId, userName: message.customerName };
+                const callInfo = { userId: currentCall.userId, userName: currentCall.userName };
                 currentCall = callInfo;
                 outgoingCallInfo = null;
                 
+                // setupPeerConnection fonksiyonunu görüşmeyi başlatan (initiator) olarak çağır.
                 setupPeerConnection(callInfo, true);
             }
         }
@@ -1598,13 +1509,14 @@
         }
         function handleCallEnded(message) {
             console.log('📞 Arama sonlandı:', message.reason);
-            
+            // Yalnızca aktif bir çağrı varsa bildirim göster
             if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
             
+            // Yalnızca normal sonlanan çağrılarda özet ekranını göster
             if (message.reason !== 'cancelled' && message.reason !== 'rejected' && message.reason !== 'ended_before_start') {
                 showCallSummaryModal(message.duration, message.creditsUsed);
             }
-            
+        
             cleanupCall();
             resetCallState();
         }
@@ -1620,9 +1532,11 @@
             cashSound.play().catch(e => console.error("Cash sound play failed", e));
             document.getElementById('callSummaryModal').classList.remove('hidden');
         }
+
         function closeCallSummaryModal() {
             document.getElementById('callSummaryModal').classList.add('hidden');
         }
+
         function endCall() {
             if (!currentCall) return;
             console.log('📞 Görüşme sonlandırılıyor:', currentCall.userName);
@@ -1655,6 +1569,11 @@
             updateAdminStatus('available');
             console.log('🔄 Call state sıfırlandı');
         }
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ setupPeerConnection FONKSİYONUNU SİLİP BUNU EKLEYİN ---
+        
+        // DOSYA: admin-panel.html -> <script> içinde
+        // --- ESKİ 4 FONKSİYONU SİLİP BU TEK BLOK İLE DEĞİŞTİRİN ---
         
         async function setupPeerConnection(callInfo, isInitiator) {
             if (peerConnection) {
@@ -1667,56 +1586,36 @@
                 
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-                
-                // localStream zaten callCustomer veya acceptIncomingCall içinde alınmış olmalı.
-                if (!localStream) {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: true });
-                    localStream.getVideoTracks()[0].enabled = false;
-                }
-                
+        
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = (event) => { 
-                    console.log('🎵 Gelen medya akışı alındı:', event.track.kind);
-                    if (event.track.kind === 'video') {
-                        const remoteVideo = document.getElementById('remoteVideo');
-                        if (remoteVideo) {
-                            remoteVideo.srcObject = event.streams[0];
-                            remoteVideo.style.display = 'block';
-                            console.log('▶️ Müşteri videosu oynatılıyor.');
-                        }
-                    } else if (event.track.kind === 'audio') {
-                        const remoteAudio = document.getElementById('remoteAudio');
-                        if (remoteAudio) {
-                            remoteAudio.srcObject = event.streams[0];
-                        }
-                    }
+                    console.log('🎵 Müşteriden ses akışı alındı');
+                    document.getElementById('remoteAudio').srcObject = event.streams[0];
                 };
-                
+        
                 peerConnection.onicecandidate = (event) => { 
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
                     }
                 };
-                
+        
                 peerConnection.onconnectionstatechange = () => {
                     if (!peerConnection) return;
                     const state = peerConnection.connectionState;
                     console.log('🔗 Admin Bağlantı durumu:', state);
-                    updateConnectionQuality(state);
                     if (state === 'connected') {
                         document.getElementById('outgoingCall').classList.add('hidden');
                         document.getElementById('incomingCall').classList.add('hidden');
                         document.getElementById('activeCall').classList.remove('hidden');
                         document.getElementById('activeCaller').textContent = callInfo.userName;
                         startTimer();
-                        document.getElementById('localVideo').srcObject = localStream;
-                        document.getElementById('localVideo').style.display = 'none';
                     } else if (['failed', 'disconnected', 'closed'].includes(state)) {
                         handleCallEnded({ reason: 'Bağlantı koptu' });
                     }
                 };
-                
+        
                 if (isInitiator) {
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -1727,94 +1626,18 @@
                 }
             } catch (error) {
                 console.error('❌ WebRTC kurulum hatası (Admin):', error);
-                showNotification('Mikrofon/kamera erişimi gerekli veya bir hata oluştu!', 'error');
+                showNotification('Mikrofon erişimi gerekli veya bir hata oluştu!', 'error');
                 endCall();
             }
         }
         
-        async function toggleVideo() {
-            if (!localStream) return;
-            const videoTrack = localStream.getVideoTracks()[0];
-            if (!videoTrack) return;
-            
-            const isVideoEnabled = videoTrack.enabled;
-            videoTrack.enabled = !isVideoEnabled;
-            
-            const videoToggleBtn = document.getElementById('videoToggleBtn');
-            const videoIcon = videoToggleBtn.querySelector('svg');
-            const videoToggleText = document.getElementById('videoToggleText');
-            const localVideoEl = document.getElementById('localVideo');
-            
-            if (videoTrack.enabled) {
-                videoToggleText.textContent = 'Görüntüyü Kapat';
-                videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
-                localVideoEl.srcObject = localStream;
-                localVideoEl.style.display = 'block';
-            } else {
-                videoToggleText.textContent = 'Görüntüyü Başlat';
-                videoIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
-                localVideoEl.style.display = 'none';
-            }
-            
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'video-toggle',
-                    targetId: currentCall.userId,
-                    enabled: videoTrack.enabled
-                }));
-            }
-        }
-        
-        async function toggleScreenShare() {
-            const screenShareBtn = document.getElementById('screenShareBtn');
-
-            if (isScreenSharing) {
-                // Ekran paylaşımını durdur
-                if (screenShareStream) {
-                    screenShareStream.getTracks().forEach(track => track.stop());
-                    screenShareStream = null;
-                }
-                isScreenSharing = false;
-                
-                // Kamera akışına geri dön
-                if (localStream && localStream.getVideoTracks().length > 0) {
-                    const videoTrack = localStream.getVideoTracks()[0];
-                    const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(videoTrack);
-                    }
-                }
-                
-                screenShareBtn.textContent = 'Ekranı Paylaş';
-                screenShareBtn.classList.remove('btn-danger');
-                screenShareBtn.classList.add('btn-secondary');
-                showNotification('Ekran paylaşımı durduruldu.', 'info');
-            } else {
-                // Ekran paylaşımını başlat
-                try {
-                    screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-                    
-                    const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(screenShareStream.getVideoTracks()[0]);
-                    }
-
-                    isScreenSharing = true;
-                    
-                    screenShareStream.getVideoTracks()[0].onended = () => {
-                        toggleScreenShare();
-                    };
-
-                    screenShareBtn.textContent = 'Paylaşımı Durdur';
-                    screenShareBtn.classList.remove('btn-secondary');
-                    screenShareBtn.classList.add('btn-danger');
-                    showNotification('Ekranınız müşteriye paylaşılıyor.', 'success');
-
-                } catch (err) {
-                    console.error('Ekran paylaşımı başlatılamadı:', err);
-                    showNotification('Ekran paylaşımı izni verilmedi veya bir hata oluştu.', 'error');
-                    isScreenSharing = false;
-                }
+        function handleCallAccepted(message) {
+            console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
+            if (callState === 'outgoing') {
+                const callInfo = { userId: message.customerId, userName: message.customerName };
+                currentCall = callInfo;
+                outgoingCallInfo = null;
+                setupPeerConnection(callInfo, true);
             }
         }
         
@@ -1869,6 +1692,7 @@
             pendingIceCandidates = [];
         }
         
+        // --- DEĞİŞTİRMEYİ BURADA BİTİRİN ---
         function cleanupCall() {
             console.log('🧹 Call cleanup başlatılıyor...');
             if (callTimer) { clearInterval(callTimer); callTimer = null; }
@@ -1880,20 +1704,10 @@
                 }); 
                 localStream = null; 
             }
-            if (screenShareStream) {
-                 screenShareStream.getTracks().forEach(track => track.stop());
-                 screenShareStream = null;
-                 isScreenSharing = false;
-            }
-
             const localAudio = document.getElementById('localAudio');
             const remoteAudio = document.getElementById('remoteAudio');
             if (localAudio) localAudio.srcObject = null;
             if (remoteAudio) remoteAudio.srcObject = null;
-            const remoteVideo = document.getElementById('remoteVideo');
-            const localVideo = document.getElementById('localVideo');
-            if (remoteVideo) remoteVideo.srcObject = null;
-            if (localVideo) localVideo.srcObject = null;
             callDuration = 0;
             callStartTime = null;
             pendingIceCandidates = [];
@@ -1937,7 +1751,7 @@
                 const button = document.getElementById('muteButton');
                 if (button) {
                     button.textContent = audioTrack.enabled ? '🔇 Sessize Al' : '🔊 Sesi Aç';
-                    button.className = audioTrack.enabled ? 'btn btn-primary' : 'btn btn-accept';
+                    button.className = audioTrack.enabled ? 'btn btn-primary' : 'btn btn-success';
                     showNotification(audioTrack.enabled ? 'Mikrofon açıldı' : 'Mikrofon kapatıldı', audioTrack.enabled ? 'success' : 'info', 2000);
                 }
                 console.log(audioTrack.enabled ? '🔊 Mikrofon açıldı' : '🔇 Mikrofon kapatıldı');
@@ -2180,10 +1994,12 @@
             }
         }
         
+        // YENİ: Bahşiş Bildirimini Gösteren Fonksiyon
         function showTipNotification(sourceInfo) {
             const adminInfoDiv = document.querySelector('.admin-info');
             if (!adminInfoDiv) return;
 
+            // Önceki balonu temizle (varsa)
             const existingNotif = document.getElementById('tipNotif');
             if(existingNotif) existingNotif.remove();
 
@@ -2194,10 +2010,12 @@
             
             adminInfoDiv.appendChild(notification);
 
+            // Animasyonla göster
             setTimeout(() => {
                 notification.classList.add('show');
             }, 10);
             
+            // 3 saniye sonra animasyonla gizle ve DOM'dan kaldır
             setTimeout(() => {
                 notification.classList.remove('show');
                 setTimeout(() => {
@@ -2212,3 +2030,4 @@
     </script>
 </body>
 </html>
+
