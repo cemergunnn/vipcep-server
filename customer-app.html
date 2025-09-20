@@ -1058,7 +1058,6 @@
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
                 if (isLoggedIn) {
-                    // This is the crucial part: send the register message on connection open if already logged in.
                     socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                 }
             };
@@ -1094,8 +1093,6 @@
                         document.getElementById('mainApp').classList.remove('hidden');
                         userInfo.credits = message.credits;
                         updateUserDisplay();
-                        // This register message is for initial login, not for subsequent connections.
-                        // The onopen event handles reconnections for remembered users.
                         socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
                         const loginMessage = document.getElementById('loginMessage');
