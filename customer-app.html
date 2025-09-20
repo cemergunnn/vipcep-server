@@ -410,7 +410,7 @@
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
         .call-overlay {
-            position: fixed; /* Tam ekran olması için fixed yapıldı */
+            position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(29, 41, 59, 0.95);
             backdrop-filter: blur(8px);
@@ -541,8 +541,8 @@
         }
 
         .tip-buttons-container {
-            position: relative; /* Parçacıkların bu kapsayıcıya göre konumlanması için */
-            z-index: 2; /* Ensure buttons are on top */
+            position: relative;
+            z-index: 2;
         }
 
         .tip-buttons {
@@ -578,86 +578,83 @@
         
         .particle-container {
             position: absolute;
-            top: 0; /* 'USTAYA DESTEK OL!' kısmının üstünden başlasın */
+            top: 0;
             left: 0;
             width: 100%;
-            height: 100%; /* Kapsayıcının (tip-buttons-container) alt sınırına kadar uzasın */
+            height: 100%;
             pointer-events: none;
             overflow: hidden;
-            z-index: 1; /* Diğer içeriklerin altında kalsın */
+            z-index: 1;
         }
         
         .particle {
             position: absolute;
             font-size: 20px;
-            animation: fly-down 1s ease-out forwards; /* Animasyon adı değişti */
+            animation: fly-down 1s ease-out forwards;
             opacity: 0;
         }
 
-        @keyframes fly-down { /* Yeni anahtar kareler */
-            0%   { transform: translateY(-100%) rotate(0); opacity: 0; } /* Yukarıdan başla, görünmez */
-            10%  { opacity: 1; } /* Hızla görünür ol */
-            90%  { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
-            100% { transform: translateY(200%) rotate(720deg); opacity: 0; } /* Aşağıya doğru kaybol */
+        @keyframes fly-down {
+            0%   { transform: translateY(-100%) rotate(0); opacity: 0; }
+            10%  { opacity: 1; }
+            90%  { transform: translateY(100%) rotate(360deg); opacity: 1; }
+            100% { transform: translateY(200%) rotate(720deg); opacity: 0; }
         }
-        /* 1. Nefes Alma Animasyonunu Tanımlama */
         @keyframes breathing-label {
             0%   { transform: scale(1); }
             50%  { transform: scale(1.08); }
             100% { transform: scale(1); }
         }
 
-/* 2. Animasyonu İlgili Etikete Uygulama */
-.tip-buttons-container .form-label {
-    animation: breathing-label 2.5s infinite ease-in-out;
-}
-.temporary-message-popup {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: white; /* DÜZELTME: Opak beyaz arka plan */
-    color: #374151; /* DÜZELTME: Ana metin rengi (var(--gray-700)) */
-    padding: 30px 40px;
-    border-radius: 16px;
-    z-index: 2000;
-    text-align: center;
-    font-size: 16px;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-    opacity: 1;
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-    max-width: 320px;
-    width: 90%;
-}
+        .tip-buttons-container .form-label {
+            animation: breathing-label 2.5s infinite ease-in-out;
+        }
+        .temporary-message-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            color: #374151;
+            padding: 30px 40px;
+            border-radius: 16px;
+            z-index: 2000;
+            text-align: center;
+            font-size: 16px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+            opacity: 1;
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+            max-width: 320px;
+            width: 90%;
+        }
 
-    .temporary-message-popup .icon {
-        font-size: 48px;
-        margin-bottom: 15px;
-        display: block;
-        line-height: 1;
-    }
-    
-    .temporary-message-popup h4 {
-        margin-top: 0;
-        margin-bottom: 8px;
-        color: #2563eb; /* DÜZELTME: Başlık için direkt renk kodu (var(--primary-color)) */
-        font-weight: 600;
-        font-size: 20px;
-    }
-    
-    .temporary-message-popup p {
-        margin: 0;
-        color: #64748b; /* DÜZELTME: Paragraf için direkt renk kodu (var(--gray-500)) */
-        line-height: 1.5;
-        font-size: 15px;
-    }
-    
-    .temporary-message-popup.fade-out {
-        opacity: 0;
-        transform: translate(-50%, -60%);
-    }
+        .temporary-message-popup .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+            line-height: 1;
+        }
+        
+        .temporary-message-popup h4 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #2563eb;
+            font-weight: 600;
+            font-size: 20px;
+        }
+        
+        .temporary-message-popup p {
+            margin: 0;
+            color: #64748b;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+        
+        .temporary-message-popup.fade-out {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
 
-        /* Yeni Animasyonlu Bildirim Stilleri */
         .notification-container {
             position: fixed;
             top: 50%;
@@ -750,7 +747,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            display: none; /* Başlangıçta gizli */
+            display: none;
         }
         #localVideo {
             position: absolute;
@@ -819,7 +816,6 @@
             gap: 15px;
         }
 
-        /* Tam ekran butonu için yeni stil */
         .btn-fullscreen {
             position: absolute;
             top: 10px;
@@ -832,6 +828,7 @@
         .btn-fullscreen:hover {
             background: rgba(255,255,255,0.3);
         }
+        
     </style>
 </head>
 <body>
@@ -948,22 +945,24 @@
                     <div class="video-overlay-text" id="videoOverlayText">Görüntü bekleniyor...</div>
                 </div>
                 <div class="call-controls-container">
-                    <button class="control-button off" onclick="toggleVideo()" id="videoToggleBtn">
-                        <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video-off"><path d="M16 16.92V21a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8.92M16 16.92L23 12l-7-4.92M22.5 14L10 14"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                    </button>
-                    <button class="control-button off" onclick="toggleMute()" id="muteButton">
-                        <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
-                    </button>
-                    <button class="control-button end-call" onclick="endCall(false)">
+                    <div class="button-group">
+                         <button class="control-button off" onclick="toggleMute()" id="muteButton">
+                             <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
+                         </button>
+                         <button class="control-button off" onclick="toggleVideo()" id="videoToggleBtn">
+                            <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video-off"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                         </button>
+                         <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
+                             <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
+                         </button>
+                     </div>
+                     <button class="control-button end-call" onclick="endCall(false)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                    </button>
-                    <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
-                         <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
-                    </button>
-                </div>
-                <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
-                     <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                </button>
+                     </button>
+                 </div>
+                 <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
+                      <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                 </button>
             </div>
             
             <div id="incomingCallView" class="hidden">
@@ -1083,6 +1082,7 @@
         let pendingCallbackAdminId = null;
         let isVideoEnabled = false;
         let isFrontCamera = true;
+        let isMicEnabled = true;
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -1138,7 +1138,6 @@
                 document.getElementById('userIdInput').value = localStorage.getItem('vipcep_user_id');
                 document.getElementById('userNameInput').value = localStorage.getItem('vipcep_user_name');
                 document.getElementById('rememberMe').checked = true;
-                // Otomatik giriş yapma
                 loginUser();
             }
             connectToServer();
@@ -1181,7 +1180,6 @@
             socket.onopen = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
-                // Eğer kullanıcı bilgileri Local Storage'da varsa otomatik giriş isteği gönder
                 if (localStorage.getItem('vipcep_remember_me') === 'true' && localStorage.getItem('vipcep_user_id') && !isLoggedIn) {
                     userInfo.id = localStorage.getItem('vipcep_user_id');
                     userInfo.name = localStorage.getItem('vipcep_user_name');
@@ -1195,7 +1193,7 @@
             socket.onclose = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-disconnected';
                 document.getElementById('connectionText').textContent = 'Bağlantı Kesildi';
-                setTimeout(connectToServer, 3000); // 3 saniye sonra yeniden bağlanmaya çalış
+                setTimeout(connectToServer, 3000);
             };
         }
 
@@ -1313,7 +1311,7 @@
 
                     let buttonHtml;
                     if (admin.status === 'available') {
-                        buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}')">📞 Ara</button>`;
+                        buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}', false)">📞 Ara</button>`;
                     } else if (isCallbackSentToThisAdmin) {
                         buttonHtml = `<button class="btn btn-callback-sent" disabled>✅ Geri Dönüş Alındı</button>`;
                     } else {
@@ -1340,7 +1338,6 @@
             }
         }
         
-        // makeCall fonksiyonu güncellendi:
         async function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
@@ -1354,7 +1351,6 @@
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
 
-            // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
             if (admin.status === 'busy') {
                 return makeCallbackRequest(adminId);
             }
@@ -1369,16 +1365,15 @@
             setState('connecting');
             playSound(ringingSound);
             
-            // Hem ses hem de video için izin iste
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
-                localStream.getVideoTracks()[0].enabled = false; // Video akışını başlangıçta kapat
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream.getVideoTracks()[0].enabled = false;
                 isVideoEnabled = false;
-                // Başarılı olursa WebRTC bağlantısını başlat
+                isMicEnabled = true;
+
                 socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
             } catch (err) {
                 console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
-                // Kullanıcı izni reddederse aramayı iptal et
                 showNotification("Mikrofon ve kamera izni gerekli. Lütfen erişime izin verin.", "error");
                 endCall(true);
             }
@@ -1386,7 +1381,7 @@
 
         function makeCallbackRequest(adminId, event) {
             if (pendingCallbackAdminId) {
-                return; // Zaten bekleyen bir talep varsa işlem yapma
+                return;
             }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
@@ -1395,7 +1390,6 @@
             pendingCallbackAdminId = adminId;
             isCallbackPending = true;
             
-            // Bu kod bloğu, butona anında görsel geri bildirim sağlar.
             if (event && event.currentTarget) {
                 const button = event.currentTarget;
                 button.textContent = '📝 Talebiniz Gönderiliyor...';
@@ -1416,14 +1410,13 @@
             
             const mainApp = document.getElementById('mainApp');
 
-            // Hide all overlay views first
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
             
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                mainApp.classList.add('hidden'); // Hide main content
+                mainApp.classList.add('hidden');
 
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
@@ -1432,7 +1425,7 @@
                 } else if (newState === 'incoming') {
                     incomingView.classList.remove('hidden');
                 }
-            } else { // idle state
+            } else {
                  callOverlay.classList.add('hidden');
                  mainApp.classList.remove('hidden');
             }
@@ -1455,16 +1448,16 @@
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'customer-accepted-call',
-                    adminId: lastCallInfo.adminId, // Arayan adminin ID'si
-                    customerId: userInfo.id         // Müşterinin kendi ID'si
+                    adminId: lastCallInfo.adminId,
+                    customerId: userInfo.id
                 }));
             }
                  setState('connecting');
-            // Gelen arama kabul edildiğinde de video ve ses izni al
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                 localStream.getVideoTracks()[0].enabled = false;
                 isVideoEnabled = false;
+                isMicEnabled = true;
                 await setupPeerConnection(false);
             } catch (err) {
                  console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
@@ -1492,7 +1485,7 @@
             stopAllSounds();
             playSound(connectedSound);
 
-            setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
+            setupPeerConnection(true);
         }
         
         function handleCallEnded(message, rejected = false) {
@@ -1519,9 +1512,12 @@
                 pendingIceCandidates = [];
                 
                 if (!localStream) {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
-                    localStream.getVideoTracks()[0].enabled = false;
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                    if (localStream.getVideoTracks().length > 0) {
+                        localStream.getVideoTracks()[0].enabled = false;
+                    }
                     isVideoEnabled = false;
+                    isMicEnabled = true;
                 }
                 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -1578,17 +1574,21 @@
             
             const localVideoEl = document.getElementById('localVideo');
             const videoToggleBtn = document.getElementById('videoToggleBtn');
-
+            const videoIcon = document.getElementById('videoIcon');
+            
             if (isVideoEnabled) {
                  localVideoEl.srcObject = localStream;
                  localVideoEl.style.display = 'block';
                  videoToggleBtn.classList.add('on');
+                 videoToggleBtn.classList.remove('off');
+                 videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
             } else {
                  localVideoEl.style.display = 'none';
                  videoToggleBtn.classList.remove('on');
+                 videoToggleBtn.classList.add('off');
+                 videoIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
             }
 
-            // Karşı tarafa video durumunun değiştiğini bildirin
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'video-toggle',
@@ -1598,7 +1598,6 @@
             }
         }
         
-        // Müşterinin videosu açıldığında çağrılır
         function handleVideoToggle(isEnabled) {
              const remoteVideo = document.getElementById('remoteVideo');
              const videoOverlayText = document.getElementById('videoOverlayText');
@@ -1610,10 +1609,30 @@
                  videoOverlayText.style.display = 'block';
              }
         }
+        
+        function toggleMute() {
+            if (!localStream || !localStream.getAudioTracks()[0]) return;
+            const audioTrack = localStream.getAudioTracks()[0];
+            isMicEnabled = !isMicEnabled;
+            audioTrack.enabled = isMicEnabled;
+            
+            const muteButton = document.getElementById('muteButton');
+            const muteIcon = document.getElementById('muteIcon');
+            
+            if (isMicEnabled) {
+                muteButton.classList.remove('off');
+                muteButton.classList.add('on');
+                muteIcon.innerHTML = `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
+            } else {
+                muteButton.classList.remove('on');
+                muteButton.classList.add('off');
+                muteIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path>`;
+            }
+        }
 
-        // Kamera Yönü Değiştirme
+
         async function toggleCameraDirection() {
-            if (!localStream) return;
+            if (!localStream || !localStream.getVideoTracks()[0]) return;
             isFrontCamera = !isFrontCamera;
             const videoConstraints = {
                 facingMode: isFrontCamera ? 'user' : 'environment'
@@ -1627,8 +1646,10 @@
             try {
                 const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: videoConstraints });
                 const newVideoTrack = newStream.getVideoTracks()[0];
+                newVideoTrack.enabled = isVideoEnabled;
 
-                localStream.removeTrack(videoTrack);
+                const oldTrack = localStream.getVideoTracks()[0];
+                localStream.removeTrack(oldTrack);
                 localStream.addTrack(newVideoTrack);
                 
                 const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
@@ -1637,17 +1658,12 @@
                 }
 
                 document.getElementById('localVideo').srcObject = localStream;
-
-                if (!isVideoEnabled) {
-                    newVideoTrack.enabled = false;
-                }
             } catch (err) {
                 console.error("Kamera değiştirme hatası:", err);
                 showNotification("Kamera değiştirilemedi. Başka bir uygulama kamerayı kullanıyor olabilir.", "error");
             }
         }
-
-        // Tam Ekran Fonksiyonu
+        
         function toggleFullscreen() {
             const callOverlay = document.getElementById('callOverlay');
             const fullscreenIcon = document.getElementById('fullscreenIcon');
@@ -2102,8 +2118,8 @@
                 popup.classList.add('fade-out');
                 setTimeout(() => {
                     if (popup.parentElement) popup.parentElement.removeChild(popup);
-                }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
-            }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
+                }, 400);
+            }, duration - 400);
         }
 
     </script>
