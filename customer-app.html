@@ -405,7 +405,7 @@
             transform: translateX(0);
         }
         .notification.success { border-color: var(--secondary-color); }
-        .notification.error { border-left-color: var(--danger-color); }
+        .notification.error { border-color: var(--danger-color); }
         .notification.info { border-color: var(--primary-color); }
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
@@ -1626,7 +1626,7 @@
             if (isMicEnabled) {
                 muteButton.classList.remove('off');
                 muteButton.classList.add('on');
-                muteIcon.innerHTML = `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
+                muteIcon.innerHTML = `<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></path>`;
             } else {
                 muteButton.classList.remove('on');
                 muteButton.classList.add('off');
