@@ -722,14 +722,52 @@
         .hidden {
             display: none !important;
         }
-        
-        /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
-        /* @keyframes fly-up-strong {
-            0% { transform: translateY(0) rotate(0); opacity: 1; }
-            50% { transform: translateY(-220px) rotate(180deg); }
-            100% { transform: translateY(-450px) rotate(360deg); opacity: 0; }
-        } */
 
+        /* New video styles */
+        .call-video-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto 20px;
+        }
+        #remoteVideo, #localVideo {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            display: block;
+            background-color: var(--gray-800);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        #localVideo {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 80px;
+            border: 2px solid white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .btn-video-toggle {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.3s ease;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .btn-video-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
     </style>
 </head>
 <body>
@@ -843,6 +881,17 @@
                 <img id="connectedAdminPicOverlay" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
                 <p class="call-sub-text"><span id="currentAdminNameOverlay">Usta</span> ile görüşüyorsunuz</p>
                 <div class="call-status-text" id="callTimerOverlay">00:00</div>
+                
+                <div class="call-video-container">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <video id="localVideo" muted playsinline></video>
+                </div>
+                
+                <button id="videoToggleBtn" class="btn btn-video-toggle" onclick="toggleVideo()">
+                    <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                    <span id="videoToggleText">Görüntüyü Başlat</span>
+                </button>
+                
                 <button class="btn btn-end call-action-btn" onclick="endCall(false)">Görüşmeyi Sonlandır</button>
             </div>
             
@@ -950,6 +999,7 @@
         let socket = null;
         let peerConnection = null;
         let localStream = null;
+        let remoteStream = null;
         let callState = 'idle';
         let callTimer = null;
         let callDuration = 0;
@@ -1227,12 +1277,7 @@
             if (!admin) {
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
-
-            // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
-            if (admin.status === 'busy') {
-                return makeCallbackRequest(adminId);
-            }
-
+            
             lastCallInfo.adminId = admin.id;
             lastCallInfo.adminName = admin.name || 'Usta';
             lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
@@ -1243,15 +1288,16 @@
             setState('connecting');
             playSound(ringingSound);
             
-            // Mikrofon iznini bu aşamada iste
+            // Hem ses hem de video için izin iste
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream.getVideoTracks()[0].enabled = false; // Video akışını başlangıçta kapat
                 // Başarılı olursa WebRTC bağlantısını başlat
                 socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
             } catch (err) {
-                console.error("Mikrofon hatası veya izni reddedildi:", err);
+                console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
                 // Kullanıcı izni reddederse aramayı iptal et
-                showNotification("Mikrofon izni gerekli. Lütfen erişime izin verin.", "error");
+                showNotification("Mikrofon ve kamera izni gerekli. Lütfen erişime izin verin.", "error");
                 endCall(true);
             }
         }
@@ -1385,14 +1431,21 @@
                 
                 // localStream zaten makeCall veya acceptIncomingCall içinde alınmış olmalı.
                 if (!localStream) {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                    localStream.getVideoTracks()[0].enabled = false;
                 }
                 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = event => {
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (remoteAudio) remoteAudio.srcObject = event.streams[0];
+                    if (event.track.kind === 'video') {
+                        const remoteVideo = document.getElementById('remoteVideo');
+                        remoteVideo.srcObject = event.streams[0];
+                        remoteVideo.style.display = 'block';
+                    } else if (event.track.kind === 'audio') {
+                        const remoteAudio = document.getElementById('remoteAudio');
+                        remoteAudio.srcObject = event.streams[0];
+                    }
                 };
                 
                 peerConnection.onicecandidate = event => {
@@ -1419,11 +1472,35 @@
                     }
                 }
             } catch (err) {
-                console.error("PeerConnection veya mikrofon hatası:", err);
-                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
+                console.error("PeerConnection veya mikrofon/kamera hatası:", err);
+                showNotification("Görüşme başlatılamadı, lütfen tekrar deneyin.", "error");
                 endCall(true);
             }
         }
+        
+        // Görüntüyü Aç/Kapat fonksiyonu
+        function toggleVideo() {
+            if (!localStream) return;
+            const videoTrack = localStream.getVideoTracks()[0];
+            const videoToggleBtn = document.getElementById('videoToggleBtn');
+            const videoIcon = document.getElementById('videoIcon');
+            const videoToggleText = document.getElementById('videoToggleText');
+            
+            if (videoTrack.enabled) {
+                videoTrack.enabled = false;
+                videoToggleText.textContent = 'Görüntüyü Başlat';
+                videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
+                // Kendi küçük video pencerenizi gizleyin
+                document.getElementById('localVideo').srcObject = null;
+            } else {
+                videoTrack.enabled = true;
+                videoToggleText.textContent = 'Görüntüyü Kapat';
+                videoIcon.innerHTML = `<path d="M16 16.92V21a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8.92M16 16.92L23 12l-7-4.92M22.5 14L10 14" stroke="currentColor"></path>`;
+                // Kendi küçük video pencerenizi gösterin
+                document.getElementById('localVideo').srcObject = localStream;
+            }
+        }
+
 
         async function handleWebRTCMessage(message) {
             try {
@@ -1475,6 +1552,10 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+            if (remoteStream) {
+                remoteStream.getTracks().forEach(track => track.stop());
+                remoteStream = null;
+            }
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
@@ -1486,10 +1567,6 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
-            // cleanupCall() ve setState('idle') artık bu fonksiyonda çağrılmıyor.
-            // Bu işlemler, sunucudan gelecek 'call-ended' mesajıyla handleCallEnded içinde yapılacak.
-            // Bu sayede modal açılmadan ekran kapanmaz.
-        
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1498,7 +1575,6 @@
                     reason: reason 
                 }));
             } else {
-                // Sunucu bağlantısı yoksa, arama ekranını yerel olarak temizle
                 cleanupCall();
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
@@ -1559,8 +1635,6 @@
                 const commentValue = commentInput.value.trim();
                 const tipAmount = totalTipAmount;
             
-                // Hata çözümü: Eğer bahşiş verilmişse ancak derecelendirme yapılmamışsa,
-                // varsayılan olarak 5 yıldız atayın.
                 let finalRating = currentRating;
                 if (tipAmount > 0 && finalRating === 0) {
                     finalRating = 5;
@@ -1576,7 +1650,7 @@
                             body: JSON.stringify({
                                 customerId: userInfo.id,
                                 customerName: userInfo.name,
-                                rating: finalRating, // Buraya yeni finalRating değerini gönderiyoruz
+                                rating: finalRating,
                                 comment: commentValue,
                                 tipAmount: tipAmount
                             })
@@ -1605,7 +1679,7 @@
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.onclick = submitReview; // Boş gönderim için de aynı fonksiyona yönlendirir
+                    actionBtn.onclick = submitReview;
                 }
             };
             
@@ -1645,14 +1719,13 @@
             });
         
             commentInput.addEventListener('input', updateReviewButtonState);
-            actionBtn.onclick = submitReview; // Başlangıçta "Çıkış Yap" butonu da submitReview'i çağırır
+            actionBtn.onclick = submitReview;
         }
         
         function createParticles(amount, icons) {
-            const container = document.getElementById('tipParticleContainer'); // ID'ye göre hedefle
+            const container = document.getElementById('tipParticleContainer');
             if (!container) return;
 
-            // Mevcut parçacıkları temizle (tekrar tekrar çağrıldığında birikmemeleri için)
             container.innerHTML = '';
             
             for (let i = 0; i < amount; i++) {
@@ -1663,13 +1736,11 @@
                 const size = 15 + Math.random() * 10;
                 particle.style.fontSize = `${size}px`;
                 
-                // Parçacıkların yatayda daha geniş dağılmasını sağla
-                particle.style.left = `${Math.random() * 90 + 5}%`; // %5'ten %95'e kadar
+                particle.style.left = `${Math.random() * 90 + 5}%`;
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
             }
 
-            // Animasyon süresi sonunda parçacıkları temizle
             setTimeout(() => {
                 if(container) container.innerHTML = '';
             }, 8000);
@@ -1697,14 +1768,12 @@
             }, duration);
         }
         
-        // YENİ EKLENECEK FONKSİYON: Duyuru Banner'ını Göster
         function showAnnouncement(announcementData) {
             const announcementBanner = document.getElementById('announcementBanner');
             const announcementTextDiv = document.getElementById('announcementText');
 
             if (!announcementData || !announcementBanner || !announcementTextDiv) return;
 
-            // URL'leri otomatik olarak tıklanabilir bağlantılara dönüştürme.
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             let message = announcementData.text || '';
             message = message.replace(urlRegex, (url) => {
@@ -1714,12 +1783,10 @@
             announcementTextDiv.innerHTML = message;
             announcementBanner.classList.remove('hidden');
 
-            // Duyuru geldiğinde sesi çal
             const announcementSound = new Audio('connected.mp3');
             announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
         }
 
-        // YENİ EKLENECEK FONKSİYON: Animasyonlu Online Bildirimi Göster
         function showAnimatedOnlineNotification(admin) {
             const notificationEl = document.getElementById('adminOnlineNotification');
             const avatarEl = document.getElementById('onlineAdminAvatar');
@@ -1729,27 +1796,22 @@
 
             if (!notificationEl || !avatarEl || !messageEl) return;
 
-            // Avatar resmi ve metinleri ayarla
             avatarEl.src = admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta';
             h4El.textContent = `${admin.name} şuan müsait!`;
             pEl.textContent = 'Yardım için hemen arayabilirsiniz.';
 
-            // Bildirim sesini çal
-            const onlineSound = new Audio('notification.mp3'); // Notification sesi çalınabilir
+            const onlineSound = new Audio('notification.mp3');
             onlineSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
 
-            // Animasyonu başlatmak için sınıfı ekle
             notificationEl.classList.remove('hidden');
             
-            // Pencereyi ortada gösterecek ve animasyonu başlatacak sınıfı ekle
             notificationEl.classList.add('show-online-notification');
 
-            // 5 saniye sonra bildirimi gizle
             setTimeout(() => {
                 notificationEl.classList.remove('show-online-notification');
                 setTimeout(() => {
                     notificationEl.classList.add('hidden');
-                }, 500); // CSS geçiş süresi kadar bekle
+                }, 500);
             }, 5000);
         }
 
@@ -1757,7 +1819,6 @@
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) return;
         
-            // Modalın ana yapısı oluşturuluyor
             const modalHTML = `
                 <div id="detailsModalOverlay" class="modal-overlay">
                     <div class="modal-content" style="text-align: left; max-width: 380px;">
@@ -1768,32 +1829,26 @@
             document.body.insertAdjacentHTML('beforeend', modalHTML);
         
             try {
-                // Sunucudan profil verileri çekiliyor
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
         
                 const profile = result.profile;
-                const reviews = profile.reviews; // Yorumları bir değişkende saklıyoruz
+                const reviews = profile.reviews;
         
-                // Yorumları sıralayıp HTML'e dönüştüren fonksiyon
                 const renderReviews = (sortKey) => {
                     const reviewsContainer = document.getElementById('reviews-container');
                     if (!reviewsContainer) return;
         
-                    let sortedReviews = [...reviews]; // Orijinal diziyi bozmamak için kopyasını oluşturuyoruz
+                    let sortedReviews = [...reviews];
         
                     if (sortKey === 'rating_asc') {
-                        // Puana göre düşükten yükseğe sırala
                         sortedReviews.sort((a, b) => a.rating - b.rating);
                     } else if (sortKey === 'date_asc') {
-                        // Tarihe göre eskiden yeniye sırala
                         sortedReviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                     } else if (sortKey === 'tip_desc') {
-                        // Desteğe (bahşiş) göre çoktan aza sırala
                         sortedReviews.sort((a, b) => (b.tip_amount || 0) - (a.tip_amount || 0));
                     }
-                    // 'default' durumu sunucudan geldiği gibi (genellikle en yeni) kalır
         
                     const reviewsHtml = sortedReviews.length > 0 ? sortedReviews.map(review => `
                         <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
@@ -1807,7 +1862,6 @@
                     reviewsContainer.innerHTML = reviewsHtml;
                 };
         
-                // Modalın içini dolduruyoruz
                 document.getElementById('detailsModalBody').innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
@@ -1836,12 +1890,10 @@
                         </div>
                 `;
         
-                // Sıralama menüsüne "değişim" olayını ekliyoruz
                 document.getElementById('review-sort-select').addEventListener('change', function() {
                     renderReviews(this.value);
                 });
         
-                // Sayfa ilk açıldığında yorumları varsayılan sıralama ile gösteriyoruz
                 renderReviews('default');
         
             } catch (error) {
@@ -1873,8 +1925,8 @@
                 popup.classList.add('fade-out');
                 setTimeout(() => {
                     if (popup.parentElement) popup.parentElement.removeChild(popup);
-                }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
-            }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
+                }, 400);
+            }, duration - 400);
         }
 
     </script>
