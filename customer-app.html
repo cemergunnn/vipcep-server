@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USTAMA SOR</title>
+    <title>VIPCEP Müşteri Uygulaması</title>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -960,12 +960,6 @@
                            <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
                                 <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
                            </button>
-                            <button id="requestAdminScreenBtn" class="control-button" onclick="requestAdminScreen()" style="background-color: #2563eb;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                            </button>
-                            <button id="customerScreenShareBtn" class="control-button" onclick="toggleCustomerScreenShare()" style="background-color: #f59e0b;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                            </button>
                         </div>
                         <button class="control-button end-call" onclick="endCall(false)">
                             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -1570,34 +1564,26 @@
         }
 
         function toggleVideo() {
-            if (!localStream) return;
+            if (!localStream || !localStream.getVideoTracks()[0]) return;
             const videoTrack = localStream.getVideoTracks()[0];
-            if (!videoTrack) return;
-            
-            if (isCustomerScreenSharing) {
-                toggleCustomerScreenShare();
-                setTimeout(toggleVideo, 500);
-                return;
-            }
-
-            isVideoEnabled = !videoTrack.enabled;
+            isVideoEnabled = !isVideoEnabled;
             videoTrack.enabled = isVideoEnabled;
             
             const localVideoEl = document.getElementById('localVideo');
             const videoToggleBtn = document.getElementById('videoToggleBtn');
-            const videoIcon = videoToggleBtn.querySelector('svg');
+            const videoIcon = document.getElementById('videoIcon');
             
             if (isVideoEnabled) {
-                localVideoEl.srcObject = localStream;
-                localVideoEl.style.display = 'block';
-                videoToggleBtn.classList.add('on');
-                videoToggleBtn.classList.remove('off');
-                videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
+                 localVideoEl.srcObject = localStream;
+                 localVideoEl.style.display = 'block';
+                 videoToggleBtn.classList.add('on');
+                 videoToggleBtn.classList.remove('off');
+                 videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
             } else {
-                localVideoEl.style.display = 'none';
-                videoToggleBtn.classList.remove('on');
-                videoToggleBtn.classList.add('off');
-                videoIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
+                 localVideoEl.style.display = 'none';
+                 videoToggleBtn.classList.remove('on');
+                 videoToggleBtn.classList.add('off');
+                 videoIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
             }
 
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1694,6 +1680,7 @@
             }
         }
 
+        // Fullscreen event listener to update the button icon
         document.addEventListener('fullscreenchange', (event) => {
           const fullscreenIcon = document.getElementById('fullscreenIcon');
           if (document.fullscreenElement) {
@@ -1765,7 +1752,6 @@
             document.getElementById('videoOverlayText').style.display = 'block';
             document.getElementById('videoToggleBtn').classList.remove('on');
             isVideoEnabled = false;
-            isCustomerScreenSharing = false;
         }
         
         function endCall(isCancel = false) {
@@ -1832,7 +1818,7 @@
             
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
-                if(overlay) overlay.remove();
+                if (overlay) overlay.remove();
             };
         
             const submitReview = async () => {
@@ -2147,81 +2133,6 @@
             }, duration - 400);
         }
 
-        // Müşteri ekranını paylaşma fonksiyonu
-        let isCustomerScreenSharing = false;
-        async function toggleCustomerScreenShare() {
-            if (!localStream) return;
-            const currentVideoTrack = localStream.getVideoTracks()[0];
-            const screenShareBtn = document.getElementById('customerScreenShareBtn');
-
-            if (isCustomerScreenSharing) {
-                if (currentVideoTrack) currentVideoTrack.stop();
-                
-                try {
-                    const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                    localStream.removeTrack(currentVideoTrack);
-                    localStream.addTrack(newStream.getVideoTracks()[0]);
-                    document.getElementById('localVideo').srcObject = newStream;
-                    
-                    const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(newStream.getVideoTracks()[0]);
-                    }
-                } catch (err) {
-                    console.error("Kamera izni alınamadı, ekran paylaşımı sonlandırılamadı:", err);
-                    showNotification("Kamera izni alınamadı, görüşmeyi sonlandırın.", "error");
-                    return;
-                }
-
-                isCustomerScreenSharing = false;
-                screenShareBtn.style.background = '';
-                showNotification("Ekran paylaşımı durduruldu.", "info", 2000);
-            } else {
-                try {
-                    const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-                    
-                    if (currentVideoTrack) {
-                        currentVideoTrack.stop();
-                        localStream.removeTrack(currentVideoTrack);
-                    }
-                    
-                    const newVideoTrack = displayStream.getVideoTracks()[0];
-                    localStream.addTrack(newVideoTrack);
-                    document.getElementById('localVideo').srcObject = displayStream;
-
-                    const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(newVideoTrack);
-                    }
-
-                    isCustomerScreenSharing = true;
-                    screenShareBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-                    showNotification("Ekranınız paylaşılıyor.", "success", 2000);
-                    
-                    newVideoTrack.onended = () => {
-                        if(isCustomerScreenSharing) {
-                            toggleCustomerScreenShare();
-                        }
-                    };
-
-                } catch (err) {
-                    console.error("Ekran paylaşım hatası:", err);
-                    showNotification("Ekran paylaşımı başlatılamadı.", "error");
-                }
-            }
-        }
-        
-        // Usta'dan ekran paylaşımı isteme fonksiyonu
-        function requestAdminScreen() {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                showNotification("Usta'dan ekran paylaşımı isteniyor...", "info");
-                socket.send(JSON.stringify({
-                    type: 'request-admin-screen-share',
-                    targetId: lastCallInfo.adminId,
-                    userId: userInfo.id
-                }));
-            }
-        }
     </script>
 </body>
 </html>
