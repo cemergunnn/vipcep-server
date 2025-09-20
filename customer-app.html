@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USTAMA SOR</title>
+    <title>VIPCEP Müşteri Uygulaması</title>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -1213,8 +1213,9 @@
                 container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
             }
         }
-
-        function makeCall(adminId) {
+        
+        // makeCall fonksiyonu güncellendi:
+        async function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
             }
@@ -1242,7 +1243,17 @@
             setState('connecting');
             playSound(ringingSound);
             
-            socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
+            // Mikrofon iznini bu aşamada iste
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Başarılı olursa WebRTC bağlantısını başlat
+                socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
+            } catch (err) {
+                console.error("Mikrofon hatası veya izni reddedildi:", err);
+                // Kullanıcı izni reddederse aramayı iptal et
+                showNotification("Mikrofon izni gerekli. Lütfen erişime izin verin.", "error");
+                endCall(true);
+            }
         }
 
         function makeCallbackRequest(adminId, event) {
@@ -1372,7 +1383,11 @@
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
                 
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // localStream zaten makeCall veya acceptIncomingCall içinde alınmış olmalı.
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                }
+                
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = event => {
@@ -1590,7 +1605,7 @@
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.onclick = submitReview; // Boş gönderim için de aynı fonksiyona yönlendiriyoruz
+                    actionBtn.onclick = submitReview; // Boş gönderim için de aynı fonksiyona yönlendirir
                 }
             };
             
