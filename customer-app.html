@@ -508,9 +508,6 @@
             transition: all 0.3s ease;
             box-shadow: 0 5px 20px rgba(0,0,0,0.2);
         }
-        .btn-reject-icon {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-        }
         .btn-reject-icon:hover {
             transform: scale(1.1);
             background: linear-gradient(135deg, #f87171, #ef4444);
@@ -1011,13 +1008,11 @@
         };
         
         function initApp() {
-            // Check for saved login state
             const rememberedId = localStorage.getItem('vipcep_user_id');
             const rememberedName = localStorage.getItem('vipcep_user_name');
             const rememberMeChecked = localStorage.getItem('vipcep_remember_me') === 'true';
 
             if (rememberMeChecked && rememberedId && rememberedName) {
-                // Auto-login
                 userInfo.id = rememberedId;
                 userInfo.name = rememberedName;
                 isLoggedIn = true;
@@ -1026,13 +1021,11 @@
                 document.getElementById('displayUserName').textContent = userInfo.name;
                 document.getElementById('displayUserId').textContent = userInfo.id;
             } else {
-                // Show login screen
                 document.getElementById('loginScreen').classList.remove('hidden');
                 if (rememberedId) document.getElementById('userIdInput').value = rememberedId;
                 if (rememberedName) document.getElementById('userNameInput').value = rememberedName;
                 if (rememberMeChecked) document.getElementById('rememberMe').checked = true;
             }
-
             connectToServer();
         }
 
@@ -1065,6 +1058,7 @@
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
                 if (isLoggedIn) {
+                    // This is the crucial part: send the register message on connection open if already logged in.
                     socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                 }
             };
@@ -1100,6 +1094,8 @@
                         document.getElementById('mainApp').classList.remove('hidden');
                         userInfo.credits = message.credits;
                         updateUserDisplay();
+                        // This register message is for initial login, not for subsequent connections.
+                        // The onopen event handles reconnections for remembered users.
                         socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
                         const loginMessage = document.getElementById('loginMessage');
