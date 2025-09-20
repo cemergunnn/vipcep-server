@@ -1011,7 +1011,6 @@
         };
         
         function initApp() {
-            connectToServer();
             // Check for saved login state
             const rememberedId = localStorage.getItem('vipcep_user_id');
             const rememberedName = localStorage.getItem('vipcep_user_name');
@@ -1021,22 +1020,20 @@
                 // Auto-login
                 userInfo.id = rememberedId;
                 userInfo.name = rememberedName;
+                isLoggedIn = true;
                 document.getElementById('loginScreen').classList.add('hidden');
                 document.getElementById('mainApp').classList.remove('hidden');
                 document.getElementById('displayUserName').textContent = userInfo.name;
                 document.getElementById('displayUserId').textContent = userInfo.id;
-                isLoggedIn = true;
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
-                }
             } else {
                 // Show login screen
                 document.getElementById('loginScreen').classList.remove('hidden');
-                // Pre-fill if values exist (without auto-login)
                 if (rememberedId) document.getElementById('userIdInput').value = rememberedId;
                 if (rememberedName) document.getElementById('userNameInput').value = rememberedName;
                 if (rememberMeChecked) document.getElementById('rememberMe').checked = true;
             }
+
+            connectToServer();
         }
 
         function loginUser() {
