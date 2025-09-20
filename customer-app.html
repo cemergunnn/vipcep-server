@@ -289,11 +289,11 @@
             color: #92400e;
         }
         .btn-callback-sent {
-            background: var(--gray-200);
-            color: var(--gray-500);
-            pointer-events: none;
-            cursor: not-allowed;
-            box-shadow: none;
+             background: var(--gray-200);
+             color: var(--gray-500);
+             pointer-events: none;
+             cursor: not-allowed;
+             box-shadow: none;
         }
         .btn-details {
             background: var(--gray-100);
@@ -421,7 +421,6 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.4s ease, visibility 0.4s ease;
-            flex-direction: column;
         }
         .call-overlay:not(.hidden) {
             opacity: 1;
@@ -531,8 +530,8 @@
         }
 
         .tip-buttons-container {
-            position: relative;
-            z-index: 2;
+            position: relative; /* Parçacıkların bu kapsayıcıya göre konumlanması için */
+            z-index: 2; /* Ensure buttons are on top */
         }
 
         .tip-buttons {
@@ -568,83 +567,86 @@
         
         .particle-container {
             position: absolute;
-            top: 0;
+            top: 0; /* 'USTAYA DESTEK OL!' kısmının üstünden başlasın */
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100%; /* Kapsayıcının (tip-buttons-container) alt sınırına kadar uzasın */
             pointer-events: none;
             overflow: hidden;
-            z-index: 1;
+            z-index: 1; /* Diğer içeriklerin altında kalsın */
         }
         
         .particle {
             position: absolute;
             font-size: 20px;
-            animation: fly-down 1s ease-out forwards;
+            animation: fly-down 1s ease-out forwards; /* Animasyon adı değişti */
             opacity: 0;
         }
 
-        @keyframes fly-down {
-            0% { transform: translateY(-100%) rotate(0); opacity: 0; }
-            10% { opacity: 1; }
-            90% { transform: translateY(100%) rotate(360deg); opacity: 1; }
-            100% { transform: translateY(200%) rotate(720deg); opacity: 0; }
+        @keyframes fly-down { /* Yeni anahtar kareler */
+            0% { transform: translateY(-100%) rotate(0); opacity: 0; } /* Yukarıdan başla, görünmez */
+            10% { opacity: 1; } /* Hızla görünür ol */
+            90% { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
+            100% { transform: translateY(200%) rotate(720deg); opacity: 0; } /* Aşağıya doğru kaybol */
         }
+        /* 1. Nefes Alma Animasyonunu Tanımlama */
         @keyframes breathing-label {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.08); }
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.08); }
             100% { transform: scale(1); }
         }
 
-        .tip-buttons-container .form-label {
-            animation: breathing-label 2.5s infinite ease-in-out;
-        }
-        .temporary-message-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            color: #374151;
-            padding: 30px 40px;
-            border-radius: 16px;
-            z-index: 2000;
-            text-align: center;
-            font-size: 16px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
-            opacity: 1;
-            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
-            max-width: 320px;
-            width: 90%;
-        }
+/* 2. Animasyonu İlgili Etikete Uygulama */
+.tip-buttons-container .form-label {
+    animation: breathing-label 2.5s infinite ease-in-out;
+}
+.temporary-message-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white; /* DÜZELTME: Opak beyaz arka plan */
+    color: #374151; /* DÜZELTME: Ana metin rengi (var(--gray-700)) */
+    padding: 30px 40px;
+    border-radius: 16px;
+    z-index: 2000;
+    text-align: center;
+    font-size: 16px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+    opacity: 1;
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    max-width: 320px;
+    width: 90%;
+}
 
-        .temporary-message-popup .icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-            display: block;
-            line-height: 1;
-        }
-        
-        .temporary-message-popup h4 {
-            margin-top: 0;
-            margin-bottom: 8px;
-            color: #2563eb;
-            font-weight: 600;
-            font-size: 20px;
-        }
-        
-        .temporary-message-popup p {
-            margin: 0;
-            color: #64748b;
-            line-height: 1.5;
-            font-size: 15px;
-        }
-        
-        .temporary-message-popup.fade-out {
-            opacity: 0;
-            transform: translate(-50%, -60%);
-        }
+    .temporary-message-popup .icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        display: block;
+        line-height: 1;
+    }
+    
+    .temporary-message-popup h4 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        color: #2563eb; /* DÜZELTME: Başlık için direkt renk kodu (var(--primary-color)) */
+        font-weight: 600;
+        font-size: 20px;
+    }
+    
+    .temporary-message-popup p {
+        margin: 0;
+        color: #64748b; /* DÜZELTME: Paragraf için direkt renk kodu (var(--gray-500)) */
+        line-height: 1.5;
+        font-size: 15px;
+    }
+    
+    .temporary-message-popup.fade-out {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
 
+        /* Yeni Animasyonlu Bildirim Stilleri */
         .notification-container {
             position: fixed;
             top: 50%;
@@ -721,35 +723,13 @@
             display: none !important;
         }
         
-        /* Ekran Paylaşımı Arayüzü Stilleri */
-        #screenShareVideo {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            object-fit: contain;
-            background: black;
-            z-index: 101; /* Çağrı arayüzünden yüksek, modal'dan düşük */
-        }
-        #exitFullscreenBtn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 15px;
-            background: rgba(0, 0, 0, 0.6);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 102;
-            display: none;
-            transition: all 0.3s ease;
-        }
-        #exitFullscreenBtn:hover {
-            background: rgba(0, 0, 0, 0.8);
-        }
+        /* fly-up-strong artık kullanılmayacak, dilerseniz kaldırabilirsiniz */
+        /* @keyframes fly-up-strong {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            50% { transform: translateY(-220px) rotate(180deg); }
+            100% { transform: translateY(-450px) rotate(360deg); opacity: 0; }
+        } */
+
     </style>
 </head>
 <body>
@@ -783,7 +763,7 @@
         
         <div class="app-content">
             <div id="kvkkScreen" class="hidden">
-                    <div style="font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 15px; text-align: center;">Kişisel Verilerin Korunması</div>
+                 <div style="font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 15px; text-align: center;">Kişisel Verilerin Korunması</div>
                 <div style="background: var(--gray-100); padding: 20px; border-radius: 12px; border-left: 4px solid var(--primary-color); margin-bottom: 20px; font-size: 13px; line-height: 1.5; color: var(--gray-700); max-height: 250px; overflow-y: auto;">
                     <p>Bu hizmet kapsamında sesli görüşmeleriniz kayıt altına alınmamaktadır ve 3. kişilerle paylaşılmaz. Sistem, kimlik tespiti yapmaz, tamamen anonimdir. Görüşme sırasında kendi rızanızla paylaştığınız bilgilerden siz sorumlusunuz.</p>
                 </div>
@@ -880,26 +860,80 @@
                 </div>
             </div>
         </div>
-    </div>
     
-    <div id="screenShareVideoContainer" class="hidden">
-      <video id="screenShareVideo" autoplay playsinline></video>
-      <button id="exitFullscreenBtn" onclick="exitFullscreen()">Ekran Paylaşımını Küçült</button>
-    </div>
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
     <audio id="ringingSound" src="ringing.mp3" loop></audio>
     <audio id="connectedSound" src="connected.mp3"></audio>
     <audio id="endedSound" src="ended.mp3"></audio>
+
+    <div id="adminOnlineNotification" class="notification-container hidden" style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1500;
+        max-width: 350px;
+        width: 90%;
+        text-align: center;
+        pointer-events: none;
+        transition: all 0.5s ease-in-out;
+    ">
+        <div id="onlineAvatarContainer" style="
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            transform: scale(0.8);
+            transition: all 0.5s ease-in-out;
+        ">
+            <img id="onlineAdminAvatar" src="" style="
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                border: 4px solid var(--primary-color);
+                object-fit: cover;
+                box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+            ">
+            <div id="pulseCircle" style="
+                position: absolute;
+                top: -10px;
+                left: -10px;
+                right: -10px;
+                bottom: -10px;
+                border-radius: 50%;
+                border: 4px solid rgba(255, 255, 255, 0.2);
+            "></div>
+            <div id="rotatingBorder" style="
+                position: absolute;
+                top: -10px;
+                left: -10px;
+                right: -10px;
+                bottom: -10px;
+                border-radius: 50%;
+                border: 4px solid transparent;
+                border-top-color: white;
+                animation: rotate 1.5s linear infinite;
+            "></div>
+        </div>
+        <div id="onlineAdminMessage" style="
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transform: translateX(0);
+            transition: all 0.5s ease-in-out;
+        ">
+            <h4 style="color: var(--primary-color); margin-bottom: 5px;"></h4>
+            <p style="color: var(--gray-700); font-size: 14px;"></p>
+        </div>
+    </div>
     
     <script>
         const ringingSound = document.getElementById('ringingSound');
         const connectedSound = document.getElementById('connectedSound');
         const endedSound = document.getElementById('endedSound');
-        const screenShareVideo = document.getElementById('screenShareVideo');
-        const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
-        const screenShareVideoContainer = document.getElementById('screenShareVideoContainer');
 
         function playSound(sound) {
             stopAllSounds();
@@ -926,7 +960,6 @@
         let pendingIceCandidates = [];
         let isCallbackPending = false;
         let pendingCallbackAdminId = null;
-        let screenShareActive = false;
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -979,16 +1012,11 @@
         function initApp() {
             document.getElementById('loginScreen').classList.remove('hidden');
             if (localStorage.getItem('vipcep_remember_me') === 'true' && localStorage.getItem('vipcep_user_id')) {
-                userInfo.id = localStorage.getItem('vipcep_user_id');
-                userInfo.name = localStorage.getItem('vipcep_user_name');
-                document.getElementById('userIdInput').value = userInfo.id;
-                document.getElementById('userNameInput').value = userInfo.name;
+                document.getElementById('userIdInput').value = localStorage.getItem('vipcep_user_id');
+                document.getElementById('userNameInput').value = localStorage.getItem('vipcep_user_name');
                 document.getElementById('rememberMe').checked = true;
-                // Otomatik olarak giriş yapmayı deneyeceğiz
-                connectToServer();
-            } else {
-                connectToServer();
             }
+            connectToServer();
         }
 
         function loginUser() {
@@ -996,10 +1024,7 @@
             const userName = document.getElementById('userNameInput').value;
             const rememberMe = document.getElementById('rememberMe').checked;
 
-            if(!userId || !userName) {
-              showNotification('Lütfen tüm alanları doldurun.', 'error');
-              return;
-            }
+            if(!userId || !userName) return alert('Lütfen tüm alanları doldurun.');
 
             userInfo.id = userId;
             userInfo.name = userName;
@@ -1022,10 +1047,6 @@
             socket.onopen = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
-                if(userInfo.id && userInfo.name) {
-                  // Otomatik giriş veya manuel giriş sonrası
-                  socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
-                }
             };
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
@@ -1042,6 +1063,7 @@
             switch (message.type) {
                 case 'callback-success':
                     isCallbackPending = false; 
+                    // pendingCallbackAdminId'yi sıfırlama, çünkü updateAdminList bu ID'yi kullanacak
                     showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
                     updateAdminList(availableAdmins); 
                     break;
@@ -1058,17 +1080,14 @@
                         document.getElementById('mainApp').classList.remove('hidden');
                         userInfo.credits = message.credits;
                         updateUserDisplay();
-                        // Artık login-response başarılıysa register yapmaya gerek yok, backendde yapılır.
+                        socket.send(JSON.stringify({ type: 'register', userId: userInfo.id, name: userInfo.name, userType: 'customer' }));
                     } else {
                         const loginMessage = document.getElementById('loginMessage');
                         loginMessage.innerHTML = `<div class="error-message">${message.reason}</div>`;
-                        // Hatalı otomatik giriş durumunda localStorage'ı temizleyebiliriz
-                        localStorage.removeItem('vipcep_remember_me');
-                        localStorage.removeItem('vipcep_user_id');
-                        localStorage.removeItem('vipcep_user_name');
                     }
                     break;
                 case 'admin-list-update': 
+                    // YENİ: Animatasyonlu online bildirimi
                     const previouslyOnlineAdmins = new Set(availableAdmins.filter(a => a.status === 'available').map(a => a.id));
                     const newAdmins = message.admins || [];
                     newAdmins.forEach(admin => {
@@ -1096,6 +1115,18 @@
                     break;
                 case 'call-accepted': 
                     if (callState === 'connecting') handleCallAccepted(message); 
+                    break;
+                case 'callback-success':
+                    isCallbackPending = false; 
+                    pendingCallbackAdminId = null;
+                    showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
+                    updateAdminList(availableAdmins); 
+                    break;
+                case 'callback-failed':
+                    isCallbackPending = false; 
+                    pendingCallbackAdminId = null;
+                    showNotification(message.reason || 'Geri dönüş talebi gönderilemedi.', 'error');
+                    updateAdminList(availableAdmins); 
                     break;
                 case 'call-ended': 
                     handleCallEnded(message); 
@@ -1168,7 +1199,7 @@
             }
         }
 
-        async function makeCall(adminId) {
+        function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
             }
@@ -1176,21 +1207,14 @@
                 return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
             }
 
-            try {
-                // Arama öncesi mikrofon izni alınıyor
-                await requestMediaPermissions();
-            } catch (err) {
-                console.error("Mikrofon izni alınamadı:", err);
-                showNotification("Mikrofon erişimi gerekli, lütfen izni verin.", "error");
-                return;
-            }
-
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) {
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
 
+            // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
             if (admin.status === 'busy') {
+                 // showNotification("Usta şu anda meşgul, geri dönüş talebi bırakılıyor...", "info");
                  return makeCallbackRequest(adminId);
             }
 
@@ -1207,17 +1231,9 @@
             socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
         }
 
-        async function requestMediaPermissions() {
-          if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-          }
-          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        }
-
         function makeCallbackRequest(adminId, event) {
             if (pendingCallbackAdminId) {
-                return;
+                return; // Zaten bekleyen bir talep varsa işlem yapma
             }
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
@@ -1226,6 +1242,7 @@
             pendingCallbackAdminId = adminId;
             isCallbackPending = true;
             
+            // Bu kod bloğu, butona anında görsel geri bildirim sağlar.
             if (event && event.currentTarget) {
                 const button = event.currentTarget;
                 button.textContent = '📝 Talebiniz Gönderiliyor...';
@@ -1246,13 +1263,14 @@
             
             const mainApp = document.getElementById('mainApp');
 
+            // Hide all overlay views first
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
             
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                mainApp.classList.add('hidden');
+                mainApp.classList.add('hidden'); // Hide main content
 
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
@@ -1262,8 +1280,8 @@
                     incomingView.classList.remove('hidden');
                 }
             } else { // idle state
-                callOverlay.classList.add('hidden');
-                mainApp.classList.remove('hidden');
+                 callOverlay.classList.add('hidden');
+                 mainApp.classList.remove('hidden');
             }
             
             document.getElementById('displayUserStatus').textContent = {
@@ -1284,11 +1302,12 @@
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({
                     type: 'customer-accepted-call',
-                    adminId: lastCallInfo.adminId,
-                    customerId: userInfo.id
+                    adminId: lastCallInfo.adminId, // Arayan adminin ID'si
+                    customerId: userInfo.id       // Müşterinin kendi ID'si
                 }));
             }
-            setState('connecting');
+                    setState('connecting');
+
             await setupPeerConnection(false);
         }
 
@@ -1311,21 +1330,23 @@
             stopAllSounds();
             playSound(connectedSound);
 
-            setupPeerConnection(true);
+            setupPeerConnection(true); // Aramayı başlatan müşteri, initiator olur.
         }
         
         function handleCallEnded(message, rejected = false) {
             if (callState === 'idle') return;
 
+            // Çağrı temizleme işlemlerini yapın.
             cleanupCall();
             setState('idle');
 
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
+            // Modalı küçük bir gecikme ile açın.
             setTimeout(() => {
                 if (isReviewable) {
                     lastCallInfo.callId = message.callId;
-                    showReviewModal(message);
+                    showReviewModal(message); // Ses çalma işlemi artık bu fonksiyonun içinde
                 } else {
                     showNotification(message.reason || "Arama sonlandırıldı.", "info");
                 }
@@ -1334,34 +1355,15 @@
 
         async function setupPeerConnection(isInitiator) {
             try {
-                // Mikrofon izni already taken in makeCall()
-                if (!localStream) {
-                  localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                }
-
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
                 
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
                 peerConnection.ontrack = event => {
                     const remoteAudio = document.getElementById('remoteAudio');
-                    if (event.track.kind === 'audio') {
-                        remoteAudio.srcObject = event.streams[0];
-                    } else if (event.track.kind === 'video' && !screenShareVideo.srcObject) {
-                        // Admin'den video akışı (ekran paylaşımı) geldiğinde
-                        screenShareVideo.srcObject = event.streams[0];
-                        screenShareVideo.onloadedmetadata = () => {
-                          screenShareVideo.play().catch(e => console.error("Video play failed", e));
-                        };
-                        screenShareVideoContainer.classList.remove('hidden');
-                        exitFullscreenBtn.style.display = 'block';
-                        if (document.documentElement.requestFullscreen) {
-                          document.documentElement.requestFullscreen();
-                        } else if (document.body.webkitRequestFullscreen) {
-                          document.body.webkitRequestFullscreen();
-                        }
-                    }
+                    if (remoteAudio) remoteAudio.srcObject = event.streams[0];
                 };
                 
                 peerConnection.onicecandidate = event => {
@@ -1380,7 +1382,7 @@
                 };
 
                 if (isInitiator) {
-                    socket.send(JSON.stringify({ type: 'customer-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
+                    socket.send(JSON.stringify({ type: 'admin-ready-for-webrtc', userId: userInfo.id, adminId: lastCallInfo.adminId }));
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1389,26 +1391,14 @@
                 }
             } catch (err) {
                 console.error("PeerConnection veya mikrofon hatası:", err);
-                showNotification("Mikrofon izni gerekli veya bir hata oluştu.", "error");
+                showNotification("Mikrofon hatası veya izni reddedildi.", "error");
                 endCall(true);
             }
         }
 
-        function exitFullscreen() {
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-          }
-          screenShareVideoContainer.classList.add('hidden');
-          screenShareVideo.srcObject = null;
-          exitFullscreenBtn.style.display = 'none';
-        }
-        
         async function handleWebRTCMessage(message) {
             try {
                 if (!peerConnection && message.type === 'offer') {
-                    // This block is for when a customer accepts an incoming call from an admin
                     await setupPeerConnection(false);
                 } else if (!peerConnection) {
                     return;
@@ -1422,9 +1412,7 @@
                         socket.send(JSON.stringify({ type: 'answer', answer, targetId: message.userId }));
                     }
                 } else if (message.answer) {
-                    if (peerConnection && !peerConnection.currentRemoteDescription) {
-                        await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-                    }
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
                 } else if (message.candidate) {
                     if (peerConnection.remoteDescription) {
                         await peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
@@ -1462,12 +1450,6 @@
                 peerConnection.close();
                 peerConnection = null;
             }
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            }
-            screenShareVideo.srcObject = null;
-            screenShareVideoContainer.classList.add('hidden');
-            exitFullscreenBtn.style.display = 'none';
             callTimer = null;
         }
         
@@ -1475,6 +1457,10 @@
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
             
+            // cleanupCall() ve setState('idle') artık bu fonksiyonda çağrılmıyor.
+            // Bu işlemler, sunucudan gelecek 'call-ended' mesajıyla handleCallEnded içinde yapılacak.
+            // Bu sayede modal açılmadan ekran kapanmaz.
+        
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1483,12 +1469,12 @@
                     reason: reason 
                 }));
             } else {
+                // Sunucu bağlantısı yoksa, arama ekranını yerel olarak temizle
                 cleanupCall();
                 setState('idle');
                 showNotification("Arama yerel olarak sonlandırıldı. Sunucuya bağlanılamıyor.", "error");
             }
         }
-        
         function showReviewModal(callData) {
             playSound(endedSound);
         
@@ -1544,6 +1530,8 @@
                 const commentValue = commentInput.value.trim();
                 const tipAmount = totalTipAmount;
             
+                // Hata çözümü: Eğer bahşiş verilmişse ancak derecelendirme yapılmamışsa,
+                // varsayılan olarak 5 yıldız atayın.
                 let finalRating = currentRating;
                 if (tipAmount > 0 && finalRating === 0) {
                     finalRating = 5;
@@ -1559,7 +1547,7 @@
                             body: JSON.stringify({
                                 customerId: userInfo.id,
                                 customerName: userInfo.name,
-                                rating: finalRating,
+                                rating: finalRating, // Buraya yeni finalRating değerini gönderiyoruz
                                 comment: commentValue,
                                 tipAmount: tipAmount
                             })
@@ -1570,7 +1558,7 @@
                 }
             
                 if (finalRating > 0 || commentValue !== '' || tipAmount > 0) {
-                    showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz. Hayırlı işler dileriz.", 3000);
+                    showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz.Hayırlı işler dileriz.", 3000);
                 } else {
                     showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
                 }
@@ -1580,7 +1568,7 @@
                 const hasRating = currentRating > 0;
                 const hasTip = totalTipAmount > 0;
                 const hasComment = commentInput.value.trim() !== '';
-            
+        
                 if (hasRating || hasTip || hasComment) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
@@ -1588,7 +1576,7 @@
                 } else {
                     actionBtn.textContent = 'Çıkış Yap';
                     actionBtn.style.background = 'var(--gray-500)';
-                    actionBtn.onclick = submitReview;
+                    actionBtn.onclick = submitReview; // Boş gönderim için de aynı fonksiyona yönlendiriyoruz
                 }
             };
             
@@ -1602,7 +1590,7 @@
                     updateReviewButtonState();
                 });
             });
-            
+        
             tipButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
                     const tip = parseInt(button.dataset.tip);
@@ -1628,13 +1616,14 @@
             });
         
             commentInput.addEventListener('input', updateReviewButtonState);
-            actionBtn.onclick = submitReview;
+            actionBtn.onclick = submitReview; // Başlangıçta "Çıkış Yap" butonu da submitReview'i çağıracak
         }
         
         function createParticles(amount, icons) {
-            const container = document.getElementById('tipParticleContainer');
+            const container = document.getElementById('tipParticleContainer'); // ID'ye göre hedefle
             if (!container) return;
 
+            // Mevcut parçacıkları temizle (tekrar tekrar çağrıldığında birikmemeleri için)
             container.innerHTML = '';
             
             for (let i = 0; i < amount; i++) {
@@ -1645,11 +1634,13 @@
                 const size = 15 + Math.random() * 10;
                 particle.style.fontSize = `${size}px`;
                 
-                particle.style.left = `${Math.random() * 90 + 5}%`;
+                // Parçacıkların yatayda daha geniş dağılmasını sağla
+                particle.style.left = `${Math.random() * 90 + 5}%`; // %5'ten %95'e kadar
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
             }
 
+            // Animasyon süresi sonunda parçacıkları temizle
             setTimeout(() => {
                 if(container) container.innerHTML = '';
             }, 8000);
@@ -1677,12 +1668,14 @@
             }, duration);
         }
         
+        // YENİ EKLENECEK FONKSİYON: Duyuru Banner'ını Göster
         function showAnnouncement(announcementData) {
             const announcementBanner = document.getElementById('announcementBanner');
             const announcementTextDiv = document.getElementById('announcementText');
 
             if (!announcementData || !announcementBanner || !announcementTextDiv) return;
 
+            // URL'leri otomatik olarak tıklanabilir bağlantılara dönüştürme.
             const urlRegex = /(https?:\/\/[^\s]+)/g;
             let message = announcementData.text || '';
             message = message.replace(urlRegex, (url) => {
@@ -1692,10 +1685,12 @@
             announcementTextDiv.innerHTML = message;
             announcementBanner.classList.remove('hidden');
 
+            // Duyuru geldiğinde sesi çal
             const announcementSound = new Audio('connected.mp3');
             announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
         }
 
+        // YENİ EKLENECEK FONKSİYON: Animasyonlu Online Bildirimi Göster
         function showAnimatedOnlineNotification(admin) {
             const notificationEl = document.getElementById('adminOnlineNotification');
             const avatarEl = document.getElementById('onlineAdminAvatar');
@@ -1705,22 +1700,27 @@
 
             if (!notificationEl || !avatarEl || !messageEl) return;
 
+            // Avatar resmi ve metinleri ayarla
             avatarEl.src = admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta';
             h4El.textContent = `${admin.name} şuan müsait!`;
             pEl.textContent = 'Yardım için hemen arayabilirsiniz.';
 
-            const onlineSound = new Audio('notification.mp3');
+            // Bildirim sesini çal
+            const onlineSound = new Audio('notification.mp3'); // Notification sesi çalınabilir
             onlineSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
 
+            // Animasyonu başlatmak için sınıfı ekle
             notificationEl.classList.remove('hidden');
             
+            // Pencereyi ortada gösterecek ve animasyonu başlatacak sınıfı ekle
             notificationEl.classList.add('show-online-notification');
 
+            // 5 saniye sonra bildirimi gizle
             setTimeout(() => {
                 notificationEl.classList.remove('show-online-notification');
                 setTimeout(() => {
                     notificationEl.classList.add('hidden');
-                }, 500);
+                }, 500); // CSS geçiş süresi kadar bekle
             }, 5000);
         }
 
@@ -1728,6 +1728,7 @@
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) return;
         
+            // Modalın ana yapısı oluşturuluyor
             const modalHTML = `
                 <div id="detailsModalOverlay" class="modal-overlay">
                     <div class="modal-content" style="text-align: left; max-width: 380px;">
@@ -1738,26 +1739,32 @@
             document.body.insertAdjacentHTML('beforeend', modalHTML);
         
             try {
+                // Sunucudan profil verileri çekiliyor
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
                 const result = await response.json();
                 if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
         
                 const profile = result.profile;
-                const reviews = profile.reviews;
+                const reviews = profile.reviews; // Yorumları bir değişkende saklıyoruz
         
+                // Yorumları sıralayıp HTML'e dönüştüren fonksiyon
                 const renderReviews = (sortKey) => {
                     const reviewsContainer = document.getElementById('reviews-container');
                     if (!reviewsContainer) return;
         
-                    let sortedReviews = [...reviews];
+                    let sortedReviews = [...reviews]; // Orijinal diziyi bozmamak için kopyasını oluşturuyoruz
         
                     if (sortKey === 'rating_asc') {
+                        // Puana göre düşükten yükseğe sırala
                         sortedReviews.sort((a, b) => a.rating - b.rating);
                     } else if (sortKey === 'date_asc') {
+                        // Tarihe göre eskiden yeniye sırala
                         sortedReviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
                     } else if (sortKey === 'tip_desc') {
+                        // Desteğe (bahşiş) göre çoktan aza sırala
                         sortedReviews.sort((a, b) => (b.tip_amount || 0) - (a.tip_amount || 0));
                     }
+                    // 'default' durumu sunucudan geldiği gibi (genellikle en yeni) kalır
         
                     const reviewsHtml = sortedReviews.length > 0 ? sortedReviews.map(review => `
                         <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
@@ -1771,6 +1778,7 @@
                     reviewsContainer.innerHTML = reviewsHtml;
                 };
         
+                // Modalın içini dolduruyoruz
                 document.getElementById('detailsModalBody').innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
                         <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
@@ -1799,10 +1807,12 @@
                         </div>
                 `;
         
+                // Sıralama menüsüne "değişim" olayını ekliyoruz
                 document.getElementById('review-sort-select').addEventListener('change', function() {
                     renderReviews(this.value);
                 });
         
+                // Sayfa ilk açıldığında yorumları varsayılan sıralama ile gösteriyoruz
                 renderReviews('default');
         
             } catch (error) {
@@ -1816,7 +1826,7 @@
             }
             return stars;
         }
-        function showTemporaryMessage(icon, title, message, duration = 3000) {
+         function showTemporaryMessage(icon, title, message, duration = 3000) {
             const existingPopup = document.getElementById('temp-message');
             if (existingPopup) existingPopup.remove();
             
@@ -1834,10 +1844,10 @@
                 popup.classList.add('fade-out');
                 setTimeout(() => {
                     if (popup.parentElement) popup.parentElement.removeChild(popup);
-                }, 400);
-            }, duration - 400);
+                }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
+            }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
         }
-        
+
     </script>
 </body>
 </html>
