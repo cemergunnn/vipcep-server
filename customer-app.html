@@ -951,23 +951,25 @@
                 </div>
                 <div class="call-controls-container">
                     <div class="button-group">
-                         <button class="control-button off" onclick="toggleMute()" id="muteButton">
-                             <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
-                         </button>
-                         <button class="control-button off" onclick="toggleVideo()" id="videoToggleBtn">
-                            <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video-off"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                         </button>
-                         <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
-                             <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
-                         </button>
-                     </div>
-                     <button class="control-button end-call" onclick="endCall(false)">
+                           <button class="control-button off" onclick="toggleMute()" id="muteButton">
+                               <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
+                           </button>
+                           <button class="control-button off" onclick="toggleVideo()" id="videoToggleBtn">
+                               <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video-off"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                           </button>
+                           <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
+                                <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
+                           </button>
+                    </div>
+                    <button class="control-button end-call" onclick="endCall(false)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                     </button>
-                 </div>
-                 <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
-                      <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                 </button>
+                    </button>
+                </div>
+                <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
+                     <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                </button>
+                <div class="call-status-text" id="currentAdminNameOverlay">Görüşmede</div>
+                <div id="callTimerOverlay">00:00</div>
             </div>
             
             <div id="incomingCallView" class="hidden">
@@ -988,22 +990,12 @@
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
-    <audio id="ringingSound" src="ringing.mp3" loop></audio>
-    <audio id="connectedSound" src="connected.mp3"></audio>
-    <audio id="endedSound" src="ended.mp3"></audio>
+    <audio id="ringingSound" src="https://assets.mixkit.co/sfx/preview/mixkit-vintage-phone-ringtone-1011.mp3" loop></audio>
+    <audio id="connectedSound" src="https://assets.mixkit.co/sfx/preview/mixkit-fast-sci-fi-bleep-1002.mp3"></audio>
+    <audio id="endedSound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-sound-221.mp3"></audio>
+    <audio id="notificationSound" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-essential-click-1250.mp3"></audio>
 
-    <div id="adminOnlineNotification" class="notification-container hidden" style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1500;
-        max-width: 350px;
-        width: 90%;
-        text-align: center;
-        pointer-events: none;
-        transition: all 0.5s ease-in-out;
-    ">
+    <div id="adminOnlineNotification" class="notification-container hidden">
         <div id="onlineAvatarContainer" style="
             position: relative;
             width: 100px;
@@ -1055,9 +1047,10 @@
     </div>
     
     <script>
-        const ringingSound = document.getElementById('ringingSound');
-        const connectedSound = document.getElementById('connectedSound');
-        const endedSound = document.getElementById('endedSound');
+        const ringingSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-vintage-phone-ringtone-1011.mp3');
+        const connectedSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-fast-sci-fi-bleep-1002.mp3');
+        const endedSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-sound-221.mp3');
+        const notificationSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-essential-click-1250.mp3');
 
         function playSound(sound) {
             stopAllSounds();
@@ -1069,6 +1062,7 @@
             ringingSound.pause();
             connectedSound.pause();
             endedSound.pause();
+            notificationSound.pause();
         }
 
         let socket = null;
@@ -1413,15 +1407,13 @@
             const connectedView = document.getElementById('connectedStateView');
             const incomingView = document.getElementById('incomingCallView');
             
-            const mainApp = document.getElementById('mainApp');
-
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
             
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
-                mainApp.classList.add('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
 
                 if (newState === 'connecting') {
                     connectingView.classList.remove('hidden');
@@ -1432,7 +1424,7 @@
                 }
             } else {
                  callOverlay.classList.add('hidden');
-                 mainApp.classList.remove('hidden');
+                 document.getElementById('mainApp').classList.remove('hidden');
             }
             
             document.getElementById('displayUserStatus').textContent = {
@@ -1457,7 +1449,7 @@
                     customerId: userInfo.id
                 }));
             }
-                 setState('connecting');
+                setState('connecting');
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                 localStream.getVideoTracks()[0].enabled = false;
@@ -1489,7 +1481,7 @@
 
             stopAllSounds();
             playSound(connectedSound);
-
+            setState('connected');
             setupPeerConnection(true);
         }
         
@@ -1547,7 +1539,6 @@
                 
                 peerConnection.onconnectionstatechange = () => {
                     if (peerConnection?.connectionState === 'connected') {
-                        document.getElementById('connectedAdminPicOverlay').src = lastCallInfo.adminPic;
                         document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
                         setState('connected');
                         startCallTimer();
@@ -1661,7 +1652,7 @@
                     sender.replaceTrack(newVideoTrack);
                 }
 
-                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('localVideo').srcObject = newStream;
             } catch (err) {
                 console.error("Kamera değiştirme hatası:", err);
                 showNotification("Kamera değiştirilemedi. Başka bir uygulama kamerayı kullanıyor olabilir.", "error");
@@ -1850,7 +1841,7 @@
                     showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
                 }
             };
-        
+            
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasTip = totalTipAmount > 0;
@@ -1967,7 +1958,7 @@
             announcementTextDiv.innerHTML = message;
             announcementBanner.classList.remove('hidden');
 
-            const announcementSound = new Audio('connected.mp3');
+            const announcementSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-software-interface-essential-click-1250.mp3');
             announcementSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
         }
 
