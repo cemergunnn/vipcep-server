@@ -421,6 +421,11 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.4s ease, visibility 0.4s ease;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .call-overlay.fullscreen {
+            padding: 0;
         }
         .call-overlay:not(.hidden) {
             opacity: 1;
@@ -432,6 +437,12 @@
             transform: scale(0.9);
             opacity: 0;
             transition: transform 0.4s ease 0.2s, opacity 0.4s ease 0.2s;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         .call-overlay:not(.hidden) .call-ui-container {
             transform: scale(1);
@@ -722,50 +733,103 @@
         .hidden {
             display: none !important;
         }
-
-        /* New video styles */
+        
+        /* Görüntülü görüşme ve buton stilleri */
         .call-video-container {
             position: relative;
             width: 100%;
-            max-width: 300px;
+            max-width: 450px;
             margin: 0 auto 20px;
+            aspect-ratio: 16 / 9;
+            background-color: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
         }
         #remoteVideo, #localVideo {
             width: 100%;
-            height: auto;
-            border-radius: 12px;
-            display: block;
-            background-color: var(--gray-800);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            height: 100%;
+            object-fit: contain;
+            display: none; /* Başlangıçta gizli */
         }
         #localVideo {
             position: absolute;
             bottom: 10px;
             right: 10px;
-            width: 80px;
+            width: 100px;
+            height: auto;
             border: 2px solid white;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            z-index: 10;
         }
-        .btn-video-toggle {
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(5px);
+        .video-overlay-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 50px;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.3s ease;
+            opacity: 0.6;
+            font-size: 16px;
+        }
+        .call-controls-container {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
         }
-        .btn-video-toggle:hover {
+        .control-button {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .control-button:hover {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.3);
+        }
+        .control-button.on {
+            background: rgba(34, 197, 94, 0.7);
+        }
+        .control-button.off {
+            background: rgba(239, 68, 68, 0.7);
+        }
+        .control-button.end-call {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            width: 70px;
+            height: 70px;
+        }
+
+        .call-controls-container .button-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* Tam ekran butonu için yeni stil */
+        .btn-fullscreen {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 20;
+            padding: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+        }
+        .btn-fullscreen:hover {
             background: rgba(255,255,255,0.3);
         }
     </style>
@@ -877,22 +941,29 @@
                 <button class="btn btn-end call-action-btn" onclick="endCall(true)">Aramayı İptal Et</button>
             </div>
 
-            <div id="connectedStateView" class="hidden">
-                <img id="connectedAdminPicOverlay" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
-                <p class="call-sub-text"><span id="currentAdminNameOverlay">Usta</span> ile görüşüyorsunuz</p>
-                <div class="call-status-text" id="callTimerOverlay">00:00</div>
-                
+            <div id="connectedStateView" class="hidden" style="width: 100%; height: 100%; position: relative;">
                 <div class="call-video-container">
                     <video id="remoteVideo" autoplay playsinline></video>
                     <video id="localVideo" muted playsinline></video>
+                    <div class="video-overlay-text" id="videoOverlayText">Görüntü bekleniyor...</div>
                 </div>
-                
-                <button id="videoToggleBtn" class="btn btn-video-toggle" onclick="toggleVideo()">
-                    <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                    <span id="videoToggleText">Görüntüyü Başlat</span>
+                <div class="call-controls-container">
+                    <button class="control-button off" onclick="toggleVideo()" id="videoToggleBtn">
+                        <svg id="videoIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-video-off"><path d="M16 16.92V21a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8.92M16 16.92L23 12l-7-4.92M22.5 14L10 14"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                    <button class="control-button off" onclick="toggleMute()" id="muteButton">
+                        <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
+                    </button>
+                    <button class="control-button end-call" onclick="endCall(false)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </button>
+                    <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
+                         <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
+                    </button>
+                </div>
+                <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
+                     <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                 </button>
-                
-                <button class="btn btn-end call-action-btn" onclick="endCall(false)">Görüşmeyi Sonlandır</button>
             </div>
             
             <div id="incomingCallView" class="hidden">
@@ -999,7 +1070,7 @@
         let socket = null;
         let peerConnection = null;
         let localStream = null;
-        let remoteStream = null;
+        let currentCall = null;
         let callState = 'idle';
         let callTimer = null;
         let callDuration = 0;
@@ -1010,6 +1081,8 @@
         let pendingIceCandidates = [];
         let isCallbackPending = false;
         let pendingCallbackAdminId = null;
+        let isVideoEnabled = false;
+        let isFrontCamera = true;
 
         const serverUrl = window.location.hostname === 'localhost' ? 
             'ws://localhost:8080' : 'wss://vipcep-server-production.up.railway.app';
@@ -1217,6 +1290,9 @@
                         announcementBanner.classList.add('hidden');
                     }
                     break;
+                case 'video-toggle':
+                    handleVideoToggle(message.enabled);
+                    break;
             }
         }
         
@@ -1277,7 +1353,12 @@
             if (!admin) {
                 return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
             }
-            
+
+            // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
+            if (admin.status === 'busy') {
+                return makeCallbackRequest(adminId);
+            }
+
             lastCallInfo.adminId = admin.id;
             lastCallInfo.adminName = admin.name || 'Usta';
             lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
@@ -1290,8 +1371,9 @@
             
             // Hem ses hem de video için izin iste
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
                 localStream.getVideoTracks()[0].enabled = false; // Video akışını başlangıçta kapat
+                isVideoEnabled = false;
                 // Başarılı olursa WebRTC bağlantısını başlat
                 socket.send(JSON.stringify({ type: 'direct-call-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId, credits: userInfo.credits }));
             } catch (err) {
@@ -1378,8 +1460,17 @@
                 }));
             }
                  setState('connecting');
-
-            await setupPeerConnection(false);
+            // Gelen arama kabul edildiğinde de video ve ses izni al
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
+                localStream.getVideoTracks()[0].enabled = false;
+                isVideoEnabled = false;
+                await setupPeerConnection(false);
+            } catch (err) {
+                 console.error("Mikrofon/Kamera hatası veya izni reddedildi:", err);
+                 showNotification("Mikrofon ve kamera izni gerekli. Lütfen erişime izin verin.", "error");
+                 endCall(true);
+            }
         }
 
         function rejectIncomingCall() {
@@ -1407,17 +1498,15 @@
         function handleCallEnded(message, rejected = false) {
             if (callState === 'idle') return;
 
-            // Çağrı temizleme işlemlerini yapın.
             cleanupCall();
             setState('idle');
 
             const isReviewable = !rejected && !['cancelled', 'rejected', 'busy', 'no_credits', 'admin_disconnected'].includes(message.reason);
 
-            // Modalı küçük bir gecikme ile açın.
             setTimeout(() => {
                 if (isReviewable) {
                     lastCallInfo.callId = message.callId;
-                    showReviewModal(message); // Ses çalma işlemi artık bu fonksiyonun içinde
+                    showReviewModal(message);
                 } else {
                     showNotification(message.reason || "Arama sonlandırıldı.", "info");
                 }
@@ -1429,10 +1518,10 @@
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
                 
-                // localStream zaten makeCall veya acceptIncomingCall içinde alınmış olmalı.
                 if (!localStream) {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user' } });
                     localStream.getVideoTracks()[0].enabled = false;
+                    isVideoEnabled = false;
                 }
                 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -1442,6 +1531,7 @@
                         const remoteVideo = document.getElementById('remoteVideo');
                         remoteVideo.srcObject = event.streams[0];
                         remoteVideo.style.display = 'block';
+                        document.getElementById('videoOverlayText').style.display = 'none';
                     } else if (event.track.kind === 'audio') {
                         const remoteAudio = document.getElementById('remoteAudio');
                         remoteAudio.srcObject = event.streams[0];
@@ -1460,6 +1550,7 @@
                         document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
                         setState('connected');
                         startCallTimer();
+                        document.getElementById('localVideo').srcObject = localStream;
                     }
                 };
 
@@ -1477,27 +1568,97 @@
                 endCall(true);
             }
         }
-        
-        // Görüntüyü Aç/Kapat fonksiyonu
+
+        // Görüntü Açma/Kapatma fonksiyonu
         function toggleVideo() {
-            if (!localStream) return;
+            if (!localStream || !localStream.getVideoTracks()[0]) return;
             const videoTrack = localStream.getVideoTracks()[0];
-            const videoToggleBtn = document.getElementById('videoToggleBtn');
-            const videoIcon = document.getElementById('videoIcon');
-            const videoToggleText = document.getElementById('videoToggleText');
+            isVideoEnabled = !isVideoEnabled;
+            videoTrack.enabled = isVideoEnabled;
             
-            if (videoTrack.enabled) {
-                videoTrack.enabled = false;
-                videoToggleText.textContent = 'Görüntüyü Başlat';
-                videoIcon.innerHTML = `<path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>`;
-                // Kendi küçük video pencerenizi gizleyin
-                document.getElementById('localVideo').srcObject = null;
+            const localVideoEl = document.getElementById('localVideo');
+            const videoToggleBtn = document.getElementById('videoToggleBtn');
+
+            if (isVideoEnabled) {
+                 localVideoEl.srcObject = localStream;
+                 localVideoEl.style.display = 'block';
+                 videoToggleBtn.classList.add('on');
             } else {
-                videoTrack.enabled = true;
-                videoToggleText.textContent = 'Görüntüyü Kapat';
-                videoIcon.innerHTML = `<path d="M16 16.92V21a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8.92M16 16.92L23 12l-7-4.92M22.5 14L10 14" stroke="currentColor"></path>`;
-                // Kendi küçük video pencerenizi gösterin
+                 localVideoEl.style.display = 'none';
+                 videoToggleBtn.classList.remove('on');
+            }
+
+            // Karşı tarafa video durumunun değiştiğini bildirin
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'video-toggle',
+                    targetId: lastCallInfo.adminId,
+                    enabled: isVideoEnabled
+                }));
+            }
+        }
+        
+        // Müşterinin videosu açıldığında çağrılır
+        function handleVideoToggle(isEnabled) {
+             const remoteVideo = document.getElementById('remoteVideo');
+             const videoOverlayText = document.getElementById('videoOverlayText');
+             if (isEnabled) {
+                 remoteVideo.style.display = 'block';
+                 videoOverlayText.style.display = 'none';
+             } else {
+                 remoteVideo.style.display = 'none';
+                 videoOverlayText.style.display = 'block';
+             }
+        }
+
+        // Kamera Yönü Değiştirme
+        async function toggleCameraDirection() {
+            if (!localStream) return;
+            isFrontCamera = !isFrontCamera;
+            const videoConstraints = {
+                facingMode: isFrontCamera ? 'user' : 'environment'
+            };
+
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.stop();
+            }
+
+            try {
+                const newStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: videoConstraints });
+                const newVideoTrack = newStream.getVideoTracks()[0];
+
+                localStream.removeTrack(videoTrack);
+                localStream.addTrack(newVideoTrack);
+                
+                const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(newVideoTrack);
+                }
+
                 document.getElementById('localVideo').srcObject = localStream;
+
+                if (!isVideoEnabled) {
+                    newVideoTrack.enabled = false;
+                }
+            } catch (err) {
+                console.error("Kamera değiştirme hatası:", err);
+                showNotification("Kamera değiştirilemedi. Başka bir uygulama kamerayı kullanıyor olabilir.", "error");
+            }
+        }
+
+        // Tam Ekran Fonksiyonu
+        function toggleFullscreen() {
+            const callOverlay = document.getElementById('callOverlay');
+            const fullscreenIcon = document.getElementById('fullscreenIcon');
+            if (!document.fullscreenElement) {
+                callOverlay.requestFullscreen().then(() => {
+                    fullscreenIcon.innerHTML = `<path d="M8 3v3m3-3h3a2 2 0 0 1 2 2v3m0 18h-3a2 2 0 0 1-2-2v-3m-18 0v3a2 2 0 0 0 2 2h3m18-18h-3a2 2 0 0 0-2 2v3m-3-3h3m-3-3v3m3-3v3"></path>`;
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    fullscreenIcon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>`;
+                });
             }
         }
 
@@ -1552,15 +1713,18 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
-            if (remoteStream) {
-                remoteStream.getTracks().forEach(track => track.stop());
-                remoteStream = null;
-            }
             if (peerConnection) {
                 peerConnection.close();
                 peerConnection = null;
             }
             callTimer = null;
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            if(remoteVideo) remoteVideo.srcObject = null;
+            if(localVideo) localVideo.srcObject = null;
+            document.getElementById('videoOverlayText').style.display = 'block';
+            document.getElementById('videoToggleBtn').classList.remove('on');
+            isVideoEnabled = false;
         }
         
         function endCall(isCancel = false) {
@@ -1830,75 +1994,88 @@
         
             try {
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
+                
+                if (!response.ok) throw new Error('Profil verileri sunucudan alınamadı.');
+                
                 const result = await response.json();
-                if (!result.success) throw new Error(result.error || 'Profil alınamadı.');
-        
-                const profile = result.profile;
-                const reviews = profile.reviews;
-        
-                const renderReviews = (sortKey) => {
-                    const reviewsContainer = document.getElementById('reviews-container');
-                    if (!reviewsContainer) return;
-        
-                    let sortedReviews = [...reviews];
-        
-                    if (sortKey === 'rating_asc') {
-                        sortedReviews.sort((a, b) => a.rating - b.rating);
-                    } else if (sortKey === 'date_asc') {
-                        sortedReviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-                    } else if (sortKey === 'tip_desc') {
-                        sortedReviews.sort((a, b) => (b.tip_amount || 0) - (a.tip_amount || 0));
-                    }
-        
-                    const reviewsHtml = sortedReviews.length > 0 ? sortedReviews.map(review => `
-                        <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
-                            <p style="margin: 0 0 4px 0;"><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
-                            <p style="font-style: italic; color: #555; margin: 0 0 4px 0; font-size: 13px;">"${review.comment || 'Yorum yok.'}"</p>
-                            ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold; font-size: 11px; margin: 2px 0;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
-                            <p style="font-size: 10px; color: #999; text-align: right; margin: 4px 0 0 0;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
-                        </div>
-                    `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
-        
-                    reviewsContainer.innerHTML = reviewsHtml;
-                };
-        
-                document.getElementById('detailsModalBody').innerHTML = `
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
-                        <h3 style="margin-top: 10px; margin-bottom: 5px;">${admin.name}</h3>
-                        <p style="color: #555; font-weight: 500;">${profile.specialization || 'Genel Teknik Servis'}</p>
-                        <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
-                    </div>
-        
-                    ${profile.bio ? `
-                    <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 8px;">
-                        <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Hakkında</h4>
-                        <p style="color: #333; font-size: 14px; line-height: 1.5;">${profile.bio}</p>
-                    </div>
-                    ` : ''}
-        
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
-                        <h4 style="margin: 0;">Değerlendirmeler (${reviews.length})</h4>
-                        <select id="review-sort-select" style="font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; background-color: #f9f9f9; font-weight: 500;">
-                            <option value="default">SIRALA</option>
-                            <option value="rating_asc">Puana Göre (Düşükten Yükseğe)</option>
-                            <option value="date_asc">Tarihe Göre (Eskiden Yeniye)</option>
-                            <option value="tip_desc">Desteğe Göre (En Yüksek)</option>
-                        </select>
-                    </div>
-                    <div id="reviews-container" style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
-                        </div>
-                `;
-        
-                document.getElementById('review-sort-select').addEventListener('change', function() {
-                    renderReviews(this.value);
-                });
-        
-                renderReviews('default');
-        
+                
+                if (result.success) {
+                    renderProfileModal(result.profile);
+                } else {
+                    throw new Error(result.error || 'Profil verileri işlenemedi.');
+                }
+                
             } catch (error) {
-                document.getElementById('detailsModalBody').innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
+                const content = document.getElementById('detailsModalBody');
+                content.innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
             }
+        }
+        function renderProfileModal(profile) {
+            const content = document.getElementById('detailsModalBody');
+            const totalTips = profile.reviews.reduce((sum, review) => sum + (review.tip_amount || 0), 0);
+            
+            let reviewsHtml = '';
+            if (profile.reviews && profile.reviews.length > 0) {
+                reviewsHtml = profile.reviews.map(review => `
+                    <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
+                        <p style="margin: 0 0 4px 0;"><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
+                        <p style="font-style: italic; color: #555; margin: 0 0 4px 0; font-size: 13px;">"${review.comment || 'Yorum yok.'}"</p>
+                        ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold; font-size: 11px; margin: 2px 0;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                        <p style="font-size: 10px; color: #999; text-align: right; margin: 4px 0 0 0;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                `).join('');
+            } else {
+                reviewsHtml = '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
+            }
+
+            content.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="${profile.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary-color);">
+                    <h3 style="margin-top: 10px; margin-bottom: 5px;">${profile.name}</h3>
+                    <p style="color: #555; font-weight: 500;">${profile.specialization || 'Genel Teknik Servis'}</p>
+                    <p style="font-size: 18px; color: #f59e0b; margin-top: 5px;">${generateStars(parseFloat(profile.average_rating))} ${parseFloat(profile.average_rating).toFixed(1)}</p>
+                </div>
+                ${profile.bio ? `
+                <div style="margin-bottom: 20px; background: #f9f9f9; padding: 12px; border-radius: 8px;">
+                    <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">Hakkında</h4>
+                    <p style="color: #333; font-size: 14px; line-height: 1.5;">${profile.bio}</p>
+                </div>
+                ` : ''}
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
+                    <h4 style="margin: 0;">Değerlendirmeler (${profile.reviews.length})</h4>
+                    <select id="review-sort-select" style="font-size: 12px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; background-color: #f9f9f9; font-weight: 500;">
+                        <option value="default">SIRALA</option>
+                        <option value="rating_asc">Puana Göre (Düşükten Yükseğe)</option>
+                        <option value="date_asc">Tarihe Göre (Eskiden Yeniye)</option>
+                        <option value="tip_desc">Desteğe Göre (En Yüksek)</option>
+                    </select>
+                </div>
+                <div id="reviews-container" style="max-height: 200px; overflow-y: auto; padding-right: 10px;">
+                    ${reviewsHtml}
+                </div>
+            `;
+            document.getElementById('review-sort-select').addEventListener('change', function() {
+                renderReviews(this.value, profile.reviews);
+            });
+        }
+        function renderReviews(sortKey, reviews) {
+            const reviewsContainer = document.getElementById('reviews-container');
+            let sortedReviews = [...reviews];
+            if (sortKey === 'rating_asc') {
+                sortedReviews.sort((a, b) => a.rating - b.rating);
+            } else if (sortKey === 'date_asc') {
+                sortedReviews.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            } else if (sortKey === 'tip_desc') {
+                sortedReviews.sort((a, b) => (b.tip_amount || 0) - (a.tip_amount || 0));
+            }
+            reviewsContainer.innerHTML = sortedReviews.length > 0 ? sortedReviews.map(review => `
+                <div style="border-top: 1px solid #eee; padding: 8px 0; margin-top: 8px;">
+                    <p style="margin: 0 0 4px 0;"><strong>${review.customer_name || 'Anonim'}:</strong> <span style="color: #f59e0b;">${generateStars(review.rating)}</span></p>
+                    <p style="font-style: italic; color: #555; margin: 0 0 4px 0; font-size: 13px;">"${review.comment || 'Yorum yok.'}"</p>
+                    ${review.tip_amount > 0 ? `<p style="color: #16a34a; font-weight: bold; font-size: 11px; margin: 2px 0;">💰 ${review.tip_amount} kredi destek verdi!</p>` : ''}
+                    <p style="font-size: 10px; color: #999; text-align: right; margin: 4px 0 0 0;">${new Date(review.created_at).toLocaleDateString('tr-TR')}</p>
+                </div>
+            `).join('') : '<p style="color: #999; text-align: center; margin-top: 20px;">Henüz değerlendirme yok.</p>';
         }
         function generateStars(rating) {
             let stars = '';
@@ -1925,8 +2102,8 @@
                 popup.classList.add('fade-out');
                 setTimeout(() => {
                     if (popup.parentElement) popup.parentElement.removeChild(popup);
-                }, 400);
-            }, duration - 400);
+                }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
+            }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
         }
 
     </script>
