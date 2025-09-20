@@ -1083,7 +1083,7 @@
             switch (message.type) {
                 case 'callback-success':
                     isCallbackPending = false; 
-                    pendingCallbackAdminId = message.adminId; // Geri dönüş talebi gönderilen admini kaydedin
+                    pendingCallbackAdminId = message.adminId;
                     showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
                     updateAdminList(availableAdmins); 
                     break;
