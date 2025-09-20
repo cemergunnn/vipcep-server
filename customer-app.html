@@ -405,7 +405,7 @@
             transform: translateX(0);
         }
         .notification.success { border-color: var(--secondary-color); }
-        .notification.error { border-color: var(--danger-color); }
+        .notification.error { border-left-color: var(--danger-color); }
         .notification.info { border-color: var(--primary-color); }
         
         /* Geliştirilmiş Arama Arayüzü Stilleri */
@@ -1892,7 +1892,7 @@
                         totalTipAmount -= tip;
                     } else {
                         totalTipAmount += tip;
-                        new Audio('cash.mp3').play().catch(err => console.error("Ses çalma hatası:", err));
+                        new Audio('cash.mp3').play().catch(err => console.error("Ses çalınamadı:", err));
                     }
                     button.classList.toggle('active');
                     
