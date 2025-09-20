@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIPCEP Müşteri Uygulaması</title>
+    <title>USTAMA SOR</title>
     <style>
         :root {
             --primary-color: #2563eb;
@@ -584,9 +584,9 @@
         }
 
         @keyframes fly-down { /* Yeni anahtar kareler */
-            0% { transform: translateY(-100%) rotate(0); opacity: 0; } /* Yukarıdan başla, görünmez */
-            10% { opacity: 1; } /* Hızla görünür ol */
-            90% { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
+            0%   { transform: translateY(-100%) rotate(0); opacity: 0; } /* Yukarıdan başla, görünmez */
+            10%  { opacity: 1; } /* Hızla görünür ol */
+            90%  { transform: translateY(100%) rotate(360deg); opacity: 1; } /* Aşağıya doğru hareket et */
             100% { transform: translateY(200%) rotate(720deg); opacity: 0; } /* Aşağıya doğru kaybol */
         }
         /* 1. Nefes Alma Animasyonunu Tanımlama */
@@ -1015,6 +1015,8 @@
                 document.getElementById('userIdInput').value = localStorage.getItem('vipcep_user_id');
                 document.getElementById('userNameInput').value = localStorage.getItem('vipcep_user_name');
                 document.getElementById('rememberMe').checked = true;
+                // Otomatik giriş yapma
+                loginUser();
             }
             connectToServer();
         }
@@ -1024,7 +1026,11 @@
             const userName = document.getElementById('userNameInput').value;
             const rememberMe = document.getElementById('rememberMe').checked;
 
-            if(!userId || !userName) return alert('Lütfen tüm alanları doldurun.');
+            if(!userId || !userName) {
+                const loginMessage = document.getElementById('loginMessage');
+                loginMessage.innerHTML = `<div class="error-message">Lütfen tüm alanları doldurun.</div>`;
+                return;
+            }
 
             userInfo.id = userId;
             userInfo.name = userName;
@@ -1039,7 +1045,12 @@
                 localStorage.removeItem('vipcep_user_name');
             }
             
-            socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
+            } else {
+                const loginMessage = document.getElementById('loginMessage');
+                loginMessage.innerHTML = `<div class="error-message">Sunucuya bağlanılamadı. Lütfen tekrar deneyin.</div>`;
+            }
         }
         
         function connectToServer() {
@@ -1047,6 +1058,12 @@
             socket.onopen = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-connected';
                 document.getElementById('connectionText').textContent = 'Bağlı';
+                // Eğer kullanıcı bilgileri Local Storage'da varsa otomatik giriş isteği gönder
+                if (localStorage.getItem('vipcep_remember_me') === 'true' && localStorage.getItem('vipcep_user_id') && !isLoggedIn) {
+                    userInfo.id = localStorage.getItem('vipcep_user_id');
+                    userInfo.name = localStorage.getItem('vipcep_user_name');
+                    socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
+                }
             };
             socket.onmessage = (event) => {
                 const message = JSON.parse(event.data);
@@ -1055,7 +1072,7 @@
             socket.onclose = () => {
                 document.getElementById('connectionDot').className = 'status-dot status-disconnected';
                 document.getElementById('connectionText').textContent = 'Bağlantı Kesildi';
-                setTimeout(connectToServer, 3000);
+                setTimeout(connectToServer, 3000); // 3 saniye sonra yeniden bağlanmaya çalış
             };
         }
 
@@ -1063,7 +1080,6 @@
             switch (message.type) {
                 case 'callback-success':
                     isCallbackPending = false; 
-                    // pendingCallbackAdminId'yi sıfırlama, çünkü updateAdminList bu ID'yi kullanacak
                     showNotification('Geri dönüş talebiniz alındı. En kısa sürede size dönüş yapılacaktır.', 'success');
                     updateAdminList(availableAdmins); 
                     break;
@@ -1087,7 +1103,6 @@
                     }
                     break;
                 case 'admin-list-update': 
-                    // YENİ: Animatasyonlu online bildirimi
                     const previouslyOnlineAdmins = new Set(availableAdmins.filter(a => a.status === 'available').map(a => a.id));
                     const newAdmins = message.admins || [];
                     newAdmins.forEach(admin => {
@@ -1214,8 +1229,7 @@
 
             // Adminin meşgul olup olmadığını kontrol et ve eğer meşgul ise geri dönüş talebi oluştur
             if (admin.status === 'busy') {
-                 // showNotification("Usta şu anda meşgul, geri dönüş talebi bırakılıyor...", "info");
-                 return makeCallbackRequest(adminId);
+                return makeCallbackRequest(adminId);
             }
 
             lastCallInfo.adminId = admin.id;
@@ -1303,10 +1317,10 @@
                 socket.send(JSON.stringify({
                     type: 'customer-accepted-call',
                     adminId: lastCallInfo.adminId, // Arayan adminin ID'si
-                    customerId: userInfo.id       // Müşterinin kendi ID'si
+                    customerId: userInfo.id         // Müşterinin kendi ID'si
                 }));
             }
-                    setState('connecting');
+                 setState('connecting');
 
             await setupPeerConnection(false);
         }
@@ -1616,7 +1630,7 @@
             });
         
             commentInput.addEventListener('input', updateReviewButtonState);
-            actionBtn.onclick = submitReview; // Başlangıçta "Çıkış Yap" butonu da submitReview'i çağıracak
+            actionBtn.onclick = submitReview; // Başlangıçta "Çıkış Yap" butonu da submitReview'i çağırır
         }
         
         function createParticles(amount, icons) {
@@ -1826,7 +1840,7 @@
             }
             return stars;
         }
-         function showTemporaryMessage(icon, title, message, duration = 3000) {
+        function showTemporaryMessage(icon, title, message, duration = 3000) {
             const existingPopup = document.getElementById('temp-message');
             if (existingPopup) existingPopup.remove();
             
