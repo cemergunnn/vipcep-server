@@ -23,7 +23,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #f0f2f5 0%, #e6e9ed 100%);
@@ -33,7 +33,7 @@
             justify-content: center;
             padding: 10px;
         }
-
+        
         .app-container {
             background: white;
             border-radius: 24px;
@@ -42,7 +42,7 @@
             width: 100%;
             max-width: 400px;
         }
-
+        
         .app-header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
@@ -50,7 +50,7 @@
             text-align: center;
             position: relative;
         }
-
+        
         .connection-status {
             position: absolute;
             top: 15px;
@@ -63,13 +63,13 @@
             padding: 5px 10px;
             border-radius: 15px;
         }
-
+        
         .status-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
         }
-
+        
         .status-connected { 
             background: #22c55e; 
             box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
@@ -83,7 +83,7 @@
             box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
             animation: pulse 2s infinite;
         }
-
+        
         .logo {
             background: rgba(255,255,255,0.2);
             border-radius: 15px;
@@ -91,18 +91,18 @@
             display: inline-block;
             margin-bottom: 10px;
         }
-
+        
         .app-title {
             font-size: 22px;
             font-weight: 700;
             margin-bottom: 3px;
         }
-
+        
         .app-subtitle {
             font-size: 13px;
             opacity: 0.9;
         }
-
+        
         .app-content {
             padding: 25px;
         }
@@ -121,7 +121,7 @@
         .form-group {
             margin-bottom: 15px;
         }
-
+        
         .form-input {
             width: 100%;
             padding: 14px;
@@ -131,14 +131,14 @@
             transition: all 0.3s ease;
             background: #f9fafb;
         }
-
+        
         .form-input:focus {
             outline: none;
             border-color: var(--primary-color);
             background: white;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
-
+        
         .btn {
             width: 100%;
             padding: 14px;
@@ -154,25 +154,25 @@
             transition: all 0.3s ease;
             margin-bottom: 10px;
         }
-
+        
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
         }
-
+        
         .btn-login {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
             box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
         }
-
+        
         .btn-end {
             background: linear-gradient(135deg, var(--danger-color), #dc2626);
             color: white;
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
         }
-
+        
         .user-info {
             background: var(--gray-100);
             padding: 15px;
@@ -180,17 +180,17 @@
             margin-bottom: 20px;
             border-left: 3px solid var(--primary-color);
         }
-
+        
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
-
+        
         .info-item {
             text-align: center;
         }
-
+        
         .info-label {
             font-size: 10px;
             font-weight: 600;
@@ -199,18 +199,18 @@
             letter-spacing: 0.5px;
             margin-bottom: 4px;
         }
-
+        
         .info-value {
             font-weight: 700;
             color: var(--gray-800);
             font-size: 14px;
         }
-
+        
         .credits-value {
             color: var(--primary-color);
             font-size: 18px;
         }
-
+        
         .credits-zero {
             color: var(--danger-color);
             font-size: 18px;
@@ -240,7 +240,7 @@
             box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
             transform: translateY(-2px);
         }
-
+        
         .admin-pic {
             width: 50px;
             height: 50px;
@@ -302,11 +302,11 @@
             padding: 6px 12px;
             border: 1px solid var(--gray-200);
         }
-
+        
         .hidden {
             display: none !important;
         }
-
+        
         .footer {
             background: var(--gray-100);
             padding: 15px;
@@ -340,7 +340,7 @@
         .modal-content h3 { color: var(--primary-color); margin-bottom: 20px; }
         .modal-content p { margin-bottom: 10px; font-size: 16px; }
         .modal-content .btn { margin-top: 15px; }
-
+        
         .rating-stars { margin: 20px 0; }
         .rating-stars span {
             font-size: 36px;
@@ -349,7 +349,7 @@
             transition: color 0.2s;
         }
         .rating-stars span:hover, .rating-stars span.active { color: var(--warning-color); }
-
+        
         #reviewComment { 
             min-height: 80px; 
             margin-top: 10px; 
@@ -407,7 +407,7 @@
         .notification.success { border-color: var(--secondary-color); }
         .notification.error { border-color: var(--danger-color); }
         .notification.info { border-color: var(--primary-color); }
-
+        
         /* Geliştirilmiş Arama Arayüzü Stilleri */
         .call-overlay {
             position: fixed;
@@ -499,7 +499,7 @@
             0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
             40% { transform: scale(1.2); opacity: 1; }
         }
-
+        
         .incoming-call-actions {
             display: flex;
             justify-content: center;
@@ -575,7 +575,7 @@
             box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
             border-color: #f59e0b;
         }
-
+        
         .particle-container {
             position: absolute;
             top: 0;
@@ -586,7 +586,7 @@
             overflow: hidden;
             z-index: 1;
         }
-
+        
         .particle {
             position: absolute;
             font-size: 20px;
@@ -634,7 +634,7 @@
             display: block;
             line-height: 1;
         }
-
+        
         .temporary-message-popup h4 {
             margin-top: 0;
             margin-bottom: 8px;
@@ -642,14 +642,14 @@
             font-weight: 600;
             font-size: 20px;
         }
-
+        
         .temporary-message-popup p {
             margin: 0;
             color: #64748b;
             line-height: 1.5;
             font-size: 15px;
         }
-
+        
         .temporary-message-popup.fade-out {
             opacity: 0;
             transform: translate(-50%, -60%);
@@ -676,7 +676,7 @@
             transform: scale(0.8);
             transition: all 0.5s ease-in-out;
         }
-
+        
         #onlineAdminAvatar {
             width: 100%;
             height: 100%;
@@ -735,7 +735,7 @@
         .hidden {
             display: none !important;
         }
-
+        
         /* Görüntülü görüşme ve buton stilleri */
         .call-video-container {
             position: relative;
@@ -833,7 +833,7 @@
         .btn-fullscreen:hover {
             background: rgba(255,255,255,0.3);
         }
-
+        
     </style>
 </head>
 <body>
@@ -851,7 +851,7 @@
             <div class="app-title">USTAMA SOR</div>
             <div class="app-subtitle">Teknik Servis Danışmanlığı</div>
         </div>
-
+        
         <div id="announcementBanner" class="hidden" style="
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
@@ -864,7 +864,7 @@
         ">
             <div id="announcementText"></div>
         </div>
-
+        
         <div class="app-content">
             <div id="kvkkScreen" class="hidden">
                  <div style="font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 15px; text-align: center;">Kişisel Verilerin Korunması</div>
@@ -877,7 +877,7 @@
                 </div>
                 <button id="kvkkAcceptBtn" class="btn btn-login" disabled>Onayla ve Devam Et</button>
             </div>
-
+            
             <div id="loginScreen" class="hidden">
                 <div class="form-group">
                     <label class="form-label">4 Haneli ID Kodunuz</label>
@@ -925,12 +925,12 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="footer">
             VIPCEP Teknik Servis © 2025
         </div>
     </div>
-
+    
     <div id="callOverlay" class="call-overlay hidden">
         <div class="call-ui-container">
             <div id="connectingStateView" class="hidden">
@@ -944,7 +944,6 @@
             </div>
 
             <div id="connectedStateView" class="hidden" style="width: 100%; height: 100%; position: relative;">
-            <div id="connectedStateView" class="hidden" style="width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center;">
                 <div class="call-video-container">
                     <video id="remoteVideo" autoplay playsinline></video>
                     <video id="localVideo" muted playsinline></video>
@@ -952,9 +951,6 @@
                 </div>
                 <div class="call-controls-container">
                     <div class="button-group">
-
-                    <div class="call-controls-container">
-                        <div class="button-group">
                            <button class="control-button off" onclick="toggleMute()" id="muteButton">
                                <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mic-off"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 19H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h5l3-3 3 3h5a1 1 0 0 1 1 1v2"></path><path d="M12 5V2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"></path></svg>
                            </button>
@@ -964,16 +960,9 @@
                            <button class="control-button" onclick="toggleCameraDirection()" id="cameraDirectionBtn">
                                 <svg id="cameraDirectionIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.5 15a9 9 0 0 1 16.1-4"></path><path d="M20.5 9a9 9 0 0 1-16.1 4"></path></svg>
                            </button>
-                        </div>
-                        <button class="control-button end-call" onclick="endCall(false)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-                        </button>
                     </div>
                     <button class="control-button end-call" onclick="endCall(false)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-
-                    <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
-                         <svg id="fullscreenIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                     </button>
                 </div>
                 <button class="control-button btn-fullscreen" onclick="toggleFullscreen()">
@@ -982,7 +971,7 @@
                 <div class="call-status-text" id="currentAdminNameOverlay">Görüşmede</div>
                 <div id="callTimerOverlay">00:00</div>
             </div>
-
+            
             <div id="incomingCallView" class="hidden">
                 <img id="incomingAdminPic" src="https://placehold.co/150x150/EBF4FF/768498?text=Usta" alt="Usta" class="call-admin-pic">
                 <div class="call-status-text" id="incomingAdminNameOverlay">Usta Arıyor...</div>
@@ -997,7 +986,7 @@
                 </div>
             </div>
         </div>
-
+    
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
@@ -1056,7 +1045,7 @@
             <p style="color: var(--gray-700); font-size: 14px;"></p>
         </div>
     </div>
-
+    
     <script>
         const ringingSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-vintage-phone-ringtone-1011.mp3');
         const connectedSound = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-fast-sci-fi-bleep-1002.mp3');
@@ -1125,7 +1114,7 @@
         };
         const baseUrl = window.location.hostname === 'localhost' ? 
             'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
-
+        
         window.onload = function() {
             if (localStorage.getItem('vipcep_kvkk_approved') !== 'true') {
                 document.getElementById('kvkkScreen').classList.remove('hidden');
@@ -1141,7 +1130,7 @@
                 initApp();
             }
         };
-
+        
         function initApp() {
             document.getElementById('loginScreen').classList.remove('hidden');
             if (localStorage.getItem('vipcep_remember_me') === 'true' && localStorage.getItem('vipcep_user_id')) {
@@ -1176,7 +1165,7 @@
                 localStorage.removeItem('vipcep_user_id');
                 localStorage.removeItem('vipcep_user_name');
             }
-
+            
             if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ type: 'login-request', userId: userInfo.id, userName: userInfo.name }));
             } else {
@@ -1184,7 +1173,7 @@
                 loginMessage.innerHTML = `<div class="error-message">Sunucuya bağlanılamadı. Lütfen tekrar deneyin.</div>`;
             }
         }
-
+        
         function connectToServer() {
             socket = new WebSocket(serverUrl);
             socket.onopen = () => {
@@ -1255,7 +1244,7 @@
 
                     document.getElementById('incomingAdminPic').src = lastCallInfo.adminPic;
                     document.getElementById('incomingAdminNameOverlay').textContent = `${lastCallInfo.adminName} Arıyor...`;
-
+                    
                     setState('incoming');
                     playSound(ringingSound);
                     break;
@@ -1303,7 +1292,7 @@
                     break;
             }
         }
-
+        
         function updateUserDisplay() {
             document.getElementById('displayUserName').textContent = userInfo.name;
             document.getElementById('displayUserId').textContent = userInfo.id;
@@ -1327,7 +1316,7 @@
                     } else {
                         buttonHtml = `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)">📝 Çağrı Bırak</button>`;
                     }
-
+                    
                     return `
                         <div class="admin-card ${admin.status}" data-admin-id="${admin.id}">
                             <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
@@ -1347,7 +1336,7 @@
                 container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
             }
         }
-
+        
         async function makeCall(adminId) {
             if (userInfo.credits <= 0) {
                 return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
@@ -1374,7 +1363,7 @@
 
             setState('connecting');
             playSound(ringingSound);
-
+            
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                 localStream.getVideoTracks()[0].enabled = false;
@@ -1396,10 +1385,10 @@
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 return showNotification('Sunucu bağlantısı hazır değil.', 'error');
             }
-
+    
             pendingCallbackAdminId = adminId;
             isCallbackPending = true;
-
+            
             if (event && event.currentTarget) {
                 const button = event.currentTarget;
                 button.textContent = '📝 Talebiniz Gönderiliyor...';
@@ -1407,21 +1396,21 @@
                 button.classList.remove('btn-callback');
                 button.classList.add('btn-callback-sent');
             }
-
+    
             socket.send(JSON.stringify({ type: 'callback-request', userId: userInfo.id, userName: userInfo.name, targetAdminId: adminId }));
         }
-
+        
         function setState(newState) {
             callState = newState;
             const callOverlay = document.getElementById('callOverlay');
             const connectingView = document.getElementById('connectingStateView');
             const connectedView = document.getElementById('connectedStateView');
             const incomingView = document.getElementById('incomingCallView');
-
+            
             connectingView.classList.add('hidden');
             connectedView.classList.add('hidden');
             incomingView.classList.add('hidden');
-
+            
             if (['connecting', 'connected', 'incoming'].includes(newState)) {
                 callOverlay.classList.remove('hidden');
                 document.getElementById('mainApp').classList.add('hidden');
@@ -1437,7 +1426,7 @@
                  callOverlay.classList.add('hidden');
                  document.getElementById('mainApp').classList.remove('hidden');
             }
-
+            
             document.getElementById('displayUserStatus').textContent = {
                 idle: 'Hazır',
                 connecting: 'Bağlanıyor...',
@@ -1445,12 +1434,12 @@
                 incoming: 'Gelen Arama'
             }[newState] || 'Hazır';
         }
-
+        
         async function acceptIncomingCall() {
             if (callState !== 'incoming') return;
             stopAllSounds();
             playSound(connectedSound);
-
+            
             document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
             document.getElementById('connectingAdminName').textContent = `Bağlanıyor...`;
             if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1486,7 +1475,7 @@
         function handleCallAccepted(message) {
             lastCallInfo.adminId = message.adminId;
             const admin = availableAdmins.find(a => a.id === message.adminId);
-
+            
             lastCallInfo.adminName = admin?.name || 'Usta';
             lastCallInfo.adminPic = admin?.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
 
@@ -1495,7 +1484,7 @@
             setState('connected');
             setupPeerConnection(true);
         }
-
+        
         function handleCallEnded(message, rejected = false) {
             if (callState === 'idle') return;
 
@@ -1518,7 +1507,7 @@
             try {
                 peerConnection = new RTCPeerConnection(rtcConfig);
                 pendingIceCandidates = [];
-
+                
                 if (!localStream) {
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
                     if (localStream.getVideoTracks().length > 0) {
@@ -1527,9 +1516,9 @@
                     isVideoEnabled = false;
                     isMicEnabled = true;
                 }
-
+                
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
+                
                 peerConnection.ontrack = event => {
                     if (event.track.kind === 'video') {
                         const remoteVideo = document.getElementById('remoteVideo');
@@ -1541,13 +1530,13 @@
                         remoteAudio.srcObject = event.streams[0];
                     }
                 };
-
+                
                 peerConnection.onicecandidate = event => {
                     if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: lastCallInfo.adminId }));
                     }
                 };
-
+                
                 peerConnection.onconnectionstatechange = () => {
                     if (peerConnection?.connectionState === 'connected') {
                         document.getElementById('currentAdminNameOverlay').textContent = lastCallInfo.adminName;
@@ -1577,11 +1566,11 @@
             const videoTrack = localStream.getVideoTracks()[0];
             isVideoEnabled = !isVideoEnabled;
             videoTrack.enabled = isVideoEnabled;
-
+            
             const localVideoEl = document.getElementById('localVideo');
             const videoToggleBtn = document.getElementById('videoToggleBtn');
             const videoIcon = document.getElementById('videoIcon');
-
+            
             if (isVideoEnabled) {
                  localVideoEl.srcObject = localStream;
                  localVideoEl.style.display = 'block';
@@ -1603,7 +1592,7 @@
                 }));
             }
         }
-
+        
         function handleVideoToggle(isEnabled) {
              const remoteVideo = document.getElementById('remoteVideo');
              const videoOverlayText = document.getElementById('videoOverlayText');
@@ -1615,16 +1604,16 @@
                  videoOverlayText.style.display = 'block';
              }
         }
-
+        
         function toggleMute() {
             if (!localStream || !localStream.getAudioTracks()[0]) return;
             const audioTrack = localStream.getAudioTracks()[0];
             isMicEnabled = !isMicEnabled;
             audioTrack.enabled = isMicEnabled;
-
+            
             const muteButton = document.getElementById('muteButton');
             const muteIcon = document.getElementById('muteIcon');
-
+            
             if (isMicEnabled) {
                 muteButton.classList.remove('off');
                 muteButton.classList.add('on');
@@ -1657,7 +1646,7 @@
                 const oldTrack = localStream.getVideoTracks()[0];
                 localStream.removeTrack(oldTrack);
                 localStream.addTrack(newVideoTrack);
-
+                
                 const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
                 if (sender) {
                     sender.replaceTrack(newVideoTrack);
@@ -1669,42 +1658,21 @@
                 showNotification("Kamera değiştirilemedi. Başka bir uygulama kamerayı kullanıyor olabilir.", "error");
             }
         }
-
+        
         function toggleFullscreen() {
             const callOverlay = document.getElementById('callOverlay');
-            const remoteVideo = document.getElementById('remoteVideo');
             const fullscreenIcon = document.getElementById('fullscreenIcon');
-
             if (!document.fullscreenElement) {
                 callOverlay.requestFullscreen().then(() => {
                     fullscreenIcon.innerHTML = `<path d="M8 3v3m3-3h3a2 2 0 0 1 2 2v3m0 18h-3a2 2 0 0 1-2-2v-3m-18 0v3a2 2 0 0 0 2 2h3m18-18h-3a2 2 0 0 0-2 2v3m-3-3h3m-3-3v3m3-3v3"></path>`;
                 });
-                if (remoteVideo.requestFullscreen) {
-                    remoteVideo.requestFullscreen();
-                } else if (remoteVideo.webkitRequestFullscreen) { /* Safari */
-                    remoteVideo.webkitRequestFullscreen();
-                } else if (remoteVideo.msRequestFullscreen) { /* IE11 */
-                    remoteVideo.msRequestFullscreen();
-                }
-                fullscreenIcon.innerHTML = `<path d="M8 3v3m3-3h3a2 2 0 0 1 2 2v3m0 18h-3a2 2 0 0 1-2-2v-3m-18 0v3a2 2 0 0 0 2 2h3m18-18h-3a2 2 0 0 0-2 2v3m-3-3h3m-3-3v3m3-3v3"></path>`;
             } else {
                 document.exitFullscreen().then(() => {
                     fullscreenIcon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>`;
                 });
-                document.exitFullscreen();
-                fullscreenIcon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>`;
             }
         }
 
-        // Fullscreen event listener to update the button icon
-        document.addEventListener('fullscreenchange', (event) => {
-          const fullscreenIcon = document.getElementById('fullscreenIcon');
-          if (document.fullscreenElement) {
-            fullscreenIcon.innerHTML = `<path d="M8 3v3m3-3h3a2 2 0 0 1 2 2v3m0 18h-3a2 2 0 0 1-2-2v-3m-18 0v3a2 2 0 0 0 2 2h3m18-18h-3a2 2 0 0 0-2 2v3m-3-3h3m-3-3v3m3-3v3"></path>`;
-          } else {
-            fullscreenIcon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>`;
-          }
-        });
 
         async function handleWebRTCMessage(message) {
             try {
@@ -1769,11 +1737,11 @@
             document.getElementById('videoToggleBtn').classList.remove('on');
             isVideoEnabled = false;
         }
-
+        
         function endCall(isCancel = false) {
             const reason = isCancel ? 'cancelled' : 'user_ended';
             const target = lastCallInfo.adminId;
-
+            
             if (target && socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify({ 
                     type: 'end-call', 
@@ -1789,13 +1757,13 @@
         }
         function showReviewModal(callData) {
             playSound(endedSound);
-
+        
             const existingModal = document.getElementById('reviewOverlay');
             if (existingModal) existingModal.remove();
-
+            
             let totalTipAmount = 0;
             let currentRating = 0;
-
+        
             const reviewModalHTML = `
                 <div id="reviewOverlay" class="modal-overlay">
                     <div class="modal-content">
@@ -1825,30 +1793,30 @@
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', reviewModalHTML);
-
+        
             const stars = document.querySelectorAll('#ratingStars span');
             const commentInput = document.getElementById('reviewComment');
             const actionBtn = document.getElementById('reviewActionBtn');
             const tipButtons = document.querySelectorAll('.tip-btn');
             const totalTipDisplay = document.getElementById('totalTipAmountDisplay');
-
+            
             const closeReviewModal = () => {
                 const overlay = document.getElementById('reviewOverlay');
                 if(overlay) overlay.remove();
             };
-
+        
             const submitReview = async () => {
                 actionBtn.disabled = true;
                 const commentValue = commentInput.value.trim();
                 const tipAmount = totalTipAmount;
-
+            
                 let finalRating = currentRating;
                 if (tipAmount > 0 && finalRating === 0) {
                     finalRating = 5;
                 }
-
+            
                 closeReviewModal();
-
+            
                 try {
                     if (finalRating > 0 || commentValue !== '' || tipAmount > 0) {
                         await fetch(`${baseUrl}/api/admins/${encodeURIComponent(lastCallInfo.adminId)}/review`, {
@@ -1866,19 +1834,19 @@
                 } catch(e) {
                     console.error("Review submission failed", e);
                 }
-
+            
                 if (finalRating > 0 || commentValue !== '' || tipAmount > 0) {
                     showTemporaryMessage("🎉", "Teşekkür Ederiz!", "Görüşlerinizi paylaştığınız için teşekkür ederiz.Hayırlı işler dileriz.", 3000);
                 } else {
                     showTemporaryMessage("👋", "Hoşça Kalın!", "Hayırlı işler dileriz.", 3000);
                 }
             };
-
+            
             const updateReviewButtonState = () => {
                 const hasRating = currentRating > 0;
                 const hasTip = totalTipAmount > 0;
                 const hasComment = commentInput.value.trim() !== '';
-
+        
                 if (hasRating || hasTip || hasComment) {
                     actionBtn.textContent = 'Gönder';
                     actionBtn.style.background = '';
@@ -1889,7 +1857,7 @@
                     actionBtn.onclick = submitReview;
                 }
             };
-
+            
             stars.forEach(star => {
                 star.addEventListener('click', (e) => {
                     currentRating = parseInt(e.target.dataset.value);
@@ -1900,17 +1868,17 @@
                     updateReviewButtonState();
                 });
             });
-
+        
             tipButtons.forEach(button => {
                 button.addEventListener('click', (e) => {
                     const tip = parseInt(button.dataset.tip);
                     const isActive = button.classList.contains('active');
-
+                    
                     if (!isActive && (totalTipAmount + tip > userInfo.credits)) {
                         showNotification('Yetersiz kredi!', 'error');
                         return;
                     }
-
+        
                     if (isActive) {
                         totalTipAmount -= tip;
                     } else {
@@ -1918,31 +1886,31 @@
                         new Audio('cash.mp3').play().catch(err => console.error("Ses çalınamadı:", err));
                     }
                     button.classList.toggle('active');
-
+                    
                     totalTipDisplay.textContent = totalTipAmount;
                     updateReviewButtonState();
                 });
                 button.addEventListener('mouseover', () => createParticles(30, ['🪙', '🎉']));
             });
-
+        
             commentInput.addEventListener('input', updateReviewButtonState);
             actionBtn.onclick = submitReview;
         }
-
+        
         function createParticles(amount, icons) {
             const container = document.getElementById('tipParticleContainer');
             if (!container) return;
 
             container.innerHTML = '';
-
+            
             for (let i = 0; i < amount; i++) {
                 const particle = document.createElement('span');
                 particle.className = 'particle';
                 particle.textContent = icons[Math.floor(Math.random() * icons.length)];
-
+                
                 const size = 15 + Math.random() * 10;
                 particle.style.fontSize = `${size}px`;
-
+                
                 particle.style.left = `${Math.random() * 90 + 5}%`;
                 particle.style.animationDelay = `${Math.random() * 0.5}s`;
                 container.appendChild(particle);
@@ -1960,7 +1928,7 @@
             const notif = document.createElement('div');
             notif.className = `notification ${type}`;
             notif.textContent = message;
-
+            
             container.appendChild(notif);
 
             setTimeout(() => {
@@ -1974,7 +1942,7 @@
                 }, 500);
             }, duration);
         }
-
+        
         function showAnnouncement(announcementData) {
             const announcementBanner = document.getElementById('announcementBanner');
             const announcementTextDiv = document.getElementById('announcementText');
@@ -2011,7 +1979,7 @@
             onlineSound.play().catch(e => console.error("Duyuru sesi çalınamadı:", e));
 
             notificationEl.classList.remove('hidden');
-
+            
             notificationEl.classList.add('show-online-notification');
 
             setTimeout(() => {
@@ -2025,7 +1993,7 @@
         async function showAdminDetails(adminId) {
             const admin = availableAdmins.find(a => a.id === adminId);
             if (!admin) return;
-
+        
             const modalHTML = `
                 <div id="detailsModalOverlay" class="modal-overlay">
                     <div class="modal-content" style="text-align: left; max-width: 380px;">
@@ -2034,20 +2002,20 @@
                     </div>
                 </div>`;
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-
+        
             try {
                 const response = await fetch(`${baseUrl}/api/admins/${admin.id}/profile`);
-
+                
                 if (!response.ok) throw new Error('Profil verileri sunucudan alınamadı.');
-
+                
                 const result = await response.json();
-
+                
                 if (result.success) {
                     renderProfileModal(result.profile);
                 } else {
                     throw new Error(result.error || 'Profil verileri işlenemedi.');
                 }
-
+                
             } catch (error) {
                 const content = document.getElementById('detailsModalBody');
                 content.innerHTML = `<p style="text-align:center; color: red;">Hata: ${error.message}</p>`;
@@ -2056,7 +2024,7 @@
         function renderProfileModal(profile) {
             const content = document.getElementById('detailsModalBody');
             const totalTips = profile.reviews.reduce((sum, review) => sum + (review.tip_amount || 0), 0);
-
+            
             let reviewsHtml = '';
             if (profile.reviews && profile.reviews.length > 0) {
                 reviewsHtml = profile.reviews.map(review => `
@@ -2130,7 +2098,7 @@
         function showTemporaryMessage(icon, title, message, duration = 3000) {
             const existingPopup = document.getElementById('temp-message');
             if (existingPopup) existingPopup.remove();
-
+            
             const popup = document.createElement('div');
             popup.id = 'temp-message';
             popup.className = 'temporary-message-popup';
@@ -2140,7 +2108,7 @@
                 <p>${message.replace(/\n/g, '<br>')}</p>
             `;
             document.body.appendChild(popup);
-
+        
             setTimeout(() => {
                 popup.classList.add('fade-out');
                 setTimeout(() => {
