@@ -642,6 +642,7 @@
             background: white;
             float: left;
             border-bottom-left-radius: 5px;
+			color: #374151;
         }
         
         .message.sent {
@@ -1265,7 +1266,7 @@
                     <!-- Mesajlar buraya eklenecek -->
                 </div>
 					<div class="chat-input-container">
-					    <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
+						<input type="file" id="fileInput" style="display: none;" accept="image/*,application/pdf,.doc,.docx,.txt" capture="environment">
 					    <button id="fileBtn" class="file-btn" style="margin-right: 5px; background: #6b7280; border: none; width: 35px; height: 35px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;">📎</button>
 					    <input type="text" class="chat-input" id="chatInput" placeholder="Mesajınızı yazın...">
 					    <button class="send-btn" id="sendMessageBtn">
@@ -3001,15 +3002,40 @@
 		    const file = event.target.files[0];
 		    if (!file) return;
 		    
+		    console.log('Dosya seçildi:', file.name, file.type, file.size);
+		    
 		    // Dosya boyutu kontrolü (5MB limit)
 		    if (file.size > 5 * 1024 * 1024) {
 		        showNotification('Dosya boyutu 5MB\'dan büyük olamaz!', 'error');
 		        return;
 		    }
 		    
+		    // iOS için FileReader uyumluluğu kontrolü
+		    if (!window.FileReader) {
+		        showNotification('Bu tarayıcı dosya yüklemeyi desteklemiyor', 'error');
+		        return;
+		    }
+		    
 		    const transferId = `transfer_${Date.now()}_${++transferIdCounter}`;
-		    const targetId = lastCallInfo?.adminId || currentCall?.userId; // müşteri için adminId, admin için userId
-		    const targetType = userInfo ? 'admin' : 'customer'; // userInfo varsa müşteri, yoksa admin
+		    
+		    // Hedef bilgilerini belirle
+		    let targetId, targetType, fromName, userId, adminId;
+		    
+		    if (typeof userInfo !== 'undefined' && userInfo.id) {
+		        // Müşteri tarafında
+		        targetId = lastCallInfo?.adminId;
+		        targetType = 'admin';
+		        fromName = userInfo.name;
+		        userId = userInfo.id;
+		        adminId = undefined;
+		    } else if (typeof currentAdmin !== 'undefined' && currentAdmin.username) {
+		        // Admin tarafında
+		        targetId = currentCall?.userId;
+		        targetType = 'customer';
+		        fromName = currentAdmin.username;
+		        userId = undefined;
+		        adminId = adminUniqueId;
+		    }
 		    
 		    if (!targetId) {
 		        showNotification('Aktif görüşme bulunamadı!', 'error');
@@ -3018,21 +3044,29 @@
 		    
 		    // Dosya transfer isteği gönder
 		    if (socket && socket.readyState === WebSocket.OPEN) {
-		        socket.send(JSON.stringify({
-		            type: 'file-transfer-request',
-		            transferId: transferId,
-		            fileName: file.name,
-		            fileSize: file.size,
-		            fileType: file.type,
-		            targetId: targetId,
-		            targetType: targetType,
-		            from: userInfo?.name || currentAdmin?.username,
-		            userId: userInfo?.id,
-		            adminId: adminUniqueId
-		        }));
-		        
-		        // Dosyayı parçalara böl ve gönder
-		        sendFileInChunks(file, transferId, targetId, targetType);
+		        try {
+		            socket.send(JSON.stringify({
+		                type: 'file-transfer-request',
+		                transferId: transferId,
+		                fileName: file.name,
+		                fileSize: file.size,
+		                fileType: file.type,
+		                targetId: targetId,
+		                targetType: targetType,
+		                from: fromName,
+		                userId: userId,
+		                adminId: adminId
+		            }));
+		            
+		            console.log('Dosya transfer isteği gönderildi');
+		            
+		            // Dosyayı parçalara böl ve gönder
+		            sendFileInChunks(file, transferId, targetId, targetType);
+		            
+		        } catch (error) {
+		            console.error('Dosya gönderme hatası:', error);
+		            showNotification('Dosya gönderilirken hata oluştu', 'error');
+		        }
 		    }
 		    
 		    // Input'u temizle
@@ -3149,6 +3183,7 @@
     </script>
 </body>
 </html>
+
 
 
 
