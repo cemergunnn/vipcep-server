@@ -1227,6 +1227,19 @@
         </div>
     </div>
     
+    <!-- İzin İsteme Modalı -->
+    <div id="permissionsModal" class="modal-overlay hidden">
+        <div class="permissions-modal">
+            <div class="permissions-icon">🎙️</div>
+            <div class="permissions-title">Mikrofon ve Kamera İzni</div>
+            <p class="permissions-text">Görüşme yapabilmek için mikrofon ve kamera izinleri gereklidir. Lütfen izin vermeyi onaylayın.</p>
+            <div class="permissions-actions">
+                <button class="btn" id="cancelPermissionsBtn" style="background-color: var(--gray-200); color: var(--gray-700);">İptal</button>
+                <button class="btn btn-login" id="grantPermissionsBtn">İzin Ver</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
@@ -1397,9 +1410,16 @@
         }
         
         function setupEventListeners() {
-
-
-		   
+		    // İzin modalı butonları
+		    const grantPermissionsBtn = document.getElementById('grantPermissionsBtn');
+		    const cancelPermissionsBtn = document.getElementById('cancelPermissionsBtn');
+		    
+		    if (grantPermissionsBtn) {
+		        grantPermissionsBtn.addEventListener('click', requestMediaPermissions);
+		    }
+		    
+		    if (cancelPermissionsBtn) {
+		        cancelPermissionsBtn.addEventListener('click', cancelPermissions);
 		    }
             // Arama kontrol butonları
             document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMicrophone);
@@ -1419,7 +1439,10 @@
                     sendChatMessage();
                 }
             });
-           
+            
+            // İzin modalı butonları
+            document.getElementById('grantPermissionsBtn')?.addEventListener('click', requestMediaPermissions);
+            document.getElementById('cancelPermissionsBtn')?.addEventListener('click', cancelPermissions);
             
             // Sayfa kapatıldığında aramayı sonlandır
             window.addEventListener('beforeunload', function() {
@@ -1674,6 +1697,12 @@
         
 		// Eski showPermissionsModal fonksiyonunu tamamen kaldırın ve şu fonksiyonla değiştirin:
 		async function makeCall(adminId) {
+		    console.log("makeCall çağrıldı:", adminId); // Debug için ekleyin
+		    
+		    if (userInfo.credits <= 0) {
+		        return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
+		    }
+		    
 		    if (!socket || socket.readyState !== WebSocket.OPEN) {
 		        return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
 		    }
@@ -1693,11 +1722,15 @@
 		    lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
 		
 		    try {
+		        console.log("Medya izni isteniyor..."); // Debug için
+		        
 		        // Hem mikrofon hem kamera izni iste
 		        localStream = await navigator.mediaDevices.getUserMedia({
 		            audio: true,
 		            video: true
 		        });
+		        
+		        console.log("Medya izni alındı, arama başlatılıyor..."); // Debug için
 		        
 		        // Bağlanma ekranını göster
 		        setState('connecting');
@@ -1714,33 +1747,24 @@
 		            targetAdminId: adminId, 
 		            credits: userInfo.credits 
 		        }));
+		        
+		        console.log("Arama isteği gönderildi"); // Debug için
+		        
 		    } catch (error) {
 		        console.error("Medya izni hatası:", error);
 		        showNotification("Mikrofon ve kamera izni gerekli. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
 		    }
 		}
-		        
-		        // İzinler alındı, şimdi aramayı başlat
-		        makeCall(lastCallInfo.adminId);
-		    } catch (error) {
-		        console.error("Medya izni hatası:", error);
-		        showNotification("Mikrofon izni alınamadı. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
-		        
-		        const permissionsModal = document.getElementById('permissionsModal');
-		        if (permissionsModal) {
-		            permissionsModal.classList.add('hidden');
-		        }
-		    }
-		}
-		function makeCall(adminId) {
-		    if (!socket || socket.readyState !== WebSocket.OPEN) {
-		        return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
-		    }
+
+		//function makeCall(adminId) {
+		    //if (!socket || socket.readyState !== WebSocket.OPEN) {
+		      //  return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
+		  //  }
 		
-		    const admin = availableAdmins.find(a => a.id === adminId);
-		    if (!admin) {
-		        return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
-		    }
+		   // const admin = availableAdmins.find(a => a.id === adminId);
+		  //  if (!admin) {
+		  //      return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
+		  //  }
 		
 		    // Adminin meşgul olup olmadığını kontrol et
 		    if (admin.status === 'busy') {
