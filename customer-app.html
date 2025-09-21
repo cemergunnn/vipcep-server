@@ -3087,7 +3087,7 @@
 		    }
 		    
 		    console.log('Dosya bulundu:', file.name, file.size);
-				
+		}		
 		function sendFileInChunks(file, transferId, targetId, targetType) {
 		    const chunkSize = 64 * 1024; // 64KB chunks
 		    const totalChunks = Math.ceil(file.size / chunkSize);
@@ -3209,6 +3209,7 @@
     </script>
 </body>
 </html>
+
 
 
 
