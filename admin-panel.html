@@ -2525,14 +2525,21 @@
                     break;
                 case 'call-ended': handleCallEnded(message); break;
                 case 'offer': case 'answer': case 'ice-candidate': handleWebRTCMessage(message); break;
-                case 'chat-message':
-                    if (currentCall && isVideoCall) {
-                        addChatMessage(message.from, message.text, false);
-                        if (!isChatOpen) {
-                            showNotification(`${message.from}: ${message.text}`, 'info');
-                        }
-                    }
-                    break;
+				case 'chat-message':
+				    if (currentCall && isVideoCall) {
+				        addChatMessage(message.from, message.text, false);
+				        
+				        // Chat paneli kapalıysa otomatik aç
+				        if (!isChatOpen) {
+				            toggleChat();
+				            // Bildirim sesi çal
+				            const notificationSound = new Audio('notification.mp3');
+				            notificationSound.play().catch(e => console.warn("Ses çalınamadı", e));
+				        }
+				        
+				        showNotification(`${message.from}: ${message.text}`, 'info');
+				    }
+				    break;
                 case 'auto-credit-update':
                     break;
                 default: console.log('❓ Bilinmeyen mesaj tipi:', message.type); break;
@@ -2654,15 +2661,21 @@
             showNotification('Arama bağlanıyor...', 'info', 3000);
         }
 
-        function handleCallAccepted(message) {
-            console.log('✅ Müşteri aramayı kabul etti:', message.customerName || message.customerId);
-            if (callState === 'outgoing') {
-                const callInfo = { userId: currentCall.userId, userName: currentCall.userName };
-                currentCall = callInfo;
-                outgoingCallInfo = null;
-                setupPeerConnection(callInfo, true);
-            }
-        }
+		function handleCallAccepted(message) {
+		    console.log('Müşteri aramayı kabul etti:', message.customerName || message.customerId);
+		    if (callState === 'outgoing') {
+		        const callInfo = { userId: currentCall.userId, userName: currentCall.userName };
+		        currentCall = callInfo;
+		        outgoingCallInfo = null;
+		        
+		        // Otomatik olarak video görüşmeye geç
+		        setTimeout(() => {
+		            switchToVideoCall();
+		        }, 500);
+		        
+		        setupPeerConnection(callInfo, true);
+		    }
+		}
 
         function handleCallRejected(message) {
             console.log('❌ Arama reddedildi:', message.reason);
@@ -2670,17 +2683,23 @@
             resetCallState();
         }
 
-        function handleCallEnded(message) {
-            console.log('📞 Arama sonlandı:', message.reason);
-            if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
-            
-            if (message.reason !== 'cancelled' && message.reason !== 'rejected' && message.reason !== 'ended_before_start') {
-                showCallSummaryModal(message.duration, message.creditsUsed);
-            }
-        
-            cleanupCall();
-            resetCallState();
-        }
+		function handleCallEnded(message) {
+		    console.log('Arama sonlandı:', message.reason);
+		    if (currentCall) showNotification('Görüşme sonlandırıldı', 'info');
+		    
+		    // Video overlay'ı kapat
+		    if (isVideoCall) {
+		        document.getElementById('callOverlay').classList.add('hidden');
+		        isVideoCall = false;
+		    }
+		    
+		    if (message.reason !== 'cancelled' && message.reason !== 'rejected' && message.reason !== 'ended_before_start') {
+		        showCallSummaryModal(message.duration, message.creditsUsed);
+		    }
+		
+		    cleanupCall();
+		    resetCallState();
+		}
 
         function showCallSummaryModal(durationInSeconds, creditsUsed) {
             const minutes = Math.floor(durationInSeconds / 60);
@@ -2865,32 +2884,37 @@
             pendingIceCandidates = [];
         }
 
-        function cleanupCall() {
-            console.log('🧹 Call cleanup başlatılıyor...');
-            if (callTimer) { clearInterval(callTimer); callTimer = null; }
-            if (peerConnection) { peerConnection.close(); peerConnection = null; }
-            if (localStream) { 
-                localStream.getTracks().forEach(track => {
-                    track.stop();
-                    console.log('🎤 Track durduruldu:', track.kind);
-                }); 
-                localStream = null; 
-            }
-            
-            // Video temizliği
-            if (isVideoCall) {
-                cleanupVideoCall();
-            }
-            
-            const localAudio = document.getElementById('localAudio');
-            const remoteAudio = document.getElementById('remoteAudio');
-            if (localAudio) localAudio.srcObject = null;
-            if (remoteAudio) remoteAudio.srcObject = null;
-            callDuration = 0;
-            callStartTime = null;
-            pendingIceCandidates = [];
-            console.log('✅ Call cleanup tamamlandı');
-        }
+		function cleanupCall() {
+		    console.log('Call cleanup başlatılıyor...');
+		    
+		    // Video overlay'ı kapat
+		    if (isVideoCall) {
+		        document.getElementById('callOverlay').classList.add('hidden');
+		        isVideoCall = false;
+		    }
+		    
+		    if (callTimer) { clearInterval(callTimer); callTimer = null; }
+		    if (peerConnection) { peerConnection.close(); peerConnection = null; }
+		    if (localStream) { 
+		        localStream.getTracks().forEach(track => {
+		            track.stop();
+		            console.log('Track durduruldu:', track.kind);
+		        }); 
+		        localStream = null; 
+		    }
+		    
+		    // Video temizliği
+		    cleanupVideoCall();
+		    
+		    const localAudio = document.getElementById('localAudio');
+		    const remoteAudio = document.getElementById('remoteAudio');
+		    if (localAudio) localAudio.srcObject = null;
+		    if (remoteAudio) remoteAudio.srcObject = null;
+		    callDuration = 0;
+		    callStartTime = null;
+		    pendingIceCandidates = [];
+		    console.log('Call cleanup tamamlandı');
+		}
 
         // Audio Controls
         function toggleMicrophone() {
@@ -3246,3 +3270,4 @@
     </script>
 </body>
 </html>
+
