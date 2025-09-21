@@ -1721,44 +1721,46 @@
             creditsEl.className = userInfo.credits > 0 ? 'info-value credits-value' : 'info-value credits-zero';
         }
 
-        function updateAdminList(admins) {
-            availableAdmins = admins;
-            const container = document.getElementById('adminListContainer');
-            
-            if (!container) return;
-            
-            if (admins && admins.length > 0) {
-                container.innerHTML = admins.map(admin => {
-                    const isCallbackSentToThisAdmin = pendingCallbackAdminId === admin.id;
-
-                    let buttonHtml;
-                    if (admin.status === 'available') {
-                        buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}')">🔉 Ara</button>`;
-                    } else if (isCallbackSentToThisAdmin) {
-                        buttonHtml = `<button class="btn btn-callback-sent" disabled>✅ Geri Dönüş Alındı</button>`;
-                    } else {
-                        buttonHtml = `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)">🔔 Çağrı Bırak</button>`;
-                    }
-                    
-                    return `
-                        <div class="admin-card ${admin.status}" data-admin-id="${admin.id}">
-                            <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
-                            <div class="admin-details">
-                                <div class="admin-name">${admin.name}</div>
-                                <div class="admin-specialization">${admin.specialization || 'Genel Teknik Servis'}</div>
-                                <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
-                            </div>
-                            <div class="admin-actions">
-                                <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
-                                ${buttonHtml}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
-            }
-        }
+		function updateAdminList(admins) {
+		    availableAdmins = admins;
+		    const container = document.getElementById('adminListContainer');
+		    
+		    if (!container) return;
+		    
+		    if (admins && admins.length > 0) {
+		        container.innerHTML = admins.map(admin => {
+		            const isCallbackSentToThisAdmin = pendingCallbackAdminId === admin.id;
+		
+		            let buttonHtml;
+		            if (admin.status === 'available') {
+		                buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}')">🔉 Ara</button>`;
+		            } else if (isCallbackSentToThisAdmin) {
+		                buttonHtml = `<button class="btn btn-callback-sent" disabled>✅ Geri Dönüş Alındı</button>`;
+		            } else if (admin.status === 'busy') {  // Bu kontrolü ekleyin
+		                buttonHtml = `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)">🔔 Geri Dönüş Ekle</button>`;
+		            } else {
+		                buttonHtml = `<button class="btn btn-callback" onclick="makeCallbackRequest('${admin.id}', event)">🔔 Çağrı Bırak</button>`;
+		            }
+		            
+		            return `
+		                <div class="admin-card ${admin.status}" data-admin-id="${admin.id}">
+		                    <img src="${admin.profile_picture_url || 'https://placehold.co/100x100/EBF4FF/768498?text=Usta'}" alt="${admin.name}" class="admin-pic">
+		                    <div class="admin-details">
+		                        <div class="admin-name">${admin.name}</div>
+		                        <div class="admin-specialization">${admin.specialization || 'Genel Teknik Servis'}</div>
+		                        <div class="admin-rating">⭐ ${parseFloat(admin.average_rating).toFixed(1)} (${admin.review_count} yorum)</div>
+		                    </div>
+		                    <div class="admin-actions">
+		                        <button class="btn btn-details" onclick="showAdminDetails('${admin.id}')">Detay</button>
+		                        ${buttonHtml}
+		                    </div>
+		                </div>
+		            `;
+		        }).join('');
+		    } else {
+		        container.innerHTML = '<p id="adminListPlaceholder" style="text-align:center; color: var(--gray-500); padding: 20px;">Şu anda müsait usta bulunmuyor.</p>';
+		    }
+		}
         
 		// Eski showPermissionsModal fonksiyonunu tamamen kaldırın ve şu fonksiyonla değiştirin:
 		async function makeCall(adminId) {
@@ -2658,7 +2660,7 @@
                     from: userInfo.name,
                     text: message,
                     targetId: lastCallInfo.adminId,
-                    userId: userInfo.id
+                    userId: userInfo.id,
 					targetType: 'admin' 
                 }));
             }
@@ -3070,6 +3072,7 @@
     </script>
 </body>
 </html>
+
 
 
 
