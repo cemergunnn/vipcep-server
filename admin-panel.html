@@ -1777,6 +1777,59 @@
                     cameras: availableCameras.length,
                     speakers: availableSpeakers.length
                 });
+				}
+
+        function updateDeviceSelectors() {
+            const micSelect = document.getElementById('microphoneSelect');
+            const camSelect = document.getElementById('cameraSelect');
+            const speakerSelect = document.getElementById('speakerSelect');
+
+            if (micSelect) {
+                micSelect.innerHTML = availableMicrophones.map(device => 
+                    `<option value="${device.deviceId}" ${device.deviceId === selectedMicrophoneId ? 'selected' : ''}>
+                        ${device.label || `Mikrofon ${device.deviceId.slice(0, 8)}`}
+                    </option>`
+                ).join('');
+            }
+
+            if (camSelect) {
+                camSelect.innerHTML = availableCameras.map(device => 
+                    `<option value="${device.deviceId}" ${device.deviceId === selectedCameraId ? 'selected' : ''}>
+                        ${device.label || `Kamera ${device.deviceId.slice(0, 8)}`}
+                    </option>`
+                ).join('');
+            }
+
+            if (speakerSelect) {
+                speakerSelect.innerHTML = availableSpeakers.map(device => 
+                    `<option value="${device.deviceId}" ${device.deviceId === selectedSpeakerId ? 'selected' : ''}>
+                        ${device.label || `Hoparlör ${device.deviceId.slice(0, 8)}`}
+                    </option>`
+                ).join('');
+            }
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            updateDeviceSelectors();
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function applyDeviceSettings() {
+            const micSelect = document.getElementById('microphoneSelect');
+            const camSelect = document.getElementById('cameraSelect');
+            const speakerSelect = document.getElementById('speakerSelect');
+
+            if (micSelect) selectedMicrophoneId = micSelect.value;
+            if (camSelect) selectedCameraId = camSelect.value;
+            if (speakerSelect) selectedSpeakerId = speakerSelect.value;
+
+            showNotification('Cihaz ayarları güncellendi!', 'success', 2000);
+            closeSettingsModal();
+        }
             } catch (error) {
                 console.error('❌ Cihaz listeleme hatası:', error);
             }
@@ -3119,6 +3172,27 @@
                 }, 300);
             }, 3000);
         }
+		function openSettingsModal() {
+		document.getElementById('settingsModal').classList.remove('hidden');
+		updateDeviceSelectors();
+		}
+
+		function closeSettingsModal() {
+			document.getElementById('settingsModal').classList.add('hidden');
+		}
+
+		function applyDeviceSettings() {
+			const micSelect = document.getElementById('microphoneSelect');
+			const camSelect = document.getElementById('cameraSelect');
+			const speakerSelect = document.getElementById('speakerSelect');
+
+			if (micSelect) selectedMicrophoneId = micSelect.value;
+			if (camSelect) selectedCameraId = camSelect.value;
+			if (speakerSelect) selectedSpeakerId = speakerSelect.value;
+
+			showNotification('Cihaz ayarları güncellendi!', 'success', 2000);
+			closeSettingsModal();
+		}
 
         // Error Handling
         window.addEventListener('error', (event) => {
