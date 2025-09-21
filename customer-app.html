@@ -3002,38 +3002,54 @@
 		let transferIdCounter = 0;
 		
 		function handleFileSelection(event) {
-			alert('Dosya seçildi!');
-		    const file = event.target.files[0];
-		    if (!file) return;
+		    console.log('1. handleFileSelection çağrıldı');
+		    console.log('2. Event:', event);
+		    console.log('3. Files:', event.target.files);
 		    
-		    console.log('Dosya seçildi:', file.name, file.type, file.size);
+		    const file = event.target.files[0];
+		    if (!file) {
+		        console.log('4. HATA: Dosya bulunamadı');
+		        return;
+		    }
+		    
+		    console.log('5. Dosya bulundu:', file.name, file.type, file.size);
 		    
 		    // Dosya boyutu kontrolü (5MB limit)
 		    if (file.size > 5 * 1024 * 1024) {
+		        console.log('6. HATA: Dosya çok büyük');
 		        showNotification('Dosya boyutu 5MB\'dan büyük olamaz!', 'error');
 		        return;
 		    }
 		    
+		    console.log('7. Dosya boyutu OK');
+		    
 		    // iOS için FileReader uyumluluğu kontrolü
 		    if (!window.FileReader) {
+		        console.log('8. HATA: FileReader desteklenmiyor');
 		        showNotification('Bu tarayıcı dosya yüklemeyi desteklemiyor', 'error');
 		        return;
 		    }
 		    
+		    console.log('9. FileReader OK');
+		    console.log('10. callState:', callState);
+		    console.log('11. lastCallInfo:', lastCallInfo);
+		    console.log('12. userInfo:', userInfo);
+		    
 		    const transferId = `transfer_${Date.now()}_${++transferIdCounter}`;
+		    console.log('13. transferId:', transferId);
 		    
 		    // Hedef bilgilerini belirle
 		    let targetId, targetType, fromName, userId, adminId;
 		    
 		    if (typeof userInfo !== 'undefined' && userInfo.id) {
-		        // Müşteri tarafında
+		        console.log('14. Müşteri tarafında işlem yapılıyor');
 		        targetId = lastCallInfo?.adminId;
 		        targetType = 'admin';
 		        fromName = userInfo.name;
 		        userId = userInfo.id;
 		        adminId = undefined;
 		    } else if (typeof currentAdmin !== 'undefined' && currentAdmin.username) {
-		        // Admin tarafında
+		        console.log('15. Admin tarafında işlem yapılıyor');
 		        targetId = currentCall?.userId;
 		        targetType = 'customer';
 		        fromName = currentAdmin.username;
@@ -3041,15 +3057,26 @@
 		        adminId = adminUniqueId;
 		    }
 		    
+		    console.log('16. targetId:', targetId);
+		    console.log('17. targetType:', targetType);
+		    console.log('18. fromName:', fromName);
+		    console.log('19. userId:', userId);
+		    
 		    if (!targetId) {
+		        console.log('20. HATA: targetId bulunamadı!');
 		        showNotification('Aktif görüşme bulunamadı!', 'error');
 		        return;
 		    }
 		    
+		    console.log('21. targetId OK');
+		    console.log('22. socket var mı:', !!socket);
+		    console.log('23. socket readyState:', socket ? socket.readyState : 'socket yok');
+		    
 		    // Dosya transfer isteği gönder
 		    if (socket && socket.readyState === WebSocket.OPEN) {
+		        console.log('24. Socket bağlantısı OK, mesaj gönderiliyor');
 		        try {
-		            socket.send(JSON.stringify({
+		            const message = {
 		                type: 'file-transfer-request',
 		                transferId: transferId,
 		                fileName: file.name,
@@ -3060,35 +3087,30 @@
 		                from: fromName,
 		                userId: userId,
 		                adminId: adminId
-		            }));
+		            };
 		            
-		            console.log('Dosya transfer isteği gönderildi');
+		            console.log('25. Gönderilecek mesaj:', message);
+		            
+		            socket.send(JSON.stringify(message));
+		            console.log('26. Dosya transfer isteği gönderildi');
 		            
 		            // Dosyayı parçalara böl ve gönder
 		            sendFileInChunks(file, transferId, targetId, targetType);
+		            console.log('27. sendFileInChunks çağrıldı');
 		            
 		        } catch (error) {
-		            console.error('Dosya gönderme hatası:', error);
+		            console.error('28. HATA: Dosya gönderme hatası:', error);
 		            showNotification('Dosya gönderilirken hata oluştu', 'error');
 		        }
+		    } else {
+		        console.log('29. HATA: Socket bağlantısı yok!');
+		        showNotification('WebSocket bağlantısı yok!', 'error');
 		    }
 		    
 		    // Input'u temizle
 		    event.target.value = '';
+		    console.log('30. Input temizlendi');
 		}
-		function handleFileSelection(event) {
-		    console.log('handleFileSelection çağrıldı');
-		    console.log('Event:', event);
-		    console.log('Files:', event.target.files);
-		    
-		    const file = event.target.files[0];
-		    if (!file) {
-		        console.log('Dosya bulunamadı');
-		        return;
-		    }
-		    
-		    console.log('Dosya bulundu:', file.name, file.size);
-		}		
 		function sendFileInChunks(file, transferId, targetId, targetType) {
 		    const chunkSize = 64 * 1024; // 64KB chunks
 		    const totalChunks = Math.ceil(file.size / chunkSize);
@@ -3210,6 +3232,7 @@
     </script>
 </body>
 </html>
+
 
 
 
