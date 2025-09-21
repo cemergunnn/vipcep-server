@@ -1777,8 +1777,10 @@
                     cameras: availableCameras.length,
                     speakers: availableSpeakers.length
                 });
-				}
-
+            } catch (error) {
+                console.error('❌ Cihaz listeleme hatası:', error);
+            }
+        }
         function updateDeviceSelectors() {
             const micSelect = document.getElementById('microphoneSelect');
             const camSelect = document.getElementById('cameraSelect');
