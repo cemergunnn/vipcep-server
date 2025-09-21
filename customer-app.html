@@ -1585,6 +1585,25 @@
                     userInfo.credits = message.credits;
                     updateUserDisplay();
                     break;
+					case 'chat-message':
+					if (callState === 'connected') {
+						addChatMessage(message.from, message.text, false);
+						// Chat paneli kapalıysa bildirim göster
+						if (!isChatOpen) {
+							showNotification(`${message.from}: ${message.text}`, 'info');
+						}
+					}
+					break;
+				case 'admin-screen-sharing-started':
+					if (callState === 'connected') {
+						showNotification('Usta ekranını paylaşıyor', 'info');
+					}
+					break;
+				case 'admin-screen-sharing-stopped':
+					if (callState === 'connected') {
+						showNotification('Ekran paylaşımı durduruldu', 'info');
+					}
+					break;
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
@@ -2226,6 +2245,85 @@
 	    
 	    showNotification(isMicMuted ? "Mikrofon kapatıldı" : "Mikrofon açıldı", "info", 1500);
 	}
+		// Kamerayı aç/kapa
+		async function toggleCamera() {
+			const cameraBtn = document.getElementById('toggleCameraBtn');
+			const localVideo = document.getElementById('localVideoStream');
+			const pipContainer = document.getElementById('pipVideoContainer');
+			
+			if (isCameraOn) {
+				// Kamerayı kapat
+				if (localVideoStream) {
+					localVideoStream.getTracks().forEach(track => track.stop());
+					localVideoStream = null;
+				}
+				
+				if (localVideo) localVideo.srcObject = null;
+				pipContainer.classList.remove('active');
+				
+				// PeerConnection'dan video track'leri kaldır
+				if (peerConnection) {
+					const senders = peerConnection.getSenders();
+					senders.forEach(sender => {
+						if (sender.track && sender.track.kind === 'video') {
+							peerConnection.removeTrack(sender);
+						}
+					});
+				}
+				
+				isCameraOn = false;
+				cameraBtn.classList.remove('active');
+				
+				// Kapalı kamera ikonu
+				cameraBtn.innerHTML = `
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="1" y1="1" x2="23" y2="23"></line>
+						<path d="M21 12.79A17.89 17.89 0 0 0 18.78 10.09C15.54 7.69 8.46 7.69 5.22 10.09A17.89 17.89 0 0 0 3 12.79"></path>
+						<circle cx="12" cy="12" r="3"></circle>
+						<path d="M9 21c0-4.05 2.95-7 7-7"></path>
+					</svg>
+				`;
+				
+				showNotification("Kamera kapatıldı", "info", 1500);
+			} else {
+				try {
+					// Kamerayı aç
+					localVideoStream = await navigator.mediaDevices.getUserMedia({
+						video: { 
+							facingMode: currentCameraFacing,
+							width: { ideal: 1280 },
+							height: { ideal: 720 }
+						}
+					});
+					
+					localVideo.srcObject = localVideoStream;
+					pipContainer.classList.add('active');
+					
+					// PeerConnection'a video track'lerini ekle
+					if (peerConnection) {
+						localVideoStream.getVideoTracks().forEach(track => {
+							peerConnection.addTrack(track, localVideoStream);
+						});
+					}
+					
+					isCameraOn = true;
+					cameraBtn.classList.add('active');
+					
+					// Açık kamera ikonu
+					cameraBtn.innerHTML = `
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
+							<circle cx="12" cy="12" r="3"></circle>
+						</svg>
+					`;
+					
+					showNotification("Kamera açıldı", "success", 1500);
+				} catch (error) {
+					console.error("Kamera açma hatası:", error);
+					showNotification("Kamera açılamadı", "error");
+				}
+			}
+		}	    
         // Kamera değiştir (ön/arka)
         async function switchCamera() {
             if (!isCameraOn) {
@@ -2798,4 +2896,3 @@
     </script>
 </body>
 </html>
-
