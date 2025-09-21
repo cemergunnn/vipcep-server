@@ -1585,15 +1585,21 @@
                     userInfo.credits = message.credits;
                     updateUserDisplay();
                     break;
-					case 'chat-message':
-					if (callState === 'connected') {
-						addChatMessage(message.from, message.text, false);
-						// Chat paneli kapalıysa bildirim göster
-						if (!isChatOpen) {
-							showNotification(`${message.from}: ${message.text}`, 'info');
-						}
-					}
-					break;
+				case 'chat-message':
+				    if (callState === 'connected') {
+				        addChatMessage(message.from, message.text, false);
+				        
+				        // Chat paneli kapalıysa otomatik aç
+				        if (!isChatOpen) {
+				            toggleChat();
+				            // Bildirim sesi çal
+				            const notificationSound = new Audio('notification.mp3');
+				            notificationSound.play().catch(e => console.warn("Ses çalınamadı", e));
+				        }
+				        
+				        showNotification(`${message.from}: ${message.text}`, 'info');
+				    }
+				    break;
 				case 'admin-screen-sharing-started':
 					if (callState === 'connected') {
 						showNotification('Usta ekranını paylaşıyor', 'info');
@@ -1689,29 +1695,51 @@
             }
         }
         
-        // Yeni: İzin modunu göster
-		// İzin modunu göster
-		function showPermissionsModal(adminId) {
-		    if (userInfo.credits <= 0) {
-		        return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
+		// Eski showPermissionsModal fonksiyonunu tamamen kaldırın ve şu fonksiyonla değiştirin:
+		async function makeCall(adminId) {
+		    if (!socket || socket.readyState !== WebSocket.OPEN) {
+		        return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
 		    }
-		    
-		    // Admin bilgisini sakla
+		
 		    const admin = availableAdmins.find(a => a.id === adminId);
 		    if (!admin) {
 		        return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
 		    }
-		    
+		
+		    if (admin.status === 'busy') {
+		         return makeCallbackRequest(adminId);
+		    }
+		
+		    // Admin bilgilerini sakla
 		    lastCallInfo.adminId = admin.id;
 		    lastCallInfo.adminName = admin.name || 'Usta';
 		    lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-		    
-		    // İzin modunu göster
-		    const permissionsModal = document.getElementById('permissionsModal');
-		    if (permissionsModal) {
-		        permissionsModal.classList.remove('hidden');
-		    } else {
-		        console.error("İzin modalı bulunamadı!");
+		
+		    try {
+		        // Hem mikrofon hem kamera izni iste
+		        localStream = await navigator.mediaDevices.getUserMedia({
+		            audio: true,
+		            video: true
+		        });
+		        
+		        // Bağlanma ekranını göster
+		        setState('connecting');
+		        document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
+		        document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
+		        
+		        playSound(ringingSound);
+		        
+		        // Arama isteğini gönder
+		        socket.send(JSON.stringify({ 
+		            type: 'direct-call-request', 
+		            userId: userInfo.id, 
+		            userName: userInfo.name, 
+		            targetAdminId: adminId, 
+		            credits: userInfo.credits 
+		        }));
+		    } catch (error) {
+		        console.error("Medya izni hatası:", error);
+		        showNotification("Mikrofon ve kamera izni gerekli. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
 		    }
 		}
 
@@ -2373,83 +2401,87 @@
             }
         }
         
-        // Ekran paylaşımı aç/kapa
-        async function toggleScreenShare() {
-            const screenShareBtn = document.getElementById('toggleScreenShareBtn');
-            const screenshareContainer = document.getElementById('screenshareContainer');
-            
-            if (isSharingScreen) {
-                // Ekran paylaşımını durdur
-                if (screenStream) {
-                    screenStream.getTracks().forEach(track => track.stop());
-                    screenStream = null;
-                }
-                
-                screenshareContainer.classList.remove('active');
-                
-                if (screenShareBtn) {
-                    screenShareBtn.classList.remove('active');
-                }
-                
-                isSharingScreen = false;
-                showNotification("Ekran paylaşımı durduruldu", "info", 1500);
-                
-                // Sunucuya ekran paylaşımı durduruldu mesajı gönder
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'screen-sharing-stopped',
-                        userId: userInfo.id,
-                        targetId: lastCallInfo.adminId
-                    }));
-                }
-            } else {
-                try {
-                    // Ekran paylaşımı iste
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: true,
-                        audio: false // Genelde ekran paylaşımında ses olmaz
-                    });
-                    
-                    // Ekran paylaşımı stream'ini göster
-                    const screenVideoEl = document.getElementById('screenshareVideo');
-                    screenVideoEl.srcObject = screenStream;
-                    
-                    // Ekran paylaşımı konteynerini göster
-                    screenshareContainer.classList.add('active');
-                    
-                    // Paylaşım durduğunda tetiklenecek event
-                    screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-                        toggleScreenShare();
-                    });
-                    
-                    // PeerConnection'a ekran paylaşımı track'ini ekle
-                    if (peerConnection) {
-                        screenStream.getVideoTracks().forEach(track => {
-                            peerConnection.addTrack(track, screenStream);
-                        });
-                    }
-                    
-                    if (screenShareBtn) {
-                        screenShareBtn.classList.add('active');
-                    }
-                    
-                    isSharingScreen = true;
-                    showNotification("Ekran paylaşımı başlatıldı", "info", 1500);
-                    
-                    // Sunucuya ekran paylaşımı başladı mesajı gönder
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'screen-sharing-started',
-                            userId: userInfo.id,
-                            targetId: lastCallInfo.adminId
-                        }));
-                    }
-                } catch (error) {
-                    console.error("Ekran paylaşımı hatası:", error);
-                    showNotification("Ekran paylaşımı başlatılamadı.", "error");
-                }
-            }
-        }
+		        // Ekran paylaşımı aç/kapa
+		async function toggleScreenShare() {
+		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
+		    const screenshareContainer = document.getElementById('screenshareContainer');
+		    
+		    if (isSharingScreen) {
+		        // Ekran paylaşımını durdur
+		        if (screenStream) {
+		            screenStream.getTracks().forEach(track => track.stop());
+		            screenStream = null;
+		        }
+		        
+		        screenshareContainer.classList.remove('active');
+		        screenShareBtn.classList.remove('active');
+		        isSharingScreen = false;
+		        
+		        // Video track'i kameraya geri döndür
+		        if (localVideoStream && peerConnection) {
+		            const sender = peerConnection.getSenders().find(s => 
+		                s.track && s.track.kind === 'video'
+		            );
+		            if (sender) {
+		                await sender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		            }
+		        }
+		        
+		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
+		        
+		        if (socket && socket.readyState === WebSocket.OPEN) {
+		            socket.send(JSON.stringify({
+		                type: 'screen-sharing-stopped',
+		                userId: userInfo.id,
+		                targetId: lastCallInfo.adminId
+		            }));
+		        }
+		    } else {
+		        try {
+		            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+		                video: true,
+		                audio: true
+		            });
+		            
+		            const screenVideo = document.getElementById('screenshareVideo');
+		            screenVideo.srcObject = screenStream;
+		            screenshareContainer.classList.add('active');
+		            
+		            // Video track'i değiştir
+		            if (peerConnection) {
+		                const sender = peerConnection.getSenders().find(s => 
+		                    s.track && s.track.kind === 'video'
+		                );
+		                
+		                if (sender) {
+		                    await sender.replaceTrack(screenStream.getVideoTracks()[0]);
+		                } else {
+		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
+		                }
+		            }
+		            
+		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+		                toggleScreenShare();
+		            });
+		            
+		            screenShareBtn.classList.add('active');
+		            isSharingScreen = true;
+		            
+		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
+		            
+		            if (socket && socket.readyState === WebSocket.OPEN) {
+		                socket.send(JSON.stringify({
+		                    type: 'screen-sharing-started',
+		                    userId: userInfo.id,
+		                    targetId: lastCallInfo.adminId
+		                }));
+		            }
+		        } catch (error) {
+		            console.error("Ekran paylaşımı hatası:", error);
+		            showNotification("Ekran paylaşımı başlatılamadı", "error");
+		        }
+		    }
+		}
         
         // Sohbeti aç/kapa
         function toggleChat() {
@@ -2896,3 +2928,4 @@
     </script>
 </body>
 </html>
+
