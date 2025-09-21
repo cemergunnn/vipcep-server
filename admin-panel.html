@@ -2603,11 +2603,6 @@
 		    const incomingCallEl = document.getElementById('incomingCall');
 		    if (incomingCallEl) incomingCallEl.classList.add('hidden');
 		    
-		    // *** VIDEO OVERLAY'I AÇ ***
-		    isVideoCall = true;
-		    document.getElementById('callOverlay').classList.remove('hidden');
-		    document.getElementById('currentCustomerName').textContent = `${incomingCallInfo.userName} ile Video Görüşme`;
-		    
 		    if (socket && socket.readyState === WebSocket.OPEN) {
 		        socket.send(JSON.stringify({ 
 		            type: 'accept-incoming-call', 
@@ -2618,13 +2613,18 @@
 		    
 		    currentCall = incomingCallInfo;
 		    incomingCallInfo = null;
-		    callState = 'connecting';
+		    callState = 'connected'; // *** connecting değil connected yap ***
 		    updateAdminStatus('busy');
+		    
+		    // *** VIDEO OVERLAY'I AÇ ***
+		    isVideoCall = true;
+		    document.getElementById('callOverlay').classList.remove('hidden');
+		    document.getElementById('currentCustomerName').textContent = `${currentCall.userName} ile Video Görüşme`;
 		    
 		    // WebRTC bağlantısını kur
 		    await setupPeerConnection(currentCall, false);
 		    
-		    console.log('🔗 Admin kabul etti, video overlay açıldı');
+		    console.log('🔗 Admin kabul etti, video overlay açık kalmalı');
 		}
 
         function rejectIncomingCall() {
@@ -3250,6 +3250,7 @@
     </script>
 </body>
 </html>
+
 
 
 
