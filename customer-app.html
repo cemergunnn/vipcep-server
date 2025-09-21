@@ -1685,15 +1685,18 @@
 				    handleIncomingFileChunk(message);
 				    break;
 				case 'admin-screen-sharing-started':
-					if (callState === 'connected') {
-						showNotification('Usta ekranını paylaşıyor', 'info');
-					}
-					break;
+				    if (callState === 'connected') {
+				        showNotification('Usta ekranını paylaşmaya başladı', 'info');
+				        document.getElementById('screenshareContainer')?.classList.add('active');
+				    }
+				    break;
+				
 				case 'admin-screen-sharing-stopped':
-					if (callState === 'connected') {
-						showNotification('Ekran paylaşımı durduruldu', 'info');
-					}
-					break;
+				    if (callState === 'connected') {
+				        showNotification('Usta ekran paylaşımını durdurdu', 'info');
+				        document.getElementById('screenshareContainer')?.classList.remove('active');
+				    }
+				    break;
                 case 'offer':
                 case 'answer':
                 case 'ice-candidate':
@@ -3232,6 +3235,7 @@
     </script>
 </body>
 </html>
+
 
 
 
