@@ -1480,6 +1480,7 @@
 		    // İzin modalı butonları
 		    const grantPermissionsBtn = document.getElementById('grantPermissionsBtn');
 		    const cancelPermissionsBtn = document.getElementById('cancelPermissionsBtn');
+
 		    
 		    if (grantPermissionsBtn) {
 		        grantPermissionsBtn.addEventListener('click', requestMediaPermissions);
@@ -1499,7 +1500,12 @@
             
             // Sohbet butonları
             document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
-            
+			// Dosya transfer butonları
+			document.getElementById('fileBtn')?.addEventListener('click', () => {
+			    document.getElementById('fileInput').click();
+			});
+			
+			document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
             // Enter ile mesaj gönderme
             document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') {
@@ -1666,6 +1672,13 @@
 				        
 				        showNotification(`${message.from}: ${message.text}`, 'info');
 				    }
+				    break;
+				case 'file-transfer-request':
+				    handleIncomingFileRequest(message);
+				    break;
+				
+				case 'file-chunk':
+				    handleIncomingFileChunk(message);
 				    break;
 				case 'admin-screen-sharing-started':
 					if (callState === 'connected') {
@@ -2980,9 +2993,163 @@
                 }, 400); // CSS transition süresiyle (0.4s) aynı olmalı
             }, duration - 400); // Toplam süreden transition süresi kadar önce solmaya başla
         }
+		// Dosya transfer değişkenleri
+		let activeTransfers = new Map();
+		let transferIdCounter = 0;
+		
+		function handleFileSelection(event) {
+		    const file = event.target.files[0];
+		    if (!file) return;
+		    
+		    // Dosya boyutu kontrolü (5MB limit)
+		    if (file.size > 5 * 1024 * 1024) {
+		        showNotification('Dosya boyutu 5MB\'dan büyük olamaz!', 'error');
+		        return;
+		    }
+		    
+		    const transferId = `transfer_${Date.now()}_${++transferIdCounter}`;
+		    const targetId = lastCallInfo?.adminId || currentCall?.userId; // müşteri için adminId, admin için userId
+		    const targetType = userInfo ? 'admin' : 'customer'; // userInfo varsa müşteri, yoksa admin
+		    
+		    if (!targetId) {
+		        showNotification('Aktif görüşme bulunamadı!', 'error');
+		        return;
+		    }
+		    
+		    // Dosya transfer isteği gönder
+		    if (socket && socket.readyState === WebSocket.OPEN) {
+		        socket.send(JSON.stringify({
+		            type: 'file-transfer-request',
+		            transferId: transferId,
+		            fileName: file.name,
+		            fileSize: file.size,
+		            fileType: file.type,
+		            targetId: targetId,
+		            targetType: targetType,
+		            from: userInfo?.name || currentAdmin?.username,
+		            userId: userInfo?.id,
+		            adminId: adminUniqueId
+		        }));
+		        
+		        // Dosyayı parçalara böl ve gönder
+		        sendFileInChunks(file, transferId, targetId, targetType);
+		    }
+		    
+		    // Input'u temizle
+		    event.target.value = '';
+		}
+		
+		function sendFileInChunks(file, transferId, targetId, targetType) {
+		    const chunkSize = 64 * 1024; // 64KB chunks
+		    const totalChunks = Math.ceil(file.size / chunkSize);
+		    let chunkIndex = 0;
+		    
+		    const reader = new FileReader();
+		    
+		    reader.onload = function(e) {
+		        const chunk = btoa(e.target.result); // Base64 encode
+		        
+		        if (socket && socket.readyState === WebSocket.OPEN) {
+		            socket.send(JSON.stringify({
+		                type: 'file-chunk',
+		                transferId: transferId,
+		                chunk: chunk,
+		                chunkIndex: chunkIndex,
+		                totalChunks: totalChunks,
+		                targetId: targetId,
+		                targetType: targetType
+		            }));
+		        }
+		        
+		        chunkIndex++;
+		        if (chunkIndex < totalChunks) {
+		            // Sonraki chunk'ı oku
+		            const start = chunkIndex * chunkSize;
+		            const end = Math.min(start + chunkSize, file.size);
+		            const blob = file.slice(start, end);
+		            reader.readAsBinaryString(blob);
+		        } else {
+		            showNotification(`${file.name} gönderildi`, 'success');
+		        }
+		    };
+		    
+		    // İlk chunk'ı başlat
+		    const blob = file.slice(0, chunkSize);
+		    reader.readAsBinaryString(blob);
+		}
+		function handleIncomingFileRequest(message) {
+		    const { transferId, fileName, fileSize, from } = message;
+		    
+		    // Transfer'ı başlat
+		    activeTransfers.set(transferId, {
+		        fileName: fileName,
+		        fileSize: fileSize,
+		        from: from,
+		        chunks: [],
+		        receivedChunks: 0,
+		        totalChunks: 0
+		    });
+		    
+		    addFileMessage(from, fileName, fileSize, 'receiving');
+		    showNotification(`${from} size ${fileName} dosyasını gönderiyor`, 'info');
+		}
+		
+		function handleIncomingFileChunk(message) {
+		    const { transferId, chunk, chunkIndex, totalChunks } = message;
+		    const transfer = activeTransfers.get(transferId);
+		    
+		    if (!transfer) return;
+		    
+		    transfer.chunks[chunkIndex] = chunk;
+		    transfer.receivedChunks++;
+		    transfer.totalChunks = totalChunks;
+		    
+		    // Tüm chunk'lar alındı mı?
+		    if (transfer.receivedChunks === totalChunks) {
+		        // Dosyayı birleştir
+		        const binaryString = transfer.chunks.map(c => atob(c)).join('');
+		        const bytes = new Uint8Array(binaryString.length);
+		        for (let i = 0; i < binaryString.length; i++) {
+		            bytes[i] = binaryString.charCodeAt(i);
+		        }
+		        
+		        // Dosyayı indir
+		        const blob = new Blob([bytes]);
+		        const url = URL.createObjectURL(blob);
+		        const a = document.createElement('a');
+		        a.href = url;
+		        a.download = transfer.fileName;
+		        a.click();
+		        
+		        URL.revokeObjectURL(url);
+		        activeTransfers.delete(transferId);
+		        
+		        showNotification(`${transfer.fileName} indirildi`, 'success');
+		    }
+		}
+		
+		function addFileMessage(from, fileName, fileSize, status) {
+		    const messagesContainer = document.getElementById('chatMessages');
+		    if (!messagesContainer) return;
+		    
+		    const sizeText = (fileSize / 1024).toFixed(1) + ' KB';
+		    const messageEl = document.createElement('div');
+		    messageEl.className = 'message received';
+		    messageEl.innerHTML = `
+		        <div style="font-weight: 600; margin-bottom: 3px;">${from}</div>
+		        <div style="background: #f0f0f0; padding: 8px; border-radius: 6px; border-left: 3px solid #2563eb;">
+		            📎 ${fileName}<br>
+		            <small>${sizeText} • ${status === 'receiving' ? 'Alınıyor...' : 'Gönderildi'}</small>
+		        </div>
+		    `;
+		    
+		    messagesContainer.appendChild(messageEl);
+		    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		}
     </script>
 </body>
 </html>
+
 
 
 
