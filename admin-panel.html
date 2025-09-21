@@ -2142,86 +2142,69 @@
             showNotification(isMicMuted ? "Mikrofon kapatıldı" : "Mikrofon açıldı", "info", 1500);
         }
 
-        async function toggleVideoCamera() {
-            const cameraBtn = document.getElementById('toggleCameraBtn');
-            const localVideo = document.getElementById('localVideoStream');
-            const pipContainer = document.getElementById('pipVideoContainer');
-            
-            if (isCameraOn) {
-                // Kamerayı kapat
-                if (localVideoStream) {
-                    localVideoStream.getTracks().forEach(track => track.stop());
-                    localVideoStream = null;
-                }
-                
-                if (localVideo) localVideo.srcObject = null;
-                pipContainer.classList.remove('active');
-                
-                // PeerConnection'dan video track'leri kaldır
-                if (peerConnection) {
-                    const senders = peerConnection.getSenders();
-                    senders.forEach(sender => {
-                        if (sender.track && sender.track.kind === 'video') {
-                            peerConnection.removeTrack(sender);
-                        }
-                    });
-                }
-                
-                isCameraOn = false;
-                cameraBtn.classList.remove('active');
-                
-                // Kapalı kamera ikonu
-                cameraBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                        <path d="M21 12.79A17.89 17.89 0 0 0 18.78 10.09C15.54 7.69 8.46 7.69 5.22 10.09A17.89 17.89 0 0 0 3 12.79"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M9 21c0-4.05 2.95-7 7-7"></path>
-                    </svg>
-                `;
-                
-                showNotification("Kamera kapatıldı", "info", 1500);
-            } else {
-                try {
-                    // Kamerayı aç
-                    localVideoStream = await navigator.mediaDevices.getUserMedia({
-                        video: { 
-                            deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
-                            facingMode: currentCameraFacing,
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    });
-                    
-                    localVideo.srcObject = localVideoStream;
-                    pipContainer.classList.add('active');
-                    
-                    // PeerConnection'a video track'lerini ekle
-                    if (peerConnection) {
-                        localVideoStream.getVideoTracks().forEach(track => {
-                            peerConnection.addTrack(track, localVideoStream);
-                        });
-                    }
-                    
-                    isCameraOn = true;
-                    cameraBtn.classList.add('active');
-                    
-                    // Açık kamera ikonu
-                    cameraBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                    `;
-                    
-                    showNotification("Kamera açıldı", "success", 1500);
-                } catch (error) {
-                    console.error("Kamera açma hatası:", error);
-                    showNotification("Kamera açılamadı", "error");
-                }
-            }
-        }
-
+		async function toggleVideoCamera() {
+		    const cameraBtn = document.getElementById('toggleCameraBtn');
+		    const localVideo = document.getElementById('localVideoStream');
+		    const pipContainer = document.getElementById('pipVideoContainer');
+		    
+		    if (isCameraOn) {
+		        // Kamerayı kapat
+		        if (localVideoStream) {
+		            localVideoStream.getTracks().forEach(track => track.stop());
+		            localVideoStream = null;
+		        }
+		        
+		        if (localVideo) localVideo.srcObject = null;
+		        pipContainer.classList.remove('active');
+		        
+		        // PeerConnection'dan video track'i kaldır (replaceTrack ile)
+		        if (peerConnection) {
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                await videoSender.replaceTrack(null);
+		            }
+		        }
+		        
+		        isCameraOn = false;
+		        cameraBtn.classList.remove('active');
+		        showNotification("Kamera kapatıldı", "info", 1500);
+		    } else {
+		        try {
+		            // Kamerayı aç
+		            localVideoStream = await navigator.mediaDevices.getUserMedia({
+		                video: { 
+		                    deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+		                    facingMode: currentCameraFacing,
+		                    width: { ideal: 1280 },
+		                    height: { ideal: 720 }
+		                }
+		            });
+		            
+		            localVideo.srcObject = localVideoStream;
+		            pipContainer.classList.add('active');
+		            
+		            // PeerConnection'a video track ekle veya değiştir
+		            if (peerConnection) {
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track === null || (s.track && s.track.kind === 'video'));
+		                
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		                } else {
+		                    peerConnection.addTrack(localVideoStream.getVideoTracks()[0], localVideoStream);
+		                }
+		            }
+		            
+		            isCameraOn = true;
+		            cameraBtn.classList.add('active');
+		            showNotification("Kamera açıldı", "success", 1500);
+		        } catch (error) {
+		            console.error("Kamera açma hatası:", error);
+		            showNotification("Kamera açılamadı", "error");
+		        }
+		    }
+		}
         async function switchCamera() {
             if (!isCameraOn) {
                 currentCameraFacing = currentCameraFacing === 'user' ? 'environment' : 'user';
@@ -2265,95 +2248,89 @@
             }
         }
 
-        async function toggleScreenShare() {
-            const screenShareBtn = document.getElementById('toggleScreenShareBtn');
-            const screenshareContainer = document.getElementById('screenshareContainer');
-            const pipContainer = document.getElementById('pipVideoContainer');
-            
-            if (isSharingScreen) {
-                // Ekran paylaşımını durdur
-                if (screenStream) {
-                    screenStream.getTracks().forEach(track => track.stop());
-                    screenStream = null;
-                }
-                
-                screenshareContainer.classList.remove('active');
-                
-                // Eğer kamera açıksa pip container'ı gizle, değilse göster
-                if (isCameraOn) {
-                    pipContainer.classList.add('active');
-                }
-                
-                screenShareBtn.classList.remove('active');
-                isSharingScreen = false;
-                
-                showNotification("Ekran paylaşımı durduruldu", "info", 1500);
-                
-                // Sunucuya bildirim gönder
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'admin-screen-sharing-stopped',
-                        adminId: adminUniqueId,
-                        targetId: currentCall?.userId
-                    }));
-                }
-            } else {
-                try {
-                    // Ekran paylaşımı başlat
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: true,
-                        audio: false
-                    });
-                    
-                    const screenVideo = document.getElementById('screenshareVideo');
-                    screenVideo.srcObject = screenStream;
-                    
-                    screenshareContainer.classList.add('active');
-                    
-                    // Kamera varsa pip'e taşı
-                    if (isCameraOn) {
-                        pipContainer.classList.add('active');
-                    }
-                    
-                    // Paylaşım durduğunda tetiklenecek event
-                    screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-                        toggleScreenShare();
-                    });
-                    
-					if (peerConnection) {
-						// Önce mevcut video track'leri kaldır
-						const senders = peerConnection.getSenders();
-						const videoSender = senders.find(sender => 
-							sender.track && sender.track.kind === 'video'
-						);
-						
-						if (videoSender && videoSender.track !== screenStream.getVideoTracks()[0]) {
-							videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
-						} else {
-							screenStream.getVideoTracks().forEach(track => {
-								peerConnection.addTrack(track, screenStream);
-							});
-						}
-					}
-                    screenShareBtn.classList.add('active');
-                    isSharingScreen = true;
-                    
-                    showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
-                    
-                    // Sunucuya bildirim gönder
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({
-                            type: 'admin-screen-sharing-started',
-                            adminId: adminUniqueId,
-                            targetId: currentCall?.userId
-                        }));
-                    }
-                } catch (error) {
-                    console.error("Ekran paylaşımı hatası:", error);
-                    showNotification("Ekran paylaşımı başlatılamadı", "error");
-                }
-            }
-        }
+		async function toggleScreenShare() {
+		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
+		    const screenshareContainer = document.getElementById('screenshareContainer');
+		    
+		    if (isSharingScreen) {
+		        // Ekran paylaşımını durdur
+		        if (screenStream) {
+		            screenStream.getTracks().forEach(track => track.stop());
+		            screenStream = null;
+		        }
+		        
+		        screenshareContainer.classList.remove('active');
+		        screenShareBtn.classList.remove('active');
+		        isSharingScreen = false;
+		        
+		        // Kameraya geri dön
+		        if (peerConnection && localVideoStream && isCameraOn) {
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		            }
+		        }
+		        
+		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
+		        
+		        // Sunucuya bildirim gönder
+		        if (socket && socket.readyState === WebSocket.OPEN) {
+		            socket.send(JSON.stringify({
+		                type: 'screen-sharing-stopped',
+		                userId: userInfo.id, // müşteri için
+		                targetId: lastCallInfo.adminId
+		            }));
+		        }
+		    } else {
+		        try {
+		            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+		                video: true,
+		                audio: true
+		            });
+		            
+		            const screenVideo = document.getElementById('screenshareVideo');
+		            screenVideo.srcObject = screenStream;
+		            screenshareContainer.classList.add('active');
+		            
+		            // Video track'i değiştir ve renegotiate et
+		            if (peerConnection) {
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		                
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+		                } else {
+		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
+		                }
+		                
+		                // Renegotiation başlat
+		                const offer = await peerConnection.createOffer();
+		                await peerConnection.setLocalDescription(offer);
+		                
+		                if (socket && socket.readyState === WebSocket.OPEN) {
+		                    socket.send(JSON.stringify({
+		                        type: 'offer',
+		                        offer: offer,
+		                        targetId: lastCallInfo.adminId // müşteri için
+		                    }));
+		                }
+		            }
+		            
+		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+		                toggleScreenShare();
+		            });
+		            
+		            screenShareBtn.classList.add('active');
+		            isSharingScreen = true;
+		            
+		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
+		        } catch (error) {
+		            console.error("Ekran paylaşımı hatası:", error);
+		            showNotification("Ekran paylaşımı başlatılamadı", "error");
+		        }
+		    }
+		}
 
 		function toggleChat() {
 			const chatPanel = document.getElementById('chatPanel');
@@ -2377,26 +2354,26 @@
 			}
 		}
 
-        function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            if (!input || !input.value.trim()) return;
-            
-            const message = input.value.trim();
-            input.value = '';
-            
-            addChatMessage(currentAdmin.username, message, true);
-            
-            if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
-                socket.send(JSON.stringify({
-                    type: 'chat-message',
-                    from: currentAdmin.username,
-                    text: message,
-                    targetId: currentCall.userId,
-                    adminId: adminUniqueId,
-					targetType: 'customer'
-                }));
-            }
-        }
+		function sendChatMessage() {
+		    const input = document.getElementById('chatInput');
+		    if (!input || !input.value.trim()) return;
+		    
+		    const message = input.value.trim();
+		    input.value = '';
+		    
+		    addChatMessage(currentAdmin.username, message, true);
+		    
+		    if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		        socket.send(JSON.stringify({
+		            type: 'chat-message',
+		            from: currentAdmin.username,
+		            text: message,
+		            targetId: currentCall.userId,
+		            adminId: adminUniqueId,
+		            targetType: 'customer'
+		        }));
+		    }
+		}
 
         function addChatMessage(from, text, isSent) {
             const messagesContainer = document.getElementById('chatMessages');
@@ -2619,34 +2596,36 @@
             resetCallState();
         }
 
-        async function acceptIncomingCall() {
-            if (!incomingCallInfo) return;
-            console.log('✅ Gelen arama kabul edildi:', incomingCallInfo.userName);
-            
-            const incomingCallEl = document.getElementById('incomingCall');
-            if (incomingCallEl) incomingCallEl.classList.add('hidden');
-            
-            const connectingCard = `
-                <div id="tempConnectingCard" class="call-status-card outgoing-call" style="animation: none; background: linear-gradient(135deg, #f59e0b, #d97706);">
-                    <div class="call-status-title">BAĞLANTI BEKLENİYOR</div>
-                    <div class="call-status-details">
-                        <p style="opacity: 0.9;">Müşteri ile sesli bağlantı kuruluyor...</p>
-                        <p style="font-size: 18px; font-weight: 600; margin-top: 10px;">${incomingCallInfo.userName}</p>
-                    </div>
-                </div>
-            `;
-            document.querySelector('.call-management-panel').insertAdjacentHTML('beforeend', connectingCard);
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({ type: 'accept-incoming-call', adminId: adminUniqueId || currentAdmin.username, userId: incomingCallInfo.userId }));
-            }
-            
-            currentCall = incomingCallInfo;
-            incomingCallInfo = null;
-            callState = 'connecting';
-            updateAdminStatus('busy');
-            console.log('🔗 Admin kabul etti, müşteriden WebRTC offer bekleniyor...');
-        }
+		async function acceptIncomingCall() {
+		    if (!incomingCallInfo) return;
+		    console.log('✅ Gelen arama kabul edildi:', incomingCallInfo.userName);
+		    
+		    const incomingCallEl = document.getElementById('incomingCall');
+		    if (incomingCallEl) incomingCallEl.classList.add('hidden');
+		    
+		    // *** VIDEO OVERLAY'I AÇ ***
+		    isVideoCall = true;
+		    document.getElementById('callOverlay').classList.remove('hidden');
+		    document.getElementById('currentCustomerName').textContent = `${incomingCallInfo.userName} ile Video Görüşme`;
+		    
+		    if (socket && socket.readyState === WebSocket.OPEN) {
+		        socket.send(JSON.stringify({ 
+		            type: 'accept-incoming-call', 
+		            adminId: adminUniqueId || currentAdmin.username, 
+		            userId: incomingCallInfo.userId 
+		        }));
+		    }
+		    
+		    currentCall = incomingCallInfo;
+		    incomingCallInfo = null;
+		    callState = 'connecting';
+		    updateAdminStatus('busy');
+		    
+		    // WebRTC bağlantısını kur
+		    await setupPeerConnection(currentCall, false);
+		    
+		    console.log('🔗 Admin kabul etti, video overlay açıldı');
+		}
 
         function rejectIncomingCall() {
             if (!incomingCallInfo) return;
@@ -3271,6 +3250,7 @@
     </script>
 </body>
 </html>
+
 
 
 
