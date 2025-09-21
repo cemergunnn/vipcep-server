@@ -1657,17 +1657,35 @@
         }
 
         // Cihaz Yönetimi
-        async function loadAvailableDevices() {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                
-                availableMicrophones = devices.filter(device => device.kind === 'audioinput');
-                availableCameras = devices.filter(device => device.kind === 'videoinput');
-                availableSpeakers = devices.filter(device => device.kind === 'audiooutput');
+		async function loadAvailableDevices() {
+			try {
+				const devices = await navigator.mediaDevices.enumerateDevices();
+				
+				availableMicrophones = devices.filter(device => device.kind === 'audioinput');
+				availableCameras = devices.filter(device => device.kind === 'videoinput');
+				availableSpeakers = devices.filter(device => device.kind === 'audiooutput');
 
-                // Varsayılan cihazları seç
-                if (availableMicrophones.length > 0) {
-                    selectedMicrophoneId = availableMicrophones[0].deviceId;
+				// Varsayılan cihazları seç
+				if (availableMicrophones.length > 0) {
+					selectedMicrophoneId = availableMicrophones[0].deviceId;
+				}
+				if (availableCameras.length > 0) {
+					selectedCameraId = availableCameras[0].deviceId;
+				}
+				if (availableSpeakers.length > 0) {
+					selectedSpeakerId = availableSpeakers[0].deviceId;
+				}
+
+				updateDeviceSelectors();
+				console.log('📱 Cihazlar yüklendi:', {
+					microphones: availableMicrophones.length,
+					cameras: availableCameras.length,
+					speakers: availableSpeakers.length
+				});
+			} catch (error) {
+				console.error('❌ Cihaz listeleme hatası:', error);
+			}
+		}
 					// Event Listener Setup
         function setupEventListeners() {
             const volumeSlider = document.getElementById('volumeSlider');
