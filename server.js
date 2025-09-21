@@ -1482,6 +1482,27 @@ wss.on('connection', (ws, req) => {
                         }
                     }
                     break;
+                case 'screen-sharing-started':
+                    // Admin ekran paylaşımını başlattı, müşteriye bildir
+                    const targetCustomer = connectedUsers.find(u => u.id === message.targetId && u.userType === 'customer');
+                    if (targetCustomer && targetCustomer.ws && targetCustomer.ws.readyState === WebSocket.OPEN) {
+                        targetCustomer.ws.send(JSON.stringify({
+                            type: 'admin-screen-sharing-started',
+                            adminId: message.adminId || message.userId
+                        }));
+                    }
+                    break;
+                
+                case 'screen-sharing-stopped':
+                    // Admin ekran paylaşımını durdurdu, müşteriye bildir
+                    const targetCustomer2 = connectedUsers.find(u => u.id === message.targetId && u.userType === 'customer');
+                    if (targetCustomer2 && targetCustomer2.ws && targetCustomer2.ws.readyState === WebSocket.OPEN) {
+                        targetCustomer2.ws.send(JSON.stringify({
+                            type: 'admin-screen-sharing-stopped',
+                            adminId: message.adminId || message.userId
+                        }));
+                    }
+                    break;
                     
                     // --- KOPYALAMAYI BURADA BİTİRİN ---
                 
@@ -1751,6 +1772,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
