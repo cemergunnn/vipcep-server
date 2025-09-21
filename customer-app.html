@@ -1076,6 +1076,12 @@
                 height: 55px;
             }
         }
+		.pip-video {
+		    width: 100%;
+		    height: 100%;
+		    object-fit: cover;
+		    transform: scaleX(-1); /* Ayna etkisi - opsiyonel */
+		}
     </style>
 </head>
 <body>
@@ -2108,35 +2114,38 @@
         }
         
         // Uzak trackler için handler
-        function handleRemoteTrack(event) {
-            console.log("Uzak track alındı:", event.track.kind);
-            
-            if (event.track.kind === 'audio') {
-                // Ses trackini remoteAudio elementine bağla
-                const remoteAudio = document.getElementById('remoteAudio');
-                if (!remoteStream) {
-                    remoteStream = new MediaStream();
-                }
-                remoteStream.addTrack(event.track);
-                remoteAudio.srcObject = remoteStream;
-            } else if (event.track.kind === 'video') {
-                // Video trackini remoteVideo elementine bağla
-                const remoteVideo = document.getElementById('remoteVideoStream');
-                
-                if (event.streams && event.streams[0]) {
-                    remoteVideo.srcObject = event.streams[0];
-                    
-                    // Ekran paylaşımı mı yoksa kamera mı kontrol et
-                    event.track.onended = () => {
-                        console.log("Uzak video track sonlandı");
-                        if (remoteVideo.srcObject) {
-                            remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-                            remoteVideo.srcObject = null;
-                        }
-                    };
-                }
-            }
-        }
+		function handleRemoteTrack(event) {
+		    console.log("Uzak track alındı:", event.track.kind);
+		    
+		    if (event.track.kind === 'audio') {
+		        // Ses trackini remoteAudio elementine bağla
+		        const remoteAudio = document.getElementById('remoteAudio');
+		        if (!remoteStream) {
+		            remoteStream = new MediaStream();
+		        }
+		        remoteStream.addTrack(event.track);
+		        remoteAudio.srcObject = remoteStream;
+		    } else if (event.track.kind === 'video') {
+		        // Video trackini remoteVideo elementine bağla
+		        const remoteVideo = document.getElementById('remoteVideoStream');
+		        
+		        if (event.streams && event.streams[0]) {
+		            remoteVideo.srcObject = event.streams[0];
+		            
+		            // *** Video geldiğinde fullscreen view'e geç ***
+		            document.getElementById('connectingStateView').classList.add('hidden');
+		            document.getElementById('fullscreenCallView').classList.remove('hidden');
+		            
+		            event.track.onended = () => {
+		                console.log("Uzak video track sonlandı");
+		                if (remoteVideo.srcObject) {
+		                    remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+		                    remoteVideo.srcObject = null;
+		                }
+		            };
+		        }
+		    }
+		}
 
         async function handleWebRTCMessage(message) {
             try {
@@ -2288,45 +2297,45 @@
             }
         }
         
-	// Mikrofonu aç/kapa
-	function toggleMicrophone() {
-	    if (!localStream) return;
-	    
-	    const audioTrack = localStream.getAudioTracks()[0];
-	    if (!audioTrack) return;
-	    
-	    isMicMuted = !isMicMuted;
-	    audioTrack.enabled = !isMicMuted;
-	    
-	    const micBtn = document.getElementById('toggleMicBtn');
-	    if (micBtn) {
-	        micBtn.classList.toggle('active', !isMicMuted);
-	        
-	        // İkon değişikliği
-	        if (isMicMuted) {
-	            micBtn.innerHTML = `
-	                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-	                    <line x1="1" y1="1" x2="23" y2="23"></line>
-	                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
-	                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
-	                    <line x1="12" y1="19" x2="12" y2="23"></line>
-	                    <line x1="8" y1="23" x2="16" y2="23"></line>
-	                </svg>
-	            `;
-	        } else {
-	            micBtn.innerHTML = `
-	                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-	                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-	                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-	                    <line x1="12" y1="19" x2="12" y2="23"></line>
-	                    <line x1="8" y1="23" x2="16" y2="23"></line>
-	                </svg>
-	            `;
-	        }
-	    }
-	    
-	    showNotification(isMicMuted ? "Mikrofon kapatıldı" : "Mikrofon açıldı", "info", 1500);
-	}
+		// Mikrofonu aç/kapa
+		function toggleMicrophone() {
+		    if (!localStream) return;
+		    
+		    const audioTrack = localStream.getAudioTracks()[0];
+		    if (!audioTrack) return;
+		    
+		    isMicMuted = !isMicMuted;
+		    audioTrack.enabled = !isMicMuted;
+		    
+		    const micBtn = document.getElementById('toggleMicBtn');
+		    if (micBtn) {
+		        micBtn.classList.toggle('active', !isMicMuted);
+		        
+		        // İkon değişikliği
+		        if (isMicMuted) {
+		            micBtn.innerHTML = `
+		                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		                    <line x1="1" y1="1" x2="23" y2="23"></line>
+		                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+		                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+		                    <line x1="12" y1="19" x2="12" y2="23"></line>
+		                    <line x1="8" y1="23" x2="16" y2="23"></line>
+		                </svg>
+		            `;
+		        } else {
+		            micBtn.innerHTML = `
+		                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+		                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+		                    <line x1="12" y1="19" x2="12" y2="23"></line>
+		                    <line x1="8" y1="23" x2="16" y2="23"></line>
+		                </svg>
+		            `;
+		        }
+		    }
+		    
+		    showNotification(isMicMuted ? "Mikrofon kapatıldı" : "Mikrofon açıldı", "info", 1500);
+		}
 		// Kamerayı aç/kapa
 		async function toggleCamera() {
 		    const cameraBtn = document.getElementById('toggleCameraBtn');
@@ -2390,6 +2399,15 @@
 		            localVideo.srcObject = localVideoStream;
 		            pipContainer.classList.add('active');
 		            
+		            // Video yüklendiğinde kontrol et
+		            localVideo.onloadedmetadata = () => {
+		                console.log("Local video metadata yüklendi");
+		                localVideo.play().catch(e => console.error("Local video play hatası:", e));
+		            };
+		
+		            // Hemen play dene
+		            localVideo.play().catch(e => console.error("Immediate local video play hatası:", e));
+		            
 		            // PeerConnection'a video track'lerini ekle ve yeniden müzakere et
 		            if (peerConnection) {
 		                localVideoStream.getVideoTracks().forEach(track => {
@@ -2438,6 +2456,15 @@
 		                    localVideo.srcObject = localVideoStream;
 		                    pipContainer.classList.add('active');
 		                    
+		                    // Video yüklendiğinde kontrol et
+		                    localVideo.onloadedmetadata = () => {
+		                        console.log("Local video metadata yüklendi (fallback)");
+		                        localVideo.play().catch(e => console.error("Local video play hatası (fallback):", e));
+		                    };
+		
+		                    // Hemen play dene
+		                    localVideo.play().catch(e => console.error("Immediate local video play hatası (fallback):", e));
+		                    
 		                    if (peerConnection) {
 		                        localVideoStream.getVideoTracks().forEach(track => {
 		                            peerConnection.addTrack(track, localVideoStream);
@@ -2446,6 +2473,15 @@
 		                    
 		                    isCameraOn = true;
 		                    cameraBtn.classList.add('active');
+		                    
+		                    // Açık kamera ikonu
+		                    cameraBtn.innerHTML = `
+		                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		                            <rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
+		                            <circle cx="12" cy="12" r="3"></circle>
+		                        </svg>
+		                    `;
+		                    
 		                    showNotification("Kamera açıldı (düşük kalite)", "success", 1500);
 		                } catch (fallbackError) {
 		                    console.error("Düşük kalite kamera hatası:", fallbackError);
@@ -2623,6 +2659,7 @@
                     text: message,
                     targetId: lastCallInfo.adminId,
                     userId: userInfo.id
+					targetType: 'admin' 
                 }));
             }
         }
@@ -3033,6 +3070,7 @@
     </script>
 </body>
 </html>
+
 
 
 
