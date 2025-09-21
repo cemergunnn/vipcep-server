@@ -1598,6 +1598,12 @@
             document.getElementById('endCallBtn')?.addEventListener('click', () => endVideoCall());
             document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
             document.getElementById('closeChatBtn')?.addEventListener('click', toggleChat);
+			// Dosya transfer butonları
+			document.getElementById('fileBtn')?.addEventListener('click', () => {
+			    document.getElementById('fileInput').click();
+			});
+			
+			document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
             
             // Sohbet mesaj gönderme
             document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
@@ -1688,171 +1694,6 @@
 				console.error('❌ Cihaz listeleme hatası:', error);
 			}
 		}
-					// Event Listener Setup
-        function setupEventListeners() {
-            const volumeSlider = document.getElementById('volumeSlider');
-            if (volumeSlider) {
-                volumeSlider.addEventListener('input', (e) => {
-                    const volume = e.target.value;
-                    document.getElementById('volumeValue').textContent = volume + '%';
-                    
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (speakerEnabled && remoteAudio) {
-                        remoteAudio.volume = volume / 100;
-                    }
-                });
-            }
-
-            // Video arama kontrolleri
-            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleVideoMicrophone);
-            document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleVideoCamera);
-            document.getElementById('toggleScreenShareBtn')?.addEventListener('click', toggleScreenShare);
-            document.getElementById('toggleChatBtn')?.addEventListener('click', toggleChat);
-            document.getElementById('endCallBtn')?.addEventListener('click', () => endVideoCall());
-            document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
-            document.getElementById('closeChatBtn')?.addEventListener('click', toggleChat);
-            
-            // Sohbet mesaj gönderme
-            document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
-            document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    sendChatMessage();
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    switch (e.key) {
-                        case 'r': e.preventDefault(); refreshData(); break;
-                        case 'e': e.preventDefault(); if (currentCall) endCall(); break;
-                        case 'm': e.preventDefault(); if (currentCall) muteCall(); break;
-                    }
-                }
-                
-                if (e.key === 'Escape') {
-                    if (outgoingCallInfo) cancelOutgoingCall();
-                    else if (incomingCallInfo) rejectIncomingCall();
-                    else if (currentCall && confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) endCall();
-                    
-                    if (!document.getElementById('profileModal').classList.contains('hidden')) {
-                        closeProfileModal();
-                    }
-                    if (!document.getElementById('settingsModal').classList.contains('hidden')) {
-                        closeSettingsModal();
-                    }
-                }
-            });
-            
-            document.body.addEventListener('click', () => {
-                if (!isMediaAudioUnlocked) {
-                    const mediaAudio = document.getElementById('mediaSessionAudio');
-                    if (mediaAudio) {
-                        mediaAudio.play().then(() => {
-                            mediaAudio.pause();
-                            isMediaAudioUnlocked = true;
-                            console.log('🎧 Medya oturumu için ses kilidi kullanıcı etkileşimiyle açıldı.');
-                        }).catch(e => {
-                           console.warn('Ses kilidi açılamadı, tarayıcı engelliyor olabilir.', e);
-                        });
-                    }
-                }
-            }, { once: true });
-
-            document.getElementById('profileModal').addEventListener('click', (e) => {
-                if (e.target.id === 'profileModal') {
-                    closeProfileModal();
-                }
-            });
-
-            document.getElementById('settingsModal').addEventListener('click', (e) => {
-                if (e.target.id === 'settingsModal') {
-                    closeSettingsModal();
-                }
-            });
-        }
-
-        // Cihaz Yönetimi
-		async function loadAvailableDevices() {
-			try {
-				const devices = await navigator.mediaDevices.enumerateDevices();
-				
-				availableMicrophones = devices.filter(device => device.kind === 'audioinput');
-				availableCameras = devices.filter(device => device.kind === 'videoinput');
-				availableSpeakers = devices.filter(device => device.kind === 'audiooutput');
-
-				// Varsayılan cihazları seç
-				if (availableMicrophones.length > 0) {
-					selectedMicrophoneId = availableMicrophones[0].deviceId;
-				}
-				if (availableCameras.length > 0) {
-					selectedCameraId = availableCameras[0].deviceId;
-				}
-				if (availableSpeakers.length > 0) {
-					selectedSpeakerId = availableSpeakers[0].deviceId;
-				}
-
-				updateDeviceSelectors();
-				console.log('📱 Cihazlar yüklendi:', {
-					microphones: availableMicrophones.length,
-					cameras: availableCameras.length,
-					speakers: availableSpeakers.length
-				});
-			} catch (error) {
-				console.error('❌ Cihaz listeleme hatası:', error);
-			}
-		}
-        function updateDeviceSelectors() {
-            const micSelect = document.getElementById('microphoneSelect');
-            const camSelect = document.getElementById('cameraSelect');
-            const speakerSelect = document.getElementById('speakerSelect');
-
-            if (micSelect) {
-                micSelect.innerHTML = availableMicrophones.map(device => 
-                    `<option value="${device.deviceId}" ${device.deviceId === selectedMicrophoneId ? 'selected' : ''}>
-                        ${device.label || `Mikrofon ${device.deviceId.slice(0, 8)}`}
-                    </option>`
-                ).join('');
-            }
-
-            if (camSelect) {
-                camSelect.innerHTML = availableCameras.map(device => 
-                    `<option value="${device.deviceId}" ${device.deviceId === selectedCameraId ? 'selected' : ''}>
-                        ${device.label || `Kamera ${device.deviceId.slice(0, 8)}`}
-                    </option>`
-                ).join('');
-            }
-
-            if (speakerSelect) {
-                speakerSelect.innerHTML = availableSpeakers.map(device => 
-                    `<option value="${device.deviceId}" ${device.deviceId === selectedSpeakerId ? 'selected' : ''}>
-                        ${device.label || `Hoparlör ${device.deviceId.slice(0, 8)}`}
-                    </option>`
-                ).join('');
-            }
-        }
-
-        function openSettingsModal() {
-            document.getElementById('settingsModal').classList.remove('hidden');
-            updateDeviceSelectors();
-        }
-
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').classList.add('hidden');
-        }
-
-        function applyDeviceSettings() {
-            const micSelect = document.getElementById('microphoneSelect');
-            const camSelect = document.getElementById('cameraSelect');
-            const speakerSelect = document.getElementById('speakerSelect');
-
-            if (micSelect) selectedMicrophoneId = micSelect.value;
-            if (camSelect) selectedCameraId = camSelect.value;
-            if (speakerSelect) selectedSpeakerId = speakerSelect.value;
-
-            showNotification('Cihaz ayarları güncellendi!', 'success', 2000);
-            closeSettingsModal();
-
-        }
 
         function updateDeviceSelectors() {
             const micSelect = document.getElementById('microphoneSelect');
@@ -1904,6 +1745,7 @@
 
             showNotification('Cihaz ayarları güncellendi!', 'success', 2000);
             closeSettingsModal();
+
         }
         
         // Kimlik Kontrolü Fonksiyonu
@@ -2519,6 +2361,13 @@
 				        
 				        showNotification(`${message.from}: ${message.text}`, 'info');
 				    }
+				    break;
+				case 'file-transfer-request':
+				    handleIncomingFileRequest(message);
+				    break;
+				
+				case 'file-chunk':
+				    handleIncomingFileChunk(message);
 				    break;
                 case 'auto-credit-update':
                     break;
@@ -3222,18 +3071,158 @@
 		function closeSettingsModal() {
 			document.getElementById('settingsModal').classList.add('hidden');
 		}
-
-		function applyDeviceSettings() {
-			const micSelect = document.getElementById('microphoneSelect');
-			const camSelect = document.getElementById('cameraSelect');
-			const speakerSelect = document.getElementById('speakerSelect');
-
-			if (micSelect) selectedMicrophoneId = micSelect.value;
-			if (camSelect) selectedCameraId = camSelect.value;
-			if (speakerSelect) selectedSpeakerId = speakerSelect.value;
-
-			showNotification('Cihaz ayarları güncellendi!', 'success', 2000);
-			closeSettingsModal();
+		// Dosya transfer değişkenleri
+		let activeTransfers = new Map();
+		let transferIdCounter = 0;
+		
+		function handleFileSelection(event) {
+		    const file = event.target.files[0];
+		    if (!file) return;
+		    
+		    // Dosya boyutu kontrolü (5MB limit)
+		    if (file.size > 5 * 1024 * 1024) {
+		        showNotification('Dosya boyutu 5MB\'dan büyük olamaz!', 'error');
+		        return;
+		    }
+		    
+		    const transferId = `transfer_${Date.now()}_${++transferIdCounter}`;
+		    const targetId = lastCallInfo?.adminId || currentCall?.userId; // müşteri için adminId, admin için userId
+		    const targetType = userInfo ? 'admin' : 'customer'; // userInfo varsa müşteri, yoksa admin
+		    
+		    if (!targetId) {
+		        showNotification('Aktif görüşme bulunamadı!', 'error');
+		        return;
+		    }
+		    
+		    // Dosya transfer isteği gönder
+		    if (socket && socket.readyState === WebSocket.OPEN) {
+		        socket.send(JSON.stringify({
+		            type: 'file-transfer-request',
+		            transferId: transferId,
+		            fileName: file.name,
+		            fileSize: file.size,
+		            fileType: file.type,
+		            targetId: targetId,
+		            targetType: targetType,
+		            from: userInfo?.name || currentAdmin?.username,
+		            userId: userInfo?.id,
+		            adminId: adminUniqueId
+		        }));
+		        
+		        // Dosyayı parçalara böl ve gönder
+		        sendFileInChunks(file, transferId, targetId, targetType);
+		    }
+		    
+		    // Input'u temizle
+		    event.target.value = '';
+		}
+		
+		function sendFileInChunks(file, transferId, targetId, targetType) {
+		    const chunkSize = 64 * 1024; // 64KB chunks
+		    const totalChunks = Math.ceil(file.size / chunkSize);
+		    let chunkIndex = 0;
+		    
+		    const reader = new FileReader();
+		    
+		    reader.onload = function(e) {
+		        const chunk = btoa(e.target.result); // Base64 encode
+		        
+		        if (socket && socket.readyState === WebSocket.OPEN) {
+		            socket.send(JSON.stringify({
+		                type: 'file-chunk',
+		                transferId: transferId,
+		                chunk: chunk,
+		                chunkIndex: chunkIndex,
+		                totalChunks: totalChunks,
+		                targetId: targetId,
+		                targetType: targetType
+		            }));
+		        }
+		        
+		        chunkIndex++;
+		        if (chunkIndex < totalChunks) {
+		            // Sonraki chunk'ı oku
+		            const start = chunkIndex * chunkSize;
+		            const end = Math.min(start + chunkSize, file.size);
+		            const blob = file.slice(start, end);
+		            reader.readAsBinaryString(blob);
+		        } else {
+		            showNotification(`${file.name} gönderildi`, 'success');
+		        }
+		    };
+		    
+		    // İlk chunk'ı başlat
+		    const blob = file.slice(0, chunkSize);
+		    reader.readAsBinaryString(blob);
+		}
+		function handleIncomingFileRequest(message) {
+		    const { transferId, fileName, fileSize, from } = message;
+		    
+		    // Transfer'ı başlat
+		    activeTransfers.set(transferId, {
+		        fileName: fileName,
+		        fileSize: fileSize,
+		        from: from,
+		        chunks: [],
+		        receivedChunks: 0,
+		        totalChunks: 0
+		    });
+		    
+		    addFileMessage(from, fileName, fileSize, 'receiving');
+		    showNotification(`${from} size ${fileName} dosyasını gönderiyor`, 'info');
+		}
+		
+		function handleIncomingFileChunk(message) {
+		    const { transferId, chunk, chunkIndex, totalChunks } = message;
+		    const transfer = activeTransfers.get(transferId);
+		    
+		    if (!transfer) return;
+		    
+		    transfer.chunks[chunkIndex] = chunk;
+		    transfer.receivedChunks++;
+		    transfer.totalChunks = totalChunks;
+		    
+		    // Tüm chunk'lar alındı mı?
+		    if (transfer.receivedChunks === totalChunks) {
+		        // Dosyayı birleştir
+		        const binaryString = transfer.chunks.map(c => atob(c)).join('');
+		        const bytes = new Uint8Array(binaryString.length);
+		        for (let i = 0; i < binaryString.length; i++) {
+		            bytes[i] = binaryString.charCodeAt(i);
+		        }
+		        
+		        // Dosyayı indir
+		        const blob = new Blob([bytes]);
+		        const url = URL.createObjectURL(blob);
+		        const a = document.createElement('a');
+		        a.href = url;
+		        a.download = transfer.fileName;
+		        a.click();
+		        
+		        URL.revokeObjectURL(url);
+		        activeTransfers.delete(transferId);
+		        
+		        showNotification(`${transfer.fileName} indirildi`, 'success');
+		    }
+		}
+		
+		function addFileMessage(from, fileName, fileSize, status) {
+		    const messagesContainer = document.getElementById('chatMessages');
+		    if (!messagesContainer) return;
+		    
+		    const sizeText = (fileSize / 1024).toFixed(1) + ' KB';
+		    const messageEl = document.createElement('div');
+		    messageEl.className = 'message received';
+		    messageEl.innerHTML = `
+		        <div style="font-weight: 600; margin-bottom: 3px;">${from}</div>
+		        <div style="background: #f0f0f0; padding: 8px; border-radius: 6px; border-left: 3px solid #2563eb;">
+		            📎 ${fileName}<br>
+		            <small>${sizeText} • ${status === 'receiving' ? 'Alınıyor...' : 'Gönderildi'}</small>
+		        </div>
+		    `;
+		    
+		    messagesContainer.appendChild(messageEl);
+		    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}
 
         // Error Handling
@@ -3252,6 +3241,7 @@
     </script>
 </body>
 </html>
+
 
 
 
