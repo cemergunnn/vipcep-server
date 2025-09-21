@@ -1266,7 +1266,7 @@
                     <!-- Mesajlar buraya eklenecek -->
                 </div>
 					<div class="chat-input-container">
-						<input type="file" id="fileInput" style="display: none;" accept="image/*,application/pdf,.doc,.docx,.txt" capture="environment">
+						<input type="file" id="fileInput" style="display: none;" accept="image/*,application/pdf,.doc,.docx,.txt" capture>
 					    <button id="fileBtn" class="file-btn" style="margin-right: 5px; background: #6b7280; border: none; width: 35px; height: 35px; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;">📎</button>
 					    <input type="text" class="chat-input" id="chatInput" placeholder="Mesajınızı yazın...">
 					    <button class="send-btn" id="sendMessageBtn">
@@ -1501,11 +1501,7 @@
             
             // Sohbet butonları
             document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
-			// Dosya transfer butonları
-			document.getElementById('fileBtn')?.addEventListener('click', () => {
-			    document.getElementById('fileInput').click();
-			});
-			
+
 			document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
             // Enter ile mesaj gönderme
             document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
@@ -3180,9 +3176,34 @@
 		    messagesContainer.appendChild(messageEl);
 		    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}
+		function triggerFileInput() {
+		    const fileInput = document.getElementById('fileInput');
+		    
+		    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+		        fileInput.style.position = 'fixed';
+		        fileInput.style.top = '0';
+		        fileInput.style.left = '0';
+		        fileInput.style.width = '100%';
+		        fileInput.style.height = '100%';
+		        fileInput.style.opacity = '0.01';
+		        fileInput.style.zIndex = '9999';
+		        fileInput.style.display = 'block';
+		        
+		        fileInput.click();
+		        
+		        setTimeout(() => {
+		            fileInput.style.display = 'none';
+		        }, 3000);
+		    } else {
+		        fileInput.click();
+		    }
+		}
+		
+		document.getElementById('fileBtn')?.addEventListener('click', triggerFileInput);
     </script>
 </body>
 </html>
+
 
 
 
