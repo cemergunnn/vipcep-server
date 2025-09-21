@@ -1772,35 +1772,35 @@
 		  //  }
 		
 		    // Bağlanma ekranını göster
-		    const connectingStateView = document.getElementById('connectingStateView');
-		    if (connectingStateView) {
-		        connectingStateView.classList.remove('hidden');
-		    }
+		  //  const connectingStateView = document.getElementById('connectingStateView');
+		  //  if (connectingStateView) {
+		        //connectingStateView.classList.remove('hidden');
+		  //  }
 		    
-		    const connectingAdminPic = document.getElementById('connectingAdminPic');
-		    const connectingAdminName = document.getElementById('connectingAdminName');
+		   // const connectingAdminPic = document.getElementById('connectingAdminPic');
+		   // const connectingAdminName = document.getElementById('connectingAdminName');
 		    
-		    if (connectingAdminPic) {
-		        connectingAdminPic.src = lastCallInfo.adminPic;
-		    }
+		//    if (connectingAdminPic) {
+		    //    connectingAdminPic.src = lastCallInfo.adminPic;
+		    //}
 		    
-		    if (connectingAdminName) {
-		        connectingAdminName.textContent = `${lastCallInfo.adminName} Aranıyor...`;
-		    }
+		  //  if (connectingAdminName) {
+		       // connectingAdminName.textContent = `${lastCallInfo.adminName} Aranıyor...`;
+		  //  }
 		
 		    // Arama durumunu güncelle
-		    setState('connecting');
-		    playSound(ringingSound);
+		   // setState('connecting');
+		   // playSound(ringingSound);
 		    
 		    // Arama isteğini gönder
-		    socket.send(JSON.stringify({ 
-		        type: 'direct-call-request', 
-		        userId: userInfo.id, 
-		        userName: userInfo.name, 
-		        targetAdminId: adminId, 
-		        credits: userInfo.credits 
-		    }));
-		}
+		   // socket.send(JSON.stringify({ 
+		    //    type: 'direct-call-request', 
+		    //    userId: userInfo.id, 
+		     //   userName: userInfo.name, 
+		     //   targetAdminId: adminId, 
+		     //   credits: userInfo.credits 
+		   // }));
+		//}
         function makeCallbackRequest(adminId, event) {
             if (pendingCallbackAdminId) {
                 return; // Zaten bekleyen bir talep varsa işlem yapma
@@ -2904,4 +2904,5 @@
     </script>
 </body>
 </html>
+
 
