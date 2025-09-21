@@ -1227,19 +1227,6 @@
         </div>
     </div>
     
-    <!-- İzin İsteme Modalı -->
-    <div id="permissionsModal" class="modal-overlay hidden">
-        <div class="permissions-modal">
-            <div class="permissions-icon">🎙️</div>
-            <div class="permissions-title">Mikrofon ve Kamera İzni</div>
-            <p class="permissions-text">Görüşme yapabilmek için mikrofon ve kamera izinleri gereklidir. Lütfen izin vermeyi onaylayın.</p>
-            <div class="permissions-actions">
-                <button class="btn" id="cancelPermissionsBtn" style="background-color: var(--gray-200); color: var(--gray-700);">İptal</button>
-                <button class="btn btn-login" id="grantPermissionsBtn">İzin Ver</button>
-            </div>
-        </div>
-    </div>
-    
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
     <audio id="remoteAudio" autoplay></audio>
@@ -1410,16 +1397,9 @@
         }
         
         function setupEventListeners() {
-		    // İzin modalı butonları
-		    const grantPermissionsBtn = document.getElementById('grantPermissionsBtn');
-		    const cancelPermissionsBtn = document.getElementById('cancelPermissionsBtn');
-		    
-		    if (grantPermissionsBtn) {
-		        grantPermissionsBtn.addEventListener('click', requestMediaPermissions);
-		    }
-		    
-		    if (cancelPermissionsBtn) {
-		        cancelPermissionsBtn.addEventListener('click', cancelPermissions);
+
+
+		   
 		    }
             // Arama kontrol butonları
             document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMicrophone);
@@ -1439,10 +1419,7 @@
                     sendChatMessage();
                 }
             });
-            
-            // İzin modalı butonları
-            document.getElementById('grantPermissionsBtn')?.addEventListener('click', requestMediaPermissions);
-            document.getElementById('cancelPermissionsBtn')?.addEventListener('click', cancelPermissions);
+           
             
             // Sayfa kapatıldığında aramayı sonlandır
             window.addEventListener('beforeunload', function() {
@@ -1668,7 +1645,7 @@
 
                     let buttonHtml;
                     if (admin.status === 'available') {
-                        buttonHtml = `<button class="btn btn-call" onclick="showPermissionsModal('${admin.id}')">🔉 Ara</button>`;
+                        buttonHtml = `<button class="btn btn-call" onclick="makeCall('${admin.id}')">🔉 Ara</button>`;
                     } else if (isCallbackSentToThisAdmin) {
                         buttonHtml = `<button class="btn btn-callback-sent" disabled>✅ Geri Dönüş Alındı</button>`;
                     } else {
@@ -1742,31 +1719,6 @@
 		        showNotification("Mikrofon ve kamera izni gerekli. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
 		    }
 		}
-
-		// İzin modunda İptal
-		function cancelPermissions() {
-		    const permissionsModal = document.getElementById('permissionsModal');
-		    if (permissionsModal) {
-		        permissionsModal.classList.add('hidden');
-		    }
-		}
-		// İzin modunda İzin Ver
-		async function requestMediaPermissions() {
-		    try {
-		        console.log("Mikrofon izni isteniyor...");
-		        // Önce sadece mikrofon izni iste
-		        localStream = await navigator.mediaDevices.getUserMedia({
-		            audio: true,
-		            video: false // Başlangıçta kamera izni isteme
-		        });
-		        
-		        console.log("Mikrofon izni alındı");
-		        
-		        // İzin modalını kapat
-		        const permissionsModal = document.getElementById('permissionsModal');
-		        if (permissionsModal) {
-		            permissionsModal.classList.add('hidden');
-		        }
 		        
 		        // İzinler alındı, şimdi aramayı başlat
 		        makeCall(lastCallInfo.adminId);
@@ -2928,4 +2880,3 @@
     </script>
 </body>
 </html>
-
