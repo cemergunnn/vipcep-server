@@ -1017,6 +1017,65 @@
                 opacity: 0.8;
             }
         }
+		/* Mobil cihazlar için iyileştirmeler */
+        @media (max-width: 768px) {
+            .app-container {
+                max-width: 100%;
+                margin: 0;
+                border-radius: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .call-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+            }
+            
+            .call-controls {
+                gap: 15px;
+                padding: 0 20px;
+            }
+            
+            .control-btn {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .pip-video-container {
+                width: 100px;
+                height: 140px;
+                bottom: 120px;
+                right: 10px;
+            }
+            
+            .chat-panel {
+                width: calc(100vw - 40px);
+                height: 60vh;
+                bottom: 120px;
+                left: 20px;
+                right: 20px;
+            }
+        }
+
+        /* Touch-friendly butonlar */
+        @media (hover: none) and (pointer: coarse) {
+            .control-btn, .btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            .call-controls .control-btn {
+                width: 55px;
+                height: 55px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1736,7 +1795,7 @@
 		        setState('connecting');
 		        document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
 		        document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
-		        
+				setupCallOverlayEventListeners();		        
 		        playSound(ringingSound);
 		        
 		        // Arama isteğini gönder
@@ -1754,6 +1813,25 @@
 		        console.error("Medya izni hatası:", error);
 		        showNotification("Mikrofon ve kamera izni gerekli. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
 		    }
+		}
+		  // makeCall fonksiyonundan sonra bu fonksiyonu ekleyelim:
+		function setupCallOverlayEventListeners() {
+		    // Video arama kontrolleri
+		    document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMicrophone);
+		    document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleCamera);
+		    document.getElementById('toggleScreenShareBtn')?.addEventListener('click', toggleScreenShare);
+		    document.getElementById('toggleChatBtn')?.addEventListener('click', toggleChat);
+		    document.getElementById('endCallBtn')?.addEventListener('click', () => endCall(false));
+		    document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
+		    document.getElementById('closeChatBtn')?.addEventListener('click', toggleChat);
+		    
+		    // Chat mesaj gönderme
+		    document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
+		    document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
+		        if (e.key === 'Enter') {
+		            sendChatMessage();
+		        }
+		    });
 		}
 
 		//function makeCall(adminId) {
@@ -2251,83 +2329,134 @@
 	}
 		// Kamerayı aç/kapa
 		async function toggleCamera() {
-			const cameraBtn = document.getElementById('toggleCameraBtn');
-			const localVideo = document.getElementById('localVideoStream');
-			const pipContainer = document.getElementById('pipVideoContainer');
-			
-			if (isCameraOn) {
-				// Kamerayı kapat
-				if (localVideoStream) {
-					localVideoStream.getTracks().forEach(track => track.stop());
-					localVideoStream = null;
-				}
-				
-				if (localVideo) localVideo.srcObject = null;
-				pipContainer.classList.remove('active');
-				
-				// PeerConnection'dan video track'leri kaldır
-				if (peerConnection) {
-					const senders = peerConnection.getSenders();
-					senders.forEach(sender => {
-						if (sender.track && sender.track.kind === 'video') {
-							peerConnection.removeTrack(sender);
-						}
-					});
-				}
-				
-				isCameraOn = false;
-				cameraBtn.classList.remove('active');
-				
-				// Kapalı kamera ikonu
-				cameraBtn.innerHTML = `
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="1" y1="1" x2="23" y2="23"></line>
-						<path d="M21 12.79A17.89 17.89 0 0 0 18.78 10.09C15.54 7.69 8.46 7.69 5.22 10.09A17.89 17.89 0 0 0 3 12.79"></path>
-						<circle cx="12" cy="12" r="3"></circle>
-						<path d="M9 21c0-4.05 2.95-7 7-7"></path>
-					</svg>
-				`;
-				
-				showNotification("Kamera kapatıldı", "info", 1500);
-			} else {
-				try {
-					// Kamerayı aç
-					localVideoStream = await navigator.mediaDevices.getUserMedia({
-						video: { 
-							facingMode: currentCameraFacing,
-							width: { ideal: 1280 },
-							height: { ideal: 720 }
-						}
-					});
-					
-					localVideo.srcObject = localVideoStream;
-					pipContainer.classList.add('active');
-					
-					// PeerConnection'a video track'lerini ekle
-					if (peerConnection) {
-						localVideoStream.getVideoTracks().forEach(track => {
-							peerConnection.addTrack(track, localVideoStream);
-						});
-					}
-					
-					isCameraOn = true;
-					cameraBtn.classList.add('active');
-					
-					// Açık kamera ikonu
-					cameraBtn.innerHTML = `
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
-							<circle cx="12" cy="12" r="3"></circle>
-						</svg>
-					`;
-					
-					showNotification("Kamera açıldı", "success", 1500);
-				} catch (error) {
-					console.error("Kamera açma hatası:", error);
-					showNotification("Kamera açılamadı", "error");
-				}
-			}
-		}	    
+		    const cameraBtn = document.getElementById('toggleCameraBtn');
+		    const localVideo = document.getElementById('localVideoStream');
+		    const pipContainer = document.getElementById('pipVideoContainer');
+		    
+		    // Mobil cihaz kontrolü
+		    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+		    
+		    if (isCameraOn) {
+		        // Kamerayı kapat
+		        if (localVideoStream) {
+		            localVideoStream.getTracks().forEach(track => track.stop());
+		            localVideoStream = null;
+		        }
+		        
+		        if (localVideo) localVideo.srcObject = null;
+		        pipContainer.classList.remove('active');
+		        
+		        // PeerConnection'dan video track'leri kaldır
+		        if (peerConnection) {
+		            const senders = peerConnection.getSenders();
+		            senders.forEach(sender => {
+		                if (sender.track && sender.track.kind === 'video') {
+		                    peerConnection.removeTrack(sender);
+		                }
+		            });
+		        }
+		        
+		        isCameraOn = false;
+		        cameraBtn.classList.remove('active');
+		        
+		        // Kapalı kamera ikonu
+		        cameraBtn.innerHTML = `
+		            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		                <line x1="1" y1="1" x2="23" y2="23"></line>
+		                <path d="M21 12.79A17.89 17.89 0 0 0 18.78 10.09C15.54 7.69 8.46 7.69 5.22 10.09A17.89 17.89 0 0 0 3 12.79"></path>
+		                <circle cx="12" cy="12" r="3"></circle>
+		                <path d="M9 21c0-4.05 2.95-7 7-7"></path>
+		            </svg>
+		        `;
+		        
+		        showNotification("Kamera kapatıldı", "info", 1500);
+		    } else {
+		        try {
+		            // Kamerayı aç - Mobil ve PC için farklı ayarlar
+		            const videoConstraints = isMobile ? {
+		                facingMode: currentCameraFacing,
+		                width: { ideal: 720, max: 1280 },
+		                height: { ideal: 480, max: 720 }
+		            } : {
+		                facingMode: currentCameraFacing,
+		                width: { ideal: 1280 },
+		                height: { ideal: 720 }
+		            };
+		            
+		            localVideoStream = await navigator.mediaDevices.getUserMedia({
+		                video: videoConstraints
+		            });
+		            
+		            localVideo.srcObject = localVideoStream;
+		            pipContainer.classList.add('active');
+		            
+		            // PeerConnection'a video track'lerini ekle ve yeniden müzakere et
+		            if (peerConnection) {
+		                localVideoStream.getVideoTracks().forEach(track => {
+		                    peerConnection.addTrack(track, localVideoStream);
+		                });
+		                
+		                // Yeniden offer oluştur
+		                try {
+		                    const offer = await peerConnection.createOffer();
+		                    await peerConnection.setLocalDescription(offer);
+		                    
+		                    if (socket && socket.readyState === WebSocket.OPEN) {
+		                        socket.send(JSON.stringify({
+		                            type: 'offer',
+		                            offer: offer,
+		                            targetId: lastCallInfo.adminId
+		                        }));
+		                    }
+		                } catch (renegotiationError) {
+		                    console.error("Video renegotiation hatası:", renegotiationError);
+		                }
+		            }
+		            
+		            isCameraOn = true;
+		            cameraBtn.classList.add('active');
+		            
+		            // Açık kamera ikonu
+		            cameraBtn.innerHTML = `
+		                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		                    <rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
+		                    <circle cx="12" cy="12" r="3"></circle>
+		                </svg>
+		            `;
+		            
+		            showNotification("Kamera açıldı", "success", 1500);
+		        } catch (error) {
+		            console.error("Kamera açma hatası:", error);
+		            
+		            // Düşük kalitede tekrar dene (mobil için)
+		            if (isMobile) {
+		                try {
+		                    localVideoStream = await navigator.mediaDevices.getUserMedia({
+		                        video: { facingMode: currentCameraFacing }
+		                    });
+		                    
+		                    localVideo.srcObject = localVideoStream;
+		                    pipContainer.classList.add('active');
+		                    
+		                    if (peerConnection) {
+		                        localVideoStream.getVideoTracks().forEach(track => {
+		                            peerConnection.addTrack(track, localVideoStream);
+		                        });
+		                    }
+		                    
+		                    isCameraOn = true;
+		                    cameraBtn.classList.add('active');
+		                    showNotification("Kamera açıldı (düşük kalite)", "success", 1500);
+		                } catch (fallbackError) {
+		                    console.error("Düşük kalite kamera hatası:", fallbackError);
+		                    showNotification("Kamera erişimi reddedildi", "error");
+		                }
+		            } else {
+		                showNotification("Kamera açılamadı", "error");
+		            }
+		        }
+		    }
+		}
         // Kamera değiştir (ön/arka)
         async function switchCamera() {
             if (!isCameraOn) {
@@ -2904,5 +3033,6 @@
     </script>
 </body>
 </html>
+
 
 
