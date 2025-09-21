@@ -1377,6 +1377,111 @@ wss.on('connection', (ws, req) => {
                             callingAdmin.ws.send(JSON.stringify({ type: 'call-failed', reason: 'Müşteri şu anda çevrimdışı.' }));
                         }
                         break;
+                case 'chat-message':
+                    console.log('💬 Chat mesajı alındı:', message);
+                    
+                    // Mesajı karşı tarafa yönlendir
+                    if (message.targetType === 'admin') {
+                        // Müşteriden admin'e mesaj
+                        const targetAdmin = Array.from(clients.values()).find(admin => 
+                            admin.uniqueId === message.targetId && admin.userType === 'admin'
+                        );
+                        
+                        if (targetAdmin && targetAdmin.ws && targetAdmin.ws.readyState === WebSocket.OPEN) {
+                            targetAdmin.ws.send(JSON.stringify({
+                                type: 'chat-message',
+                                from: message.from,
+                                text: message.text,
+                                senderId: message.userId
+                            }));
+                            console.log('💬 Chat mesajı admin\'e gönderildi');
+                        } else {
+                            console.log('❌ Hedef admin bulunamadı veya çevrimdışı');
+                        }
+                        
+                    } else if (message.targetType === 'customer') {
+                        // Admin'den müşteriye mesaj
+                        const targetCustomer = clients.get(message.targetId);
+                        
+                        if (targetCustomer && targetCustomer.ws && targetCustomer.ws.readyState === WebSocket.OPEN) {
+                            targetCustomer.ws.send(JSON.stringify({
+                                type: 'chat-message',
+                                from: message.from,
+                                text: message.text,
+                                senderId: message.adminId
+                            }));
+                            console.log('💬 Chat mesajı müşteriye gönderildi');
+                        } else {
+                            console.log('❌ Hedef müşteri bulunamadı veya çevrimdışı');
+                        }
+                    }
+                    break;
+                case 'file-transfer-request':
+                    console.log('📁 Dosya transfer isteği:', message.fileName);
+                    
+                    if (message.targetType === 'admin') {
+                        const targetAdmin = Array.from(clients.values()).find(admin => 
+                            admin.uniqueId === message.targetId && admin.userType === 'admin'
+                        );
+                        
+                        if (targetAdmin && targetAdmin.ws && targetAdmin.ws.readyState === WebSocket.OPEN) {
+                            targetAdmin.ws.send(JSON.stringify({
+                                type: 'file-transfer-request',
+                                from: message.from,
+                                fileName: message.fileName,
+                                fileSize: message.fileSize,
+                                fileType: message.fileType,
+                                senderId: message.userId,
+                                transferId: message.transferId
+                            }));
+                        }
+                    } else if (message.targetType === 'customer') {
+                        const targetCustomer = clients.get(message.targetId);
+                        
+                        if (targetCustomer && targetCustomer.ws && targetCustomer.ws.readyState === WebSocket.OPEN) {
+                            targetCustomer.ws.send(JSON.stringify({
+                                type: 'file-transfer-request',
+                                from: message.from,
+                                fileName: message.fileName,
+                                fileSize: message.fileSize,
+                                fileType: message.fileType,
+                                senderId: message.adminId,
+                                transferId: message.transferId
+                            }));
+                        }
+                    }
+                    break;
+                
+                case 'file-chunk':
+                    // Dosya parçalarını yönlendir
+                    if (message.targetType === 'admin') {
+                        const targetAdmin = Array.from(clients.values()).find(admin => 
+                            admin.uniqueId === message.targetId && admin.userType === 'admin'
+                        );
+                        
+                        if (targetAdmin && targetAdmin.ws && targetAdmin.ws.readyState === WebSocket.OPEN) {
+                            targetAdmin.ws.send(JSON.stringify({
+                                type: 'file-chunk',
+                                transferId: message.transferId,
+                                chunk: message.chunk,
+                                chunkIndex: message.chunkIndex,
+                                totalChunks: message.totalChunks
+                            }));
+                        }
+                    } else if (message.targetType === 'customer') {
+                        const targetCustomer = clients.get(message.targetId);
+                        
+                        if (targetCustomer && targetCustomer.ws && targetCustomer.ws.readyState === WebSocket.OPEN) {
+                            targetCustomer.ws.send(JSON.stringify({
+                                type: 'file-chunk',
+                                transferId: message.transferId,
+                                chunk: message.chunk,
+                                chunkIndex: message.chunkIndex,
+                                totalChunks: message.totalChunks
+                            }));
+                        }
+                    }
+                    break;
                     
                     // --- KOPYALAMAYI BURADA BİTİRİN ---
                 
@@ -1646,6 +1751,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
