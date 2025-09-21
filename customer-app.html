@@ -1501,8 +1501,15 @@
             
             // Sohbet butonları
             document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
-
-			document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
+			// iOS için özel event binding
+			const fileInput = document.getElementById('fileInput');
+			if (fileInput) {
+			    fileInput.removeEventListener('change', handleFileSelection); // Önceki listener'ı kaldır
+			    fileInput.addEventListener('change', handleFileSelection);
+			    
+			    // iOS için ek oninput event'i de ekle
+			    fileInput.addEventListener('input', handleFileSelection);
+			}
             // Enter ile mesaj gönderme
             document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') {
@@ -3068,7 +3075,19 @@
 		    // Input'u temizle
 		    event.target.value = '';
 		}
-		
+		function handleFileSelection(event) {
+		    console.log('handleFileSelection çağrıldı');
+		    console.log('Event:', event);
+		    console.log('Files:', event.target.files);
+		    
+		    const file = event.target.files[0];
+		    if (!file) {
+		        console.log('Dosya bulunamadı');
+		        return;
+		    }
+		    
+		    console.log('Dosya bulundu:', file.name, file.size);
+				
 		function sendFileInChunks(file, transferId, targetId, targetType) {
 		    const chunkSize = 64 * 1024; // 64KB chunks
 		    const totalChunks = Math.ceil(file.size / chunkSize);
@@ -3179,14 +3198,9 @@
 		function triggerFileInput() {
 		    const fileInput = document.getElementById('fileInput');
 		    
-		    // iOS için basit yaklaşım
-		    fileInput.style.display = 'block';
-		    fileInput.style.position = 'absolute';
-		    fileInput.style.top = '0';
-		    fileInput.style.left = '0';
-		    fileInput.style.width = '1px';
-		    fileInput.style.height = '1px';
-		    fileInput.style.opacity = '0';
+		    // Event listener'ı yeniden ekle
+		    fileInput.removeEventListener('change', handleFileSelection);
+		    fileInput.addEventListener('change', handleFileSelection);
 		    
 		    fileInput.click();
 		}
@@ -3195,6 +3209,7 @@
     </script>
 </body>
 </html>
+
 
 
 
