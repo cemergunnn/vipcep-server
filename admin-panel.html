@@ -1664,6 +1664,89 @@
                 }
             });
         }
+		async function toggleScreenShare() {
+		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
+		    const screenshareContainer = document.getElementById('screenshareContainer');
+		    
+		    if (isSharingScreen) {
+		        // Ekran paylaşımını durdur
+		        if (screenStream) {
+		            screenStream.getTracks().forEach(track => track.stop());
+		            screenStream = null;
+		        }
+		        
+		        screenshareContainer.classList.remove('active');
+		        screenShareBtn.classList.remove('active');
+		        isSharingScreen = false;
+		        
+		        // Kameraya geri dön (eğer varsa)
+		        if (peerConnection && localVideoStream && isCameraOn) {
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		            }
+		        }
+		        
+		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
+		        
+		        // Sunucuya bildirim gönder
+		        if (socket && socket.readyState === WebSocket.OPEN) {
+		            socket.send(JSON.stringify({
+		                type: 'screen-sharing-stopped',
+		                adminId: adminUniqueId,
+		                targetId: currentCall.userId
+		            }));
+		        }
+		    } else {
+		        try {
+		            // Ekran paylaşımını başlat
+		            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+		                video: true,
+		                audio: true
+		            });
+		            
+		            const screenVideo = document.getElementById('screenshareVideo');
+		            screenVideo.srcObject = screenStream;
+		            screenshareContainer.classList.add('active');
+		            
+		            // Video track'i değiştir
+		            if (peerConnection) {
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		                
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+		                } else {
+		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
+		                }
+		            }
+		            
+		            // Ekran paylaşımı bittiğinde otomatik kapat
+		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+		                toggleScreenShare();
+		            });
+		            
+		            screenShareBtn.classList.add('active');
+		            isSharingScreen = true;
+		            
+		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
+		            
+		            // Sunucuya bildirim gönder
+		            if (socket && socket.readyState === WebSocket.OPEN) {
+		                socket.send(JSON.stringify({
+		                    type: 'screen-sharing-started',
+		                    adminId: adminUniqueId,
+		                    targetId: currentCall.userId
+		                }));
+		            }
+		            
+		        } catch (error) {
+		            console.error("Ekran paylaşımı hatası:", error);
+		            showNotification("Ekran paylaşımı başlatılamadı", "error");
+		        }
+		    }
+		}
 
         // Cihaz Yönetimi
 		async function loadAvailableDevices() {
@@ -2123,8 +2206,8 @@
 		        if (socket && socket.readyState === WebSocket.OPEN) {
 		            socket.send(JSON.stringify({
 		                type: 'screen-sharing-stopped',
-		                userId: userInfo.id, // müşteri için
-		                targetId: lastCallInfo.adminId
+				    adminId: adminUniqueId, // Düzelt
+				    targetId: currentCall.userId // Düzelt
 		            }));
 		        }
 		    } else {
@@ -3271,6 +3354,7 @@
     </script>
 </body>
 </html>
+
 
 
 
