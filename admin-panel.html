@@ -475,6 +475,7 @@
             background: white;
             float: left;
             border-bottom-left-radius: 5px;
+			color: #374151;
         }
 
         .message.sent {
@@ -3079,6 +3080,11 @@
 		    const file = event.target.files[0];
 		    if (!file) return;
 		    
+		    console.log('Admin - Dosya seçildi:', file.name, file.type, file.size);
+		    console.log('currentCall:', currentCall);
+		    console.log('adminUniqueId:', adminUniqueId);
+		    console.log('currentAdmin:', currentAdmin);
+		    
 		    // Dosya boyutu kontrolü (5MB limit)
 		    if (file.size > 5 * 1024 * 1024) {
 		        showNotification('Dosya boyutu 5MB\'dan büyük olamaz!', 'error');
@@ -3086,17 +3092,33 @@
 		    }
 		    
 		    const transferId = `transfer_${Date.now()}_${++transferIdCounter}`;
-		    const targetId = lastCallInfo?.adminId || currentCall?.userId; // müşteri için adminId, admin için userId
-		    const targetType = userInfo ? 'admin' : 'customer'; // userInfo varsa müşteri, yoksa admin
+		    
+		    // Admin tarafı için hedef belirleme
+		    const targetId = currentCall?.userId;
+		    const targetType = 'customer';
+		    const fromName = currentAdmin?.username;
+		    
+		    console.log('Transfer bilgileri:', {
+		        targetId,
+		        targetType,
+		        fromName,
+		        transferId
+		    });
 		    
 		    if (!targetId) {
 		        showNotification('Aktif görüşme bulunamadı!', 'error');
+		        console.log('Hata: targetId bulunamadı');
 		        return;
 		    }
 		    
-		    // Dosya transfer isteği gönder
-		    if (socket && socket.readyState === WebSocket.OPEN) {
-		        socket.send(JSON.stringify({
+		    if (!socket || socket.readyState !== WebSocket.OPEN) {
+		        showNotification('WebSocket bağlantısı yok!', 'error');
+		        console.log('Hata: WebSocket bağlantısı yok');
+		        return;
+		    }
+		    
+		    try {
+		        const message = {
 		            type: 'file-transfer-request',
 		            transferId: transferId,
 		            fileName: file.name,
@@ -3104,13 +3126,21 @@
 		            fileType: file.type,
 		            targetId: targetId,
 		            targetType: targetType,
-		            from: userInfo?.name || currentAdmin?.username,
-		            userId: userInfo?.id,
+		            from: fromName,
 		            adminId: adminUniqueId
-		        }));
+		        };
+		        
+		        console.log('Gönderilecek mesaj:', message);
+		        
+		        socket.send(JSON.stringify(message));
+		        console.log('Dosya transfer isteği gönderildi');
 		        
 		        // Dosyayı parçalara böl ve gönder
 		        sendFileInChunks(file, transferId, targetId, targetType);
+		        
+		    } catch (error) {
+		        console.error('Dosya gönderme hatası:', error);
+		        showNotification('Dosya gönderilirken hata oluştu: ' + error.message, 'error');
 		    }
 		    
 		    // Input'u temizle
@@ -3241,6 +3271,7 @@
     </script>
 </body>
 </html>
+
 
 
 
