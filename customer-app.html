@@ -1332,26 +1332,38 @@
         const baseUrl = window.location.hostname === 'localhost' ? 
             'http://localhost:8080' : 'https://vipcep-server-production.up.railway.app';
         
-        // Sayfa yüklendiğinde
-        window.onload = function() {
-            // Otomatik giriş özelliği için localStorage'ı kontrol et
-            if (localStorage.getItem('vipcep_kvkk_approved') !== 'true') {
-                document.getElementById('kvkkScreen').classList.remove('hidden');
-                const checkbox = document.getElementById('kvkkCheckbox');
-                const acceptBtn = document.getElementById('kvkkAcceptBtn');
-                checkbox.addEventListener('change', () => { acceptBtn.disabled = !checkbox.checked; });
-                acceptBtn.addEventListener('click', () => {
-                    localStorage.setItem('vipcep_kvkk_approved', 'true');
-                    document.getElementById('kvkkScreen').classList.add('hidden');
-                    initApp();
-                });
-            } else {
-                initApp();
-            }
-            
-            // Butonlara event listener ekle
-            setupEventListeners();
-        };
+		// Sayfa yüklendiğinde
+		window.onload = function() {
+		    // Otomatik giriş özelliği için localStorage'ı kontrol et
+		    if (localStorage.getItem('vipcep_kvkk_approved') !== 'true') {
+		        const kvkkScreen = document.getElementById('kvkkScreen');
+		        if (kvkkScreen) {
+		            kvkkScreen.classList.remove('hidden');
+		        }
+		        
+		        const checkbox = document.getElementById('kvkkCheckbox');
+		        const acceptBtn = document.getElementById('kvkkAcceptBtn');
+		        
+		        if (checkbox && acceptBtn) {
+		            checkbox.addEventListener('change', () => { 
+		                acceptBtn.disabled = !checkbox.checked; 
+		            });
+		            
+		            acceptBtn.addEventListener('click', () => {
+		                localStorage.setItem('vipcep_kvkk_approved', 'true');
+		                kvkkScreen.classList.add('hidden');
+		                initApp();
+		            });
+		        }
+		    } else {
+		        initApp();
+		    }
+		    
+		    // Butonlara event listener ekle
+		    setupEventListeners();
+		    
+		    console.log('Sayfa başarıyla yüklendi.');
+		};
         
         function initApp() {
             // Server bağlantısını başlat
@@ -1398,6 +1410,17 @@
         }
         
         function setupEventListeners() {
+		    // İzin modalı butonları
+		    const grantPermissionsBtn = document.getElementById('grantPermissionsBtn');
+		    const cancelPermissionsBtn = document.getElementById('cancelPermissionsBtn');
+		    
+		    if (grantPermissionsBtn) {
+		        grantPermissionsBtn.addEventListener('click', requestMediaPermissions);
+		    }
+		    
+		    if (cancelPermissionsBtn) {
+		        cancelPermissionsBtn.addEventListener('click', cancelPermissions);
+		    }
             // Arama kontrol butonları
             document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMicrophone);
             document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleCamera);
@@ -1648,81 +1671,113 @@
         }
         
         // Yeni: İzin modunu göster
-        function showPermissionsModal(adminId) {
-            if (userInfo.credits <= 0) {
-                return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
-            }
-            
-            // Admin bilgisini sakla
-            const admin = availableAdmins.find(a => a.id === adminId);
-            if (!admin) {
-                return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
-            }
-            
-            lastCallInfo.adminId = admin.id;
-            lastCallInfo.adminName = admin.name || 'Usta';
-            lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
-            
-            // İzin modunu göster
-            document.getElementById('permissionsModal').classList.remove('hidden');
-        }
-        
-        // İzin modunda İptal
-        function cancelPermissions() {
-            document.getElementById('permissionsModal').classList.add('hidden');
-        }
-        
-        // İzin modunda İzin Ver
-        async function requestMediaPermissions() {
-            try {
-                // Medya izinlerini iste
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                
-                document.getElementById('permissionsModal').classList.add('hidden');
-                
-                // İzinler alındı, şimdi aramayı başlat
-                makeCall(lastCallInfo.adminId);
-            } catch (error) {
-                console.error("Medya izni hatası:", error);
-                showNotification("Mikrofon izni alınamadı. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
-                document.getElementById('permissionsModal').classList.add('hidden');
-            }
-        }
+		// İzin modunu göster
+		function showPermissionsModal(adminId) {
+		    if (userInfo.credits <= 0) {
+		        return showNotification('Arama yapmak için krediniz yetersiz.', 'error');
+		    }
+		    
+		    // Admin bilgisini sakla
+		    const admin = availableAdmins.find(a => a.id === adminId);
+		    if (!admin) {
+		        return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
+		    }
+		    
+		    lastCallInfo.adminId = admin.id;
+		    lastCallInfo.adminName = admin.name || 'Usta';
+		    lastCallInfo.adminPic = admin.profile_picture_url || 'https://placehold.co/150x150/EBF4FF/768498?text=Usta';
+		    
+		    // İzin modunu göster
+		    const permissionsModal = document.getElementById('permissionsModal');
+		    if (permissionsModal) {
+		        permissionsModal.classList.remove('hidden');
+		    } else {
+		        console.error("İzin modalı bulunamadı!");
+		    }
+		}
 
-        function makeCall(adminId) {
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
-            }
-
-            const admin = availableAdmins.find(a => a.id === adminId);
-            if (!admin) {
-                return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
-            }
-
-            // Adminin meşgul olup olmadığını kontrol et
-            if (admin.status === 'busy') {
-                 return makeCallbackRequest(adminId);
-            }
-
-            // Bağlanma ekranını göster
-            document.getElementById('connectingStateView').classList.remove('hidden');
-            document.getElementById('connectingAdminPic').src = lastCallInfo.adminPic;
-            document.getElementById('connectingAdminName').textContent = `${lastCallInfo.adminName} Aranıyor...`;
-
-            // Arama durumunu güncelle
-            setState('connecting');
-            playSound(ringingSound);
-            
-            // Arama isteğini gönder
-            socket.send(JSON.stringify({ 
-                type: 'direct-call-request', 
-                userId: userInfo.id, 
-                userName: userInfo.name, 
-                targetAdminId: adminId, 
-                credits: userInfo.credits 
-            }));
-        }
-
+		// İzin modunda İptal
+		function cancelPermissions() {
+		    const permissionsModal = document.getElementById('permissionsModal');
+		    if (permissionsModal) {
+		        permissionsModal.classList.add('hidden');
+		    }
+		}
+		// İzin modunda İzin Ver
+		async function requestMediaPermissions() {
+		    try {
+		        console.log("Mikrofon izni isteniyor...");
+		        // Önce sadece mikrofon izni iste
+		        localStream = await navigator.mediaDevices.getUserMedia({
+		            audio: true,
+		            video: false // Başlangıçta kamera izni isteme
+		        });
+		        
+		        console.log("Mikrofon izni alındı");
+		        
+		        // İzin modalını kapat
+		        const permissionsModal = document.getElementById('permissionsModal');
+		        if (permissionsModal) {
+		            permissionsModal.classList.add('hidden');
+		        }
+		        
+		        // İzinler alındı, şimdi aramayı başlat
+		        makeCall(lastCallInfo.adminId);
+		    } catch (error) {
+		        console.error("Medya izni hatası:", error);
+		        showNotification("Mikrofon izni alınamadı. Aramayı başlatabilmek için izin vermeniz gerekiyor.", "error");
+		        
+		        const permissionsModal = document.getElementById('permissionsModal');
+		        if (permissionsModal) {
+		            permissionsModal.classList.add('hidden');
+		        }
+		    }
+		}
+		function makeCall(adminId) {
+		    if (!socket || socket.readyState !== WebSocket.OPEN) {
+		        return showNotification('Sunucu bağlantısı hazır değil, lütfen tekrar deneyin.', 'error');
+		    }
+		
+		    const admin = availableAdmins.find(a => a.id === adminId);
+		    if (!admin) {
+		        return showNotification('Usta bilgileri bulunamadı, lütfen sayfayı yenileyin.', 'error');
+		    }
+		
+		    // Adminin meşgul olup olmadığını kontrol et
+		    if (admin.status === 'busy') {
+		         return makeCallbackRequest(adminId);
+		    }
+		
+		    // Bağlanma ekranını göster
+		    const connectingStateView = document.getElementById('connectingStateView');
+		    if (connectingStateView) {
+		        connectingStateView.classList.remove('hidden');
+		    }
+		    
+		    const connectingAdminPic = document.getElementById('connectingAdminPic');
+		    const connectingAdminName = document.getElementById('connectingAdminName');
+		    
+		    if (connectingAdminPic) {
+		        connectingAdminPic.src = lastCallInfo.adminPic;
+		    }
+		    
+		    if (connectingAdminName) {
+		        connectingAdminName.textContent = `${lastCallInfo.adminName} Aranıyor...`;
+		    }
+		
+		    // Arama durumunu güncelle
+		    setState('connecting');
+		    playSound(ringingSound);
+		    
+		    // Arama isteğini gönder
+		    socket.send(JSON.stringify({ 
+		        type: 'direct-call-request', 
+		        userId: userInfo.id, 
+		        userName: userInfo.name, 
+		        targetAdminId: adminId, 
+		        credits: userInfo.credits 
+		    }));
+		}
         function makeCallbackRequest(adminId, event) {
             if (pendingCallbackAdminId) {
                 return; // Zaten bekleyen bir talep varsa işlem yapma
@@ -2742,5 +2797,6 @@
         }
     </script>
 </body>
-</html>dd
+</html>
+
 
