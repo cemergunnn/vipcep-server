@@ -2393,6 +2393,7 @@
                     text: message,
                     targetId: currentCall.userId,
                     adminId: adminUniqueId
+					targetType: 'customer'
                 }));
             }
         }
@@ -2668,12 +2669,10 @@
 		        currentCall = callInfo;
 		        outgoingCallInfo = null;
 		        
-		        // Video overlay'ı göster
+		        // *** OTOMATIK VIDEO EKRANINA GEÇ ***
+		        isVideoCall = true;
 		        document.getElementById('callOverlay').classList.remove('hidden');
 		        document.getElementById('currentCustomerName').textContent = `${callInfo.userName} ile Video Görüşme`;
-		        
-		        // Video görüşme durumunu aktif et
-		        isVideoCall = true;
 		        
 		        setupPeerConnection(callInfo, true);
 		    }
@@ -3272,5 +3271,6 @@
     </script>
 </body>
 </html>
+
 
 
