@@ -2344,9 +2344,6 @@
 		    const localVideo = document.getElementById('localVideoStream');
 		    const pipContainer = document.getElementById('pipVideoContainer');
 		    
-		    // Mobil cihaz kontrolü
-		    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-		    
 		    if (isCameraOn) {
 		        // Kamerayı kapat
 		        if (localVideoStream) {
@@ -2357,141 +2354,51 @@
 		        if (localVideo) localVideo.srcObject = null;
 		        pipContainer.classList.remove('active');
 		        
-		        // PeerConnection'dan video track'leri kaldır
+		        // PeerConnection'dan video track'i kaldır (replaceTrack ile)
 		        if (peerConnection) {
 		            const senders = peerConnection.getSenders();
-		            senders.forEach(sender => {
-		                if (sender.track && sender.track.kind === 'video') {
-		                    peerConnection.removeTrack(sender);
-		                }
-		            });
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                await videoSender.replaceTrack(null);
+		            }
 		        }
 		        
 		        isCameraOn = false;
 		        cameraBtn.classList.remove('active');
-		        
-		        // Kapalı kamera ikonu
-		        cameraBtn.innerHTML = `
-		            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-		                <line x1="1" y1="1" x2="23" y2="23"></line>
-		                <path d="M21 12.79A17.89 17.89 0 0 0 18.78 10.09C15.54 7.69 8.46 7.69 5.22 10.09A17.89 17.89 0 0 0 3 12.79"></path>
-		                <circle cx="12" cy="12" r="3"></circle>
-		                <path d="M9 21c0-4.05 2.95-7 7-7"></path>
-		            </svg>
-		        `;
-		        
 		        showNotification("Kamera kapatıldı", "info", 1500);
 		    } else {
 		        try {
-		            // Kamerayı aç - Mobil ve PC için farklı ayarlar
-		            const videoConstraints = isMobile ? {
-		                facingMode: currentCameraFacing,
-		                width: { ideal: 720, max: 1280 },
-		                height: { ideal: 480, max: 720 }
-		            } : {
-		                facingMode: currentCameraFacing,
-		                width: { ideal: 1280 },
-		                height: { ideal: 720 }
-		            };
-		            
+		            // Kamerayı aç
 		            localVideoStream = await navigator.mediaDevices.getUserMedia({
-		                video: videoConstraints
+		                video: {
+		                    facingMode: currentCameraFacing,
+		                    width: { ideal: 720, max: 1280 },
+		                    height: { ideal: 480, max: 720 }
+		                }
 		            });
 		            
 		            localVideo.srcObject = localVideoStream;
 		            pipContainer.classList.add('active');
+		            localVideo.play().catch(e => console.error("Video play hatası:", e));
 		            
-		            // Video yüklendiğinde kontrol et
-		            localVideo.onloadedmetadata = () => {
-		                console.log("Local video metadata yüklendi");
-		                localVideo.play().catch(e => console.error("Local video play hatası:", e));
-		            };
-		
-		            // Hemen play dene
-		            localVideo.play().catch(e => console.error("Immediate local video play hatası:", e));
-		            
-		            // PeerConnection'a video track'lerini ekle ve yeniden müzakere et
+		            // PeerConnection'a video track ekle veya değiştir
 		            if (peerConnection) {
-		                localVideoStream.getVideoTracks().forEach(track => {
-		                    peerConnection.addTrack(track, localVideoStream);
-		                });
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track === null || (s.track && s.track.kind === 'video'));
 		                
-		                // Yeniden offer oluştur
-		                try {
-		                    const offer = await peerConnection.createOffer();
-		                    await peerConnection.setLocalDescription(offer);
-		                    
-		                    if (socket && socket.readyState === WebSocket.OPEN) {
-		                        socket.send(JSON.stringify({
-		                            type: 'offer',
-		                            offer: offer,
-		                            targetId: lastCallInfo.adminId
-		                        }));
-		                    }
-		                } catch (renegotiationError) {
-		                    console.error("Video renegotiation hatası:", renegotiationError);
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		                } else {
+		                    peerConnection.addTrack(localVideoStream.getVideoTracks()[0], localVideoStream);
 		                }
 		            }
 		            
 		            isCameraOn = true;
 		            cameraBtn.classList.add('active');
-		            
-		            // Açık kamera ikonu
-		            cameraBtn.innerHTML = `
-		                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-		                    <rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
-		                    <circle cx="12" cy="12" r="3"></circle>
-		                </svg>
-		            `;
-		            
 		            showNotification("Kamera açıldı", "success", 1500);
 		        } catch (error) {
 		            console.error("Kamera açma hatası:", error);
-		            
-		            // Düşük kalitede tekrar dene (mobil için)
-		            if (isMobile) {
-		                try {
-		                    localVideoStream = await navigator.mediaDevices.getUserMedia({
-		                        video: { facingMode: currentCameraFacing }
-		                    });
-		                    
-		                    localVideo.srcObject = localVideoStream;
-		                    pipContainer.classList.add('active');
-		                    
-		                    // Video yüklendiğinde kontrol et
-		                    localVideo.onloadedmetadata = () => {
-		                        console.log("Local video metadata yüklendi (fallback)");
-		                        localVideo.play().catch(e => console.error("Local video play hatası (fallback):", e));
-		                    };
-		
-		                    // Hemen play dene
-		                    localVideo.play().catch(e => console.error("Immediate local video play hatası (fallback):", e));
-		                    
-		                    if (peerConnection) {
-		                        localVideoStream.getVideoTracks().forEach(track => {
-		                            peerConnection.addTrack(track, localVideoStream);
-		                        });
-		                    }
-		                    
-		                    isCameraOn = true;
-		                    cameraBtn.classList.add('active');
-		                    
-		                    // Açık kamera ikonu
-		                    cameraBtn.innerHTML = `
-		                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-		                            <rect x="2" y="7" width="20" height="10" rx="2" ry="2"></rect>
-		                            <circle cx="12" cy="12" r="3"></circle>
-		                        </svg>
-		                    `;
-		                    
-		                    showNotification("Kamera açıldı (düşük kalite)", "success", 1500);
-		                } catch (fallbackError) {
-		                    console.error("Düşük kalite kamera hatası:", fallbackError);
-		                    showNotification("Kamera erişimi reddedildi", "error");
-		                }
-		            } else {
-		                showNotification("Kamera açılamadı", "error");
-		            }
+		            showNotification("Kamera açılamadı", "error");
 		        }
 		    }
 		}
@@ -2560,22 +2467,22 @@
 		        screenShareBtn.classList.remove('active');
 		        isSharingScreen = false;
 		        
-		        // Video track'i kameraya geri döndür
-		        if (localVideoStream && peerConnection) {
-		            const sender = peerConnection.getSenders().find(s => 
-		                s.track && s.track.kind === 'video'
-		            );
-		            if (sender) {
-		                await sender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		        // Kameraya geri dön
+		        if (peerConnection && localVideoStream && isCameraOn) {
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
 		            }
 		        }
 		        
 		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
 		        
+		        // Sunucuya bildirim gönder
 		        if (socket && socket.readyState === WebSocket.OPEN) {
 		            socket.send(JSON.stringify({
 		                type: 'screen-sharing-stopped',
-		                userId: userInfo.id,
+		                userId: userInfo.id, // müşteri için
 		                targetId: lastCallInfo.adminId
 		            }));
 		        }
@@ -2590,16 +2497,27 @@
 		            screenVideo.srcObject = screenStream;
 		            screenshareContainer.classList.add('active');
 		            
-		            // Video track'i değiştir
+		            // Video track'i değiştir ve renegotiate et
 		            if (peerConnection) {
-		                const sender = peerConnection.getSenders().find(s => 
-		                    s.track && s.track.kind === 'video'
-		                );
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 		                
-		                if (sender) {
-		                    await sender.replaceTrack(screenStream.getVideoTracks()[0]);
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
 		                } else {
 		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
+		                }
+		                
+		                // Renegotiation başlat
+		                const offer = await peerConnection.createOffer();
+		                await peerConnection.setLocalDescription(offer);
+		                
+		                if (socket && socket.readyState === WebSocket.OPEN) {
+		                    socket.send(JSON.stringify({
+		                        type: 'offer',
+		                        offer: offer,
+		                        targetId: lastCallInfo.adminId // müşteri için
+		                    }));
 		                }
 		            }
 		            
@@ -2611,21 +2529,12 @@
 		            isSharingScreen = true;
 		            
 		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
-		            
-		            if (socket && socket.readyState === WebSocket.OPEN) {
-		                socket.send(JSON.stringify({
-		                    type: 'screen-sharing-started',
-		                    userId: userInfo.id,
-		                    targetId: lastCallInfo.adminId
-		                }));
-		            }
 		        } catch (error) {
 		            console.error("Ekran paylaşımı hatası:", error);
 		            showNotification("Ekran paylaşımı başlatılamadı", "error");
 		        }
 		    }
 		}
-        
         // Sohbeti aç/kapa
         function toggleChat() {
             const chatPanel = document.getElementById('chatPanel');
@@ -3072,6 +2981,7 @@
     </script>
 </body>
 </html>
+
 
 
 
