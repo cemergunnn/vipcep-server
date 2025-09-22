@@ -1323,18 +1323,7 @@
         </div>
     </div>
     
-    <!-- İzin İsteme Modalı -->
-    <div id="permissionsModal" class="modal-overlay hidden">
-        <div class="permissions-modal">
-            <div class="permissions-icon">🎙️</div>
-            <div class="permissions-title">Mikrofon ve Kamera İzni</div>
-            <p class="permissions-text">Görüşme yapabilmek için mikrofon ve kamera izinleri gereklidir. Lütfen izin vermeyi onaylayın.</p>
-            <div class="permissions-actions">
-                <button class="btn" id="cancelPermissionsBtn" style="background-color: var(--gray-200); color: var(--gray-700);">İptal</button>
-                <button class="btn btn-login" id="grantPermissionsBtn">İzin Ver</button>
-            </div>
-        </div>
-    </div>
+
     
     <div id="notification-container"></div>
     <audio id="localAudio" muted></audio>
@@ -1506,13 +1495,7 @@
         }
         
         function setupEventListeners() {
-		    // İzin modalı butonları
-		    const grantPermissionsBtn = document.getElementById('grantPermissionsBtn');
-		    const cancelPermissionsBtn = document.getElementById('cancelPermissionsBtn');
 		    
-		    if (cancelPermissionsBtn) {
-		        cancelPermissionsBtn.addEventListener('click', cancelPermissions);
-		    }
             // Arama kontrol butonları
             document.getElementById('toggleMicBtn')?.addEventListener('click', toggleMicrophone);
             document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleCamera);
@@ -1540,9 +1523,6 @@
                 }
             });
             
-            // İzin modalı butonları
-            document.getElementById('grantPermissionsBtn')?.addEventListener('click', requestMediaPermissions);
-            document.getElementById('cancelPermissionsBtn')?.addEventListener('click', cancelPermissions);
             
             // Sayfa kapatıldığında aramayı sonlandır
             window.addEventListener('beforeunload', function() {
@@ -3352,6 +3332,7 @@
     </script>
 </body>
 </html>
+
 
 
 
