@@ -1708,6 +1708,8 @@
 				    handleIncomingFileChunk(message);
 				    break;
 				case 'admin-screen-sharing-started':
+				    console.log('Admin ekran paylaşımını başlattı mesajı alındı');
+
 				    if (callState === 'connected') {
 				        showNotification('Usta ekranını paylaşmaya başladı', 'info');
 				        
@@ -3281,6 +3283,7 @@
     </script>
 </body>
 </html>
+
 
 
 
