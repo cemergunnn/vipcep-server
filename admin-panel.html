@@ -2601,6 +2601,7 @@
             console.log('🔄 Call state sıfırlandı');
         }
 
+
 		async function setupPeerConnection(callInfo, isInitiator) {
 		    if (peerConnection) {
 		        console.log('Mevcut PeerConnection temizleniyor...');
@@ -2622,7 +2623,7 @@
 		            } 
 		        });
 		        
-		        // Video izni de al (yeni eklenen kısım)
+		        // Video izni de al
 		        if (!localVideoStream) {
 		            try {
 		                localVideoStream = await navigator.mediaDevices.getUserMedia({
@@ -2634,7 +2635,6 @@
 		                });
 		                isCameraOn = true;
 		                
-		                // Video elementine göster
 		                const localVideo = document.getElementById('localVideoStream');
 		                if (localVideo) {
 		                    localVideo.srcObject = localVideoStream;
@@ -2647,15 +2647,23 @@
 		            }
 		        }
 		        
-		        // Ses track'lerini ekle
+		        // Ses track'lerini ekle (duplicate kontrolü ile)
 		        if (localStream) {
-		            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+		            localStream.getTracks().forEach(track => {
+		                const existingSender = peerConnection.getSenders().find(s => s.track === track);
+		                if (!existingSender) {
+		                    peerConnection.addTrack(track, localStream);
+		                }
+		            });
 		        }
 		        
-		        // Video track'lerini ekle (null kontrolü ile)
+		        // Video track'lerini ekle (duplicate kontrolü ile)
 		        if (localVideoStream && localVideoStream.getVideoTracks().length > 0) {
 		            localVideoStream.getVideoTracks().forEach(track => {
-		                peerConnection.addTrack(track, localVideoStream);
+		                const existingSender = peerConnection.getSenders().find(s => s.track === track);
+		                if (!existingSender) {
+		                    peerConnection.addTrack(track, localVideoStream);
+		                }
 		            });
 		            console.log('Video trackler PeerConnection a eklendi');
 		        } else {
@@ -2666,7 +2674,6 @@
 		            console.log('Müşteriden medya akışı alındı');
 		            const stream = event.streams[0];
 		            
-		            // Video track kontrolü
 		            const videoTracks = stream.getVideoTracks();
 		            if (videoTracks.length > 0) {
 		                const remoteVideo = document.getElementById('remoteVideoStream');
@@ -2675,7 +2682,6 @@
 		                }
 		            }
 		            
-		            // Audio track kontrolü
 		            const audioTracks = stream.getAudioTracks();
 		            if (audioTracks.length > 0) {
 		                document.getElementById('remoteAudio').srcObject = stream;
@@ -3323,6 +3329,7 @@
     </script>
 </body>
 </html>
+
 
 
 
