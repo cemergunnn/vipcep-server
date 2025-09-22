@@ -1693,6 +1693,7 @@
 		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 		            if (videoSender) {
 		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		                console.log('Video track kameraya geri dondu');
 		            }
 		        }
 		        
@@ -1705,11 +1706,14 @@
 		                adminId: adminUniqueId,
 		                targetId: currentCall.userId
 		            }));
+		            console.log('Ekran paylaşımı durdurma mesaji gonderildi');
 		        }
 		        
 		    } else {
 		        // Ekran paylaşımını başlat
 		        try {
+		            console.log('Ekran paylaşımı başlatiliyor...');
+		            
 		            screenStream = await navigator.mediaDevices.getDisplayMedia({
 		                video: {
 		                    displaySurface: "screen"
@@ -1717,28 +1721,46 @@
 		                audio: false
 		            });
 		            
+		            console.log('Screen stream alindi:', screenStream);
+		            console.log('Screen video tracks:', screenStream.getVideoTracks().length);
+		            
 		            const screenVideo = document.getElementById('screenshareVideo');
 		            if (screenVideo) {
 		                screenVideo.srcObject = screenStream;
+		                console.log('Screen video elementine atandi');
+		            } else {
+		                console.log('screenshareVideo elementi bulunamadi');
 		            }
 		            
 		            screenshareContainer?.classList.add('active');
+		            console.log('Screenshare container aktif edildi');
 		            
 		            // PeerConnection'da video track'i değiştir
 		            if (peerConnection) {
+		                console.log('PeerConnection var, track degistiriliyor');
 		                const videoTrack = screenStream.getVideoTracks()[0];
+		                console.log('Screen video track:', videoTrack);
+		                
 		                const senders = peerConnection.getSenders();
+		                console.log('Mevcut senders:', senders.length);
+		                
 		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		                console.log('Video sender bulundu:', !!videoSender);
 		                
 		                if (videoSender) {
 		                    await videoSender.replaceTrack(videoTrack);
+		                    console.log('Video track degistirildi - replaceTrack kullanildi');
 		                } else {
 		                    peerConnection.addTrack(videoTrack, screenStream);
+		                    console.log('Yeni video track eklendi - addTrack kullanildi');
 		                }
+		            } else {
+		                console.log('HATA: PeerConnection bulunamadi!');
 		            }
 		            
 		            // Ekran paylaşımı bittiğinde otomatik durdur
 		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+		                console.log('Ekran paylaşımı kullanici tarafindan sonlandirildi');
 		                toggleScreenShare();
 		            });
 		            
@@ -1754,9 +1776,15 @@
 		                    adminId: adminUniqueId,
 		                    targetId: currentCall.userId
 		                }));
+		                console.log('Ekran paylaşımı başlatma mesaji gonderildi');
+		            } else {
+		                console.log('HATA: Socket bagli degil veya currentCall yok');
+		                console.log('Socket durumu:', socket ? socket.readyState : 'socket yok');
+		                console.log('currentCall:', currentCall);
 		            }
 		            
 		        } catch (error) {
+		            console.error('Ekran paylaşımı hatasi:', error);
 		            if (error.name === 'NotAllowedError') {
 		                showNotification("Ekran paylaşımı izni reddedildi", "error");
 		            } else if (error.name === 'AbortError') {
@@ -1764,7 +1792,6 @@
 		            } else {
 		                showNotification("Ekran paylaşımı başlatılamadı: " + error.message, "error");
 		            }
-		            console.error("Ekran paylaşımı hatası:", error);
 		        }
 		    }
 		}
@@ -3353,6 +3380,7 @@
     </script>
 </body>
 </html>
+
 
 
 
