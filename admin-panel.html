@@ -2196,89 +2196,37 @@
         }
 
 		async function toggleScreenShare() {
-		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
-		    const screenshareContainer = document.getElementById('screenshareContainer');
+		    console.log('toggleScreenShare çağrıldı');
 		    
-		    if (isSharingScreen) {
-		        // Ekran paylaşımını durdur
-		        if (screenStream) {
-		            screenStream.getTracks().forEach(track => track.stop());
-		            screenStream = null;
-		        }
+		    // Basit browser desteği kontrolü
+		    if (!navigator.mediaDevices) {
+		        alert('navigator.mediaDevices yok');
+		        return;
+		    }
+		    
+		    if (!navigator.mediaDevices.getDisplayMedia) {
+		        alert('getDisplayMedia desteklenmiyor');
+		        return;
+		    }
+		    
+		    alert('API desteği var, ekran paylaşımı başlatılıyor...');
+		    
+		    try {
+		        const stream = await navigator.mediaDevices.getDisplayMedia({
+		            video: true
+		        });
 		        
-		        screenshareContainer.classList.remove('active');
-		        screenShareBtn.classList.remove('active');
-		        isSharingScreen = false;
+		        alert('Başarılı! Stream alındı');
+		        console.log('Stream:', stream);
 		        
-		        // Kameraya geri dön
-		        if (peerConnection && localVideoStream && isCameraOn) {
-		            const senders = peerConnection.getSenders();
-		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-		            if (videoSender) {
-		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
-		            }
-		        }
+		        // Stream'i durdur (test için)
+		        stream.getTracks().forEach(track => track.stop());
 		        
-		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
-		        
-		        // Sunucuya bildirim gönder
-		        if (socket && socket.readyState === WebSocket.OPEN) {
-		            socket.send(JSON.stringify({
-		                type: 'screen-sharing-stopped',
-				    adminId: adminUniqueId, // Düzelt
-				    targetId: currentCall.userId // Düzelt
-		            }));
-		        }
-		    } else {
-		        try {
-		            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-		                video: true,
-		                audio: true
-		            });
-		            
-		            const screenVideo = document.getElementById('screenshareVideo');
-		            screenVideo.srcObject = screenStream;
-		            screenshareContainer.classList.add('active');
-		            
-		            // Video track'i değiştir ve renegotiate et
-		            if (peerConnection) {
-		                const senders = peerConnection.getSenders();
-		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-		                
-		                if (videoSender) {
-		                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
-		                } else {
-		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
-		                }
-		                
-		                // Renegotiation başlat
-		                const offer = await peerConnection.createOffer();
-		                await peerConnection.setLocalDescription(offer);
-		                
-		                if (socket && socket.readyState === WebSocket.OPEN) {
-		                    socket.send(JSON.stringify({
-		                        type: 'offer',
-		                        offer: offer,
-		                        targetId: lastCallInfo.adminId // müşteri için
-		                    }));
-		                }
-		            }
-		            
-		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
-		                toggleScreenShare();
-		            });
-		            
-		            screenShareBtn.classList.add('active');
-		            isSharingScreen = true;
-		            
-		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
-		        } catch (error) {
-		            console.error("Ekran paylaşımı hatası:", error);
-		            showNotification("Ekran paylaşımı başlatılamadı", "error");
-		        }
+		    } catch (error) {
+		        alert('Hata: ' + error.name + ' - ' + error.message);
+		        console.error('Detay:', error);
 		    }
 		}
-
 		function toggleChat() {
 			const chatPanel = document.getElementById('chatPanel');
 			const chatBtn = document.getElementById('toggleChatBtn');
@@ -3373,6 +3321,7 @@
     </script>
 </body>
 </html>
+
 
 
 
