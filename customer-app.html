@@ -2187,36 +2187,105 @@
         
         // Uzak trackler için handler
 		function handleRemoteTrack(event) {
-		    console.log("Uzak track alındı:", event.track.kind);
+		    console.log("1. handleRemoteTrack çağrıldı");
+		    console.log("2. Event:", event);
+		    console.log("3. Track kind:", event.track.kind);
+		    console.log("4. Track label:", event.track.label);
+		    console.log("5. Track enabled:", event.track.enabled);
+		    console.log("6. Track readyState:", event.track.readyState);
+		    console.log("7. Event streams:", event.streams);
+		    console.log("8. Event streams length:", event.streams ? event.streams.length : 'streams yok');
 		    
 		    if (event.track.kind === 'audio') {
-		        // Ses trackini remoteAudio elementine bağla
+		        console.log("9. Audio track işleniyor");
+		        
 		        const remoteAudio = document.getElementById('remoteAudio');
+		        console.log("10. RemoteAudio elementi:", remoteAudio);
+		        
 		        if (!remoteStream) {
+		            console.log("11. Yeni remoteStream oluşturuluyor");
 		            remoteStream = new MediaStream();
+		        } else {
+		            console.log("12. Mevcut remoteStream kullanılıyor");
 		        }
+		        
 		        remoteStream.addTrack(event.track);
-		        remoteAudio.srcObject = remoteStream;
+		        console.log("13. Audio track remoteStream'e eklendi");
+		        
+		        if (remoteAudio) {
+		            remoteAudio.srcObject = remoteStream;
+		            console.log("14. RemoteAudio srcObject atandı");
+		        } else {
+		            console.log("15. HATA: RemoteAudio elementi bulunamadı");
+		        }
+		        
 		    } else if (event.track.kind === 'video') {
-		        // Video trackini remoteVideo elementine bağla
+		        console.log("16. Video track işleniyor");
+		        
 		        const remoteVideo = document.getElementById('remoteVideoStream');
+		        console.log("17. RemoteVideo elementi:", remoteVideo);
 		        
 		        if (event.streams && event.streams[0]) {
-		            remoteVideo.srcObject = event.streams[0];
+		            console.log("18. Event stream var, video elementine atanıyor");
+		            console.log("19. Stream tracks:", event.streams[0].getTracks());
+		            console.log("20. Stream video tracks:", event.streams[0].getVideoTracks());
 		            
-		            // *** Video geldiğinde fullscreen view'e geç ***
-		            document.getElementById('connectingStateView').classList.add('hidden');
-		            document.getElementById('fullscreenCallView').classList.remove('hidden');
+		            if (remoteVideo) {
+		                remoteVideo.srcObject = event.streams[0];
+		                console.log("21. Video srcObject atandı");
+		                
+		                remoteVideo.play().then(() => {
+		                    console.log("22. Video play başarılı");
+		                }).catch(e => {
+		                    console.error("23. Video play hatası:", e);
+		                });
+		                
+		                // Video yüklendiğinde
+		                remoteVideo.onloadedmetadata = () => {
+		                    console.log("24. Video metadata yüklendi");
+		                    console.log("25. Video boyutları:", remoteVideo.videoWidth, "x", remoteVideo.videoHeight);
+		                };
+		                
+		                // Video data geldiğinde
+		                remoteVideo.onloadeddata = () => {
+		                    console.log("26. Video data yüklendi");
+		                };
+		                
+		            } else {
+		                console.log("27. HATA: RemoteVideo elementi bulunamadı");
+		            }
 		            
-		            event.track.onended = () => {
-		                console.log("Uzak video track sonlandı");
-		                if (remoteVideo.srcObject) {
-		                    remoteVideo.srcObject.getTracks().forEach(track => track.stop());
-		                    remoteVideo.srcObject = null;
-		                }
-		            };
+		        } else {
+		            console.log("28. HATA: Event streams yok");
+		            
+		            // Manuel stream oluşturma
+		            const manualStream = new MediaStream([event.track]);
+		            console.log("29. Manuel stream oluşturuldu:", manualStream);
+		            
+		            if (remoteVideo) {
+		                remoteVideo.srcObject = manualStream;
+		                console.log("30. Manuel stream video elementine atandı");
+		            }
 		        }
+		        
+		        // Track durumu değişikliklerini dinle
+		        event.track.onended = () => {
+		            console.log("31. Video track sonlandı");
+		        };
+		        
+		        event.track.onmute = () => {
+		            console.log("32. Video track mute oldu");
+		        };
+		        
+		        event.track.onunmute = () => {
+		            console.log("33. Video track unmute oldu");
+		        };
+		        
+		    } else {
+		        console.log("34. Bilinmeyen track türü:", event.track.kind);
 		    }
+		    
+		    console.log("35. handleRemoteTrack tamamlandı");
 		}
 
         async function handleWebRTCMessage(message) {
@@ -3283,6 +3352,7 @@
     </script>
 </body>
 </html>
+
 
 
 
