@@ -1578,6 +1578,17 @@
         };
 		// Event Listener Setup
         function setupEventListeners() {
+			// Ekran paylaşımı butonu
+			const screenShareBtn = document.getElementById('toggleScreenShareBtn');
+			if (screenShareBtn) {
+			    console.log('Ekran paylaşımı butonu bulundu');
+			    screenShareBtn.addEventListener('click', () => {
+			        console.log('Ekran paylaşımı butonuna tıklandı');
+			        toggleScreenShare();
+			    });
+			} else {
+			    console.log('Ekran paylaşımı butonu bulunamadı');
+			}
             const volumeSlider = document.getElementById('volumeSlider');
             if (volumeSlider) {
                 volumeSlider.addEventListener('input', (e) => {
@@ -3362,6 +3373,7 @@
     </script>
 </body>
 </html>
+
 
 
 
