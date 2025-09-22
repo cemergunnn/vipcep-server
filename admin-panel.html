@@ -2674,7 +2674,7 @@
 		                    localVideo.srcObject = localVideoStream;
 		                }
 		                document.getElementById('pipVideoContainer')?.classList.add('active');
-		                console.log('📹 Admin kamerası otomatik açıldı');
+		                console.log(' Admin kamerası otomatik açıldı');
 		                
 		            } catch (error) {
 		                console.log('📹 Video izni alınamadı:', error);
@@ -2689,11 +2689,11 @@
 		            localVideoStream.getVideoTracks().forEach(track => {
 		                peerConnection.addTrack(track, localVideoStream);
 		            });
-		            console.log('📹 Video track'ler PeerConnection'a eklendi');
+		            console.log(' Video track'ler PeerConnection'a eklendi');
 		        }
 		        
 		        peerConnection.ontrack = (event) => { 
-		            console.log('🎵 Müşteriden medya akışı alındı');
+		            console.log(' Müşteriden medya akışı alındı');
 		            const stream = event.streams[0];
 		            
 		            // Video track kontrolü
@@ -3353,6 +3353,7 @@
     </script>
 </body>
 </html>
+
 
 
 
