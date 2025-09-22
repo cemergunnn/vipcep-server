@@ -2635,87 +2635,119 @@
             console.log('🔄 Call state sıfırlandı');
         }
 
-        async function setupPeerConnection(callInfo, isInitiator) {
-            if (peerConnection) {
-                console.log('⚠️ Mevcut PeerConnection temizleniyor...');
-                cleanupCall();
-            }
-            try {
-                console.log(`🔗 Admin WebRTC bağlantısı kuruluyor... Başlatan: ${isInitiator}`);
-                updateAdminStatus('busy');
-                
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                pendingIceCandidates = [];
-
-                localStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { 
-                        deviceId: selectedMicrophoneId ? { exact: selectedMicrophoneId } : undefined,
-                        echoCancellation: true, 
-                        noiseSuppression: true 
-                    } 
-                });
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                if (localVideoStream) {
-					localVideoStream.getVideoTracks().forEach(track => {
-						peerConnection.addTrack(track, localVideoStream);
-					});
-				}
-                peerConnection.ontrack = (event) => { 
-                    console.log('🎵 Müşteriden medya akışı alındı');
-                    const stream = event.streams[0];
-                    
-                    // Video track kontrolü
-                    const videoTracks = stream.getVideoTracks();
-                    if (videoTracks.length > 0) {
-                        const remoteVideo = document.getElementById('remoteVideoStream');
-                        if (remoteVideo) {
-                            remoteVideo.srcObject = stream;
-                        }
-                    }
-                    
-                    // Audio track kontrolü
-                    const audioTracks = stream.getAudioTracks();
-                    if (audioTracks.length > 0) {
-                        document.getElementById('remoteAudio').srcObject = stream;
-                    }
-                };
-
-                peerConnection.onicecandidate = (event) => { 
-                    if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
-                    }
-                };
-
-                peerConnection.onconnectionstatechange = () => {
-                    if (!peerConnection) return;
-                    const state = peerConnection.connectionState;
-                    console.log('🔗 Admin Bağlantı durumu:', state);
-                    if (state === 'connected') {
-                        document.getElementById('outgoingCall').classList.add('hidden');
-                        document.getElementById('incomingCall').classList.add('hidden');
-                        document.getElementById('activeCall').classList.remove('hidden');
-                        document.getElementById('activeCaller').textContent = callInfo.userName;
-                        startTimer();
-                    } else if (['failed', 'disconnected', 'closed'].includes(state)) {
-                        handleCallEnded({ reason: 'Bağlantı koptu' });
-                    }
-                };
-
-                if (isInitiator) {
-                    const offer = await peerConnection.createOffer();
-                    await peerConnection.setLocalDescription(offer);
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'offer', offer: offer, targetId: callInfo.userId }));
-                        console.log('📤 Admin "offer" gönderdi.');
-                    }
-                }
-            } catch (error) {
-                console.error('❌ WebRTC kurulum hatası (Admin):', error);
-                showNotification('Mikrofon erişimi gerekli veya bir hata oluştu!', 'error');
-                endCall();
-            }
-        }
-
+		async function setupPeerConnection(callInfo, isInitiator) {
+		    if (peerConnection) {
+		        console.log('⚠️ Mevcut PeerConnection temizleniyor...');
+		        cleanupCall();
+		    }
+		    try {
+		        console.log(`🔗 Admin WebRTC bağlantısı kuruluyor... Başlatan: ${isInitiator}`);
+		        updateAdminStatus('busy');
+		        
+		        peerConnection = new RTCPeerConnection(rtcConfig);
+		        pendingIceCandidates = [];
+		        
+		        // Ses izni al
+		        localStream = await navigator.mediaDevices.getUserMedia({ 
+		            audio: { 
+		                deviceId: selectedMicrophoneId ? { exact: selectedMicrophoneId } : undefined,
+		                echoCancellation: true, 
+		                noiseSuppression: true 
+		            } 
+		        });
+		        
+		        // Video izni de al (yeni eklenen kısım)
+		        if (!localVideoStream) {
+		            try {
+		                localVideoStream = await navigator.mediaDevices.getUserMedia({
+		                    video: {
+		                        deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+		                        width: { ideal: 1280 },
+		                        height: { ideal: 720 }
+		                    }
+		                });
+		                isCameraOn = true;
+		                
+		                // Video elementine göster
+		                const localVideo = document.getElementById('localVideoStream');
+		                if (localVideo) {
+		                    localVideo.srcObject = localVideoStream;
+		                }
+		                document.getElementById('pipVideoContainer')?.classList.add('active');
+		                console.log('📹 Admin kamerası otomatik açıldı');
+		                
+		            } catch (error) {
+		                console.log('📹 Video izni alınamadı:', error);
+		            }
+		        }
+		        
+		        // Ses track'lerini ekle
+		        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+		        
+		        // Video track'lerini ekle (eğer varsa)
+		        if (localVideoStream) {
+		            localVideoStream.getVideoTracks().forEach(track => {
+		                peerConnection.addTrack(track, localVideoStream);
+		            });
+		            console.log('📹 Video track'ler PeerConnection'a eklendi');
+		        }
+		        
+		        // ... geri kalan kod aynı kalıyor
+		        peerConnection.ontrack = (event) => { 
+		            console.log('🎵 Müşteriden medya akışı alındı');
+		            const stream = event.streams[0];
+		            
+		            // Video track kontrolü
+		            const videoTracks = stream.getVideoTracks();
+		            if (videoTracks.length > 0) {
+		                const remoteVideo = document.getElementById('remoteVideoStream');
+		                if (remoteVideo) {
+		                    remoteVideo.srcObject = stream;
+		                }
+		            }
+		            
+		            // Audio track kontrolü
+		            const audioTracks = stream.getAudioTracks();
+		            if (audioTracks.length > 0) {
+		                document.getElementById('remoteAudio').srcObject = stream;
+		            }
+		        };
+		
+		        peerConnection.onicecandidate = (event) => { 
+		            if (event.candidate && socket && socket.readyState === WebSocket.OPEN) {
+		                socket.send(JSON.stringify({ type: 'ice-candidate', candidate: event.candidate, targetId: callInfo.userId }));
+		            }
+		        };
+		
+		        peerConnection.onconnectionstatechange = () => {
+		            if (!peerConnection) return;
+		            const state = peerConnection.connectionState;
+		            console.log('🔗 Admin Bağlantı durumu:', state);
+		            if (state === 'connected') {
+		                document.getElementById('outgoingCall').classList.add('hidden');
+		                document.getElementById('incomingCall').classList.add('hidden');
+		                document.getElementById('activeCall').classList.remove('hidden');
+		                document.getElementById('activeCaller').textContent = callInfo.userName;
+		                startTimer();
+		            } else if (['failed', 'disconnected', 'closed'].includes(state)) {
+		                handleCallEnded({ reason: 'Bağlantı koptu' });
+		            }
+		        };
+		
+		        if (isInitiator) {
+		            const offer = await peerConnection.createOffer();
+		            await peerConnection.setLocalDescription(offer);
+		            if (socket && socket.readyState === WebSocket.OPEN) {
+		                socket.send(JSON.stringify({ type: 'offer', offer: offer, targetId: callInfo.userId }));
+		                console.log('📤 Admin "offer" gönderdi.');
+		            }
+		        }
+		    } catch (error) {
+		        console.error('❌ WebRTC kurulum hatası (Admin):', error);
+		        showNotification('Mikrofon erişimi gerekli veya bir hata oluştu!', 'error');
+		        endCall();
+		    }
+		}
         async function handleWebRTCMessage(message) {
             try {
                 switch (message.type) {
@@ -3322,6 +3354,7 @@
     </script>
 </body>
 </html>
+
 
 
 
