@@ -1665,9 +1665,17 @@
             });
         }
 		async function toggleScreenShare() {
+    		alert('Buton tıklandı!'); // Bu çıkarsa buton çalışıyor
+
 		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
 		    const screenshareContainer = document.getElementById('screenshareContainer');
-		    
+		    // Browser desteğini kontrol et
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+			    showNotification("Bu tarayıcı ekran paylaşımını desteklemiyor", "error");
+			    return;
+			}
+			
+			console.log('Browser ekran paylaşımını destekliyor');
 		    if (isSharingScreen) {
 		        // Ekran paylaşımını durdur
 		        if (screenStream) {
@@ -3354,6 +3362,7 @@
     </script>
 </body>
 </html>
+
 
 
 
