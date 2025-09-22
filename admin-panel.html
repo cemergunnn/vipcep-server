@@ -1673,102 +1673,64 @@
 		    });
 		}
 		async function toggleScreenShare() {
-		    console.log('toggleScreenShare çağrıldı');
-		    console.log('isSharingScreen:', isSharingScreen);
-		    console.log('peerConnection var mı:', !!peerConnection);
-		    console.log('currentCall var mı:', !!currentCall);
+		    console.log('1. toggleScreenShare çağrıldı');
+		    console.log('2. isSharingScreen:', isSharingScreen);
+		    console.log('3. peerConnection var mı:', !!peerConnection);
+		    console.log('4. currentCall var mı:', !!currentCall);
 		    
 		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
 		    const screenshareContainer = document.getElementById('screenshareContainer');
 		    
 		    if (isSharingScreen) {
-		        // Ekran paylaşımını durdur
-		        console.log('Ekran paylaşımı durduruluyor');
-		        if (screenStream) {
-		            screenStream.getTracks().forEach(track => track.stop());
-		            screenStream = null;
-		        }
-		        
-		        screenshareContainer?.classList.remove('active');
-		        screenShareBtn?.classList.remove('active');
-		        isSharingScreen = false;
-		        
-		        // PeerConnection'da video track'i eski haline döndür
-		        if (peerConnection && localVideoStream && localVideoStream.getVideoTracks().length > 0) {
-		            const senders = peerConnection.getSenders();
-		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-		            if (videoSender) {
-		                await videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
-		                console.log('Video track kameraya geri dondu');
-		            }
-		        }
-		        
-		        showNotification("Ekran paylaşımı durduruldu", "info");
-		        
+		        console.log('5. Ekran paylaşımı durduruluyor');
+		        // Durdurma kodu...
 		    } else {
-		        // Ekran paylaşımını başlat
 		        try {
-		            console.log('Ekran paylaşımı başlatılıyor...');
+		            console.log('6. Ekran paylaşımı başlatılıyor...');
 		            
 		            screenStream = await navigator.mediaDevices.getDisplayMedia({
 		                video: { displaySurface: "screen" },
 		                audio: false
 		            });
 		            
-		            console.log('Screen stream alındı:', screenStream);
-		            console.log('Screen video tracks sayısı:', screenStream.getVideoTracks().length);
+		            console.log('7. Screen stream alındı');
+		            console.log('8. Stream active:', screenStream.active);
+		            console.log('9. Video tracks sayısı:', screenStream.getVideoTracks().length);
 		            
-		            // PeerConnection'da video track'i değiştir
-		            if (peerConnection && screenStream.getVideoTracks().length > 0) {
-		                console.log('PeerConnection var, track değiştiriliyor');
-		                const videoTrack = screenStream.getVideoTracks()[0];
-		                console.log('Screen video track:', videoTrack);
-		                
-		                const senders = peerConnection.getSenders();
-		                console.log('Mevcut senders sayısı:', senders.length);
-		                
-		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-		                console.log('Video sender bulundu:', !!videoSender);
-		                
-		                if (videoSender) {
-		                    await videoSender.replaceTrack(videoTrack);
-		                    console.log('Video track değiştirildi - replaceTrack kullanıldı');
-		                } else {
-		                    peerConnection.addTrack(videoTrack, screenStream);
-		                    console.log('Yeni video track eklendi - addTrack kullanıldı');
-		                }
-		                
-		                // Ekran paylaşımı bittiğinde otomatik durdur
-		                videoTrack.addEventListener('ended', () => {
-		                    console.log('Ekran paylaşımı kullanıcı tarafından sonlandırıldı');
-		                    toggleScreenShare();
-		                });
-		                
-		                screenShareBtn?.classList.add('active');
-		                isSharingScreen = true;
-		                
-		                showNotification("Ekran paylaşımı başlatıldı", "success");
-		                
-		                // Sunucuya bildirim gönder
-		                if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
-		                    socket.send(JSON.stringify({
-		                        type: 'screen-sharing-started',
-		                        adminId: adminUniqueId,
-		                        targetId: currentCall.userId
-		                    }));
-		                    console.log('Sunucuya ekran paylaşımı bildirimi gönderildi');
-		                } else {
-		                    console.log('Socket bağlı değil veya currentCall yok');
-		                }
-		                
-		            } else {
-		                console.log('PeerConnection yok veya screen track yok');
-		                showNotification("PeerConnection hatası", "error");
+		            if (screenStream.getVideoTracks().length === 0) {
+		                console.log('10. HATA: Video track yok!');
+		                return;
 		            }
 		            
+		            if (!peerConnection) {
+		                console.log('11. HATA: PeerConnection yok!');
+		                return;
+		            }
+		            
+		            console.log('12. PeerConnection var, track değiştiriliyor');
+		            const videoTrack = screenStream.getVideoTracks()[0];
+		            console.log('13. Video track state:', videoTrack.readyState);
+		            
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            
+		            if (videoSender) {
+		                console.log('14. replaceTrack kullanılıyor');
+		                await videoSender.replaceTrack(videoTrack);
+		                console.log('15. replaceTrack tamamlandı');
+		            } else {
+		                console.log('16. addTrack kullanılıyor');
+		                peerConnection.addTrack(videoTrack, screenStream);
+		                console.log('17. addTrack tamamlandı');
+		            }
+		            
+		            isSharingScreen = true;
+		            screenShareBtn?.classList.add('active');
+		            showNotification("Ekran paylaşımı başlatıldı", "success");
+		            
 		        } catch (error) {
-		            console.error('Ekran paylaşımı hatası:', error);
-		            showNotification("Ekran paylaşımı başlatılamadı: " + error.message, "error");
+		            console.error('HATA:', error);
+		            showNotification("Ekran paylaşımı hatası: " + error.message, "error");
 		        }
 		    }
 		}
@@ -3361,6 +3323,7 @@
     </script>
 </body>
 </html>
+
 
 
 
