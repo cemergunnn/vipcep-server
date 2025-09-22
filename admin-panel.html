@@ -1577,116 +1577,105 @@
             loadAvailableDevices();
         };
 		// Event Listener Setup
-        function setupEventListeners() {
-			// Ekran paylaşımı butonu
-			const screenShareBtn = document.getElementById('toggleScreenShareBtn');
-			if (screenShareBtn) {
-			    console.log('Ekran paylaşımı butonu bulundu');
-			    screenShareBtn.addEventListener('click', () => {
-			        console.log('Ekran paylaşımı butonuna tıklandı');
-			        toggleScreenShare();
-			    });
-			} else {
-			    console.log('Ekran paylaşımı butonu bulunamadı');
-			}
-            const volumeSlider = document.getElementById('volumeSlider');
-            if (volumeSlider) {
-                volumeSlider.addEventListener('input', (e) => {
-                    const volume = e.target.value;
-                    document.getElementById('volumeValue').textContent = volume + '%';
-                    
-                    const remoteAudio = document.getElementById('remoteAudio');
-                    if (speakerEnabled && remoteAudio) {
-                        remoteAudio.volume = volume / 100;
-                    }
-                });
-            }
-
-            // Video arama kontrolleri
-            document.getElementById('toggleMicBtn')?.addEventListener('click', toggleVideoMicrophone);
-            document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleVideoCamera);
-            document.getElementById('toggleScreenShareBtn')?.addEventListener('click', toggleScreenShare);
-            document.getElementById('toggleChatBtn')?.addEventListener('click', toggleChat);
-            document.getElementById('endCallBtn')?.addEventListener('click', () => endVideoCall());
-            document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
-            document.getElementById('closeChatBtn')?.addEventListener('click', toggleChat);
-			// Dosya transfer butonları
-			document.getElementById('fileBtn')?.addEventListener('click', () => {
-			    document.getElementById('fileInput').click();
-			});
-			
-			document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
-            
-            // Sohbet mesaj gönderme
-            document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
-            document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
-                if (e.key === 'Enter') {
-                    sendChatMessage();
-                }
-            });
-
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    switch (e.key) {
-                        case 'r': e.preventDefault(); refreshData(); break;
-                        case 'e': e.preventDefault(); if (currentCall) endCall(); break;
-                        case 'm': e.preventDefault(); if (currentCall) muteCall(); break;
-                    }
-                }
-                
-                if (e.key === 'Escape') {
-                    if (outgoingCallInfo) cancelOutgoingCall();
-                    else if (incomingCallInfo) rejectIncomingCall();
-                    else if (currentCall && confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) endCall();
-                    
-                    if (!document.getElementById('profileModal').classList.contains('hidden')) {
-                        closeProfileModal();
-                    }
-                    if (!document.getElementById('settingsModal').classList.contains('hidden')) {
-                        closeSettingsModal();
-                    }
-                }
-            });
-            
-            document.body.addEventListener('click', () => {
-                if (!isMediaAudioUnlocked) {
-                    const mediaAudio = document.getElementById('mediaSessionAudio');
-                    if (mediaAudio) {
-                        mediaAudio.play().then(() => {
-                            mediaAudio.pause();
-                            isMediaAudioUnlocked = true;
-                            console.log('🎧 Medya oturumu için ses kilidi kullanıcı etkileşimiyle açıldı.');
-                        }).catch(e => {
-                           console.warn('Ses kilidi açılamadı, tarayıcı engelliyor olabilir.', e);
-                        });
-                    }
-                }
-            }, { once: true });
-
-            document.getElementById('profileModal').addEventListener('click', (e) => {
-                if (e.target.id === 'profileModal') {
-                    closeProfileModal();
-                }
-            });
-
-            document.getElementById('settingsModal').addEventListener('click', (e) => {
-                if (e.target.id === 'settingsModal') {
-                    closeSettingsModal();
-                }
-            });
-        }
+		function setupEventListeners() {
+		    // Duplikasyon önleme - sadece bir kez çalıştır
+		    if (window.adminEventListenersAdded) return;
+		    window.adminEventListenersAdded = true;
+		
+		    const volumeSlider = document.getElementById('volumeSlider');
+		    if (volumeSlider) {
+		        volumeSlider.addEventListener('input', (e) => {
+		            const volume = e.target.value;
+		            document.getElementById('volumeValue').textContent = volume + '%';
+		            
+		            const remoteAudio = document.getElementById('remoteAudio');
+		            if (speakerEnabled && remoteAudio) {
+		                remoteAudio.volume = volume / 100;
+		            }
+		        });
+		    }
+		
+		    // Video arama kontrolleri
+		    document.getElementById('toggleMicBtn')?.addEventListener('click', toggleVideoMicrophone);
+		    document.getElementById('toggleCameraBtn')?.addEventListener('click', toggleVideoCamera);
+		    document.getElementById('toggleScreenShareBtn')?.addEventListener('click', toggleScreenShare);
+		    document.getElementById('toggleChatBtn')?.addEventListener('click', toggleChat);
+		    document.getElementById('endCallBtn')?.addEventListener('click', () => endVideoCall());
+		    document.getElementById('switchCameraBtn')?.addEventListener('click', switchCamera);
+		    document.getElementById('closeChatBtn')?.addEventListener('click', toggleChat);
+		
+		    // Dosya transfer butonları
+		    document.getElementById('fileBtn')?.addEventListener('click', () => {
+		        document.getElementById('fileInput').click();
+		    });
+		    
+		    document.getElementById('fileInput')?.addEventListener('change', handleFileSelection);
+		    
+		    // Sohbet mesaj gönderme
+		    document.getElementById('sendMessageBtn')?.addEventListener('click', sendChatMessage);
+		    document.getElementById('chatInput')?.addEventListener('keyup', function(e) {
+		        if (e.key === 'Enter') {
+		            sendChatMessage();
+		        }
+		    });
+		
+		    // Klavye kısayolları
+		    document.addEventListener('keydown', (e) => {
+		        if (e.ctrlKey || e.metaKey) {
+		            switch (e.key) {
+		                case 'r': e.preventDefault(); refreshData(); break;
+		                case 'e': e.preventDefault(); if (currentCall) endCall(); break;
+		                case 'm': e.preventDefault(); if (currentCall) muteCall(); break;
+		            }
+		        }
+		        
+		        if (e.key === 'Escape') {
+		            if (outgoingCallInfo) cancelOutgoingCall();
+		            else if (incomingCallInfo) rejectIncomingCall();
+		            else if (currentCall && confirm('Görüşmeyi sonlandırmak istiyor musunuz?')) endCall();
+		            
+		            if (!document.getElementById('profileModal').classList.contains('hidden')) {
+		                closeProfileModal();
+		            }
+		            if (!document.getElementById('settingsModal').classList.contains('hidden')) {
+		                closeSettingsModal();
+		            }
+		        }
+		    });
+		    
+		    // Medya ses kilidi açma
+		    document.body.addEventListener('click', () => {
+		        if (!isMediaAudioUnlocked) {
+		            const mediaAudio = document.getElementById('mediaSessionAudio');
+		            if (mediaAudio) {
+		                mediaAudio.play().then(() => {
+		                    mediaAudio.pause();
+		                    isMediaAudioUnlocked = true;
+		                    console.log('Medya oturumu için ses kilidi kullanıcı etkileşimiyle açıldı.');
+		                }).catch(e => {
+		                   console.warn('Ses kilidi açılamadı, tarayıcı engelliyor olabilir.', e);
+		                });
+		            }
+		        }
+		    }, { once: true });
+		
+		    // Modal event listener'ları
+		    document.getElementById('profileModal')?.addEventListener('click', (e) => {
+		        if (e.target.id === 'profileModal') {
+		            closeProfileModal();
+		        }
+		    });
+		
+		    document.getElementById('settingsModal')?.addEventListener('click', (e) => {
+		        if (e.target.id === 'settingsModal') {
+		            closeSettingsModal();
+		        }
+		    });
+		}
 		async function toggleScreenShare() {
-    		alert('Buton tıklandı!'); // Bu çıkarsa buton çalışıyor
-
 		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
 		    const screenshareContainer = document.getElementById('screenshareContainer');
-		    // Browser desteğini kontrol et
-			if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-			    showNotification("Bu tarayıcı ekran paylaşımını desteklemiyor", "error");
-			    return;
-			}
-			
-			console.log('Browser ekran paylaşımını destekliyor');
+		    
 		    if (isSharingScreen) {
 		        // Ekran paylaşımını durdur
 		        if (screenStream) {
@@ -1694,11 +1683,11 @@
 		            screenStream = null;
 		        }
 		        
-		        screenshareContainer.classList.remove('active');
-		        screenShareBtn.classList.remove('active');
+		        screenshareContainer?.classList.remove('active');
+		        screenShareBtn?.classList.remove('active');
 		        isSharingScreen = false;
 		        
-		        // Kameraya geri dön (eğer varsa)
+		        // PeerConnection'da video track'i eski haline döndür
 		        if (peerConnection && localVideoStream && isCameraOn) {
 		            const senders = peerConnection.getSenders();
 		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
@@ -1707,52 +1696,59 @@
 		            }
 		        }
 		        
-		        showNotification("Ekran paylaşımı durduruldu", "info", 1500);
+		        showNotification("Ekran paylaşımı durduruldu", "info");
 		        
 		        // Sunucuya bildirim gönder
-		        if (socket && socket.readyState === WebSocket.OPEN) {
+		        if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
 		            socket.send(JSON.stringify({
 		                type: 'screen-sharing-stopped',
 		                adminId: adminUniqueId,
 		                targetId: currentCall.userId
 		            }));
 		        }
+		        
 		    } else {
+		        // Ekran paylaşımını başlat
 		        try {
-		            // Ekran paylaşımını başlat
-		            screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-		                video: true,
-		                audio: true
+		            screenStream = await navigator.mediaDevices.getDisplayMedia({
+		                video: {
+		                    displaySurface: "screen"
+		                },
+		                audio: false
 		            });
 		            
 		            const screenVideo = document.getElementById('screenshareVideo');
-		            screenVideo.srcObject = screenStream;
-		            screenshareContainer.classList.add('active');
+		            if (screenVideo) {
+		                screenVideo.srcObject = screenStream;
+		            }
 		            
-		            // Video track'i değiştir
+		            screenshareContainer?.classList.add('active');
+		            
+		            // PeerConnection'da video track'i değiştir
 		            if (peerConnection) {
+		                const videoTrack = screenStream.getVideoTracks()[0];
 		                const senders = peerConnection.getSenders();
 		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 		                
 		                if (videoSender) {
-		                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+		                    await videoSender.replaceTrack(videoTrack);
 		                } else {
-		                    peerConnection.addTrack(screenStream.getVideoTracks()[0], screenStream);
+		                    peerConnection.addTrack(videoTrack, screenStream);
 		                }
 		            }
 		            
-		            // Ekran paylaşımı bittiğinde otomatik kapat
+		            // Ekran paylaşımı bittiğinde otomatik durdur
 		            screenStream.getVideoTracks()[0].addEventListener('ended', () => {
 		                toggleScreenShare();
 		            });
 		            
-		            screenShareBtn.classList.add('active');
+		            screenShareBtn?.classList.add('active');
 		            isSharingScreen = true;
 		            
-		            showNotification("Ekran paylaşımı başlatıldı", "success", 1500);
+		            showNotification("Ekran paylaşımı başlatıldı", "success");
 		            
 		            // Sunucuya bildirim gönder
-		            if (socket && socket.readyState === WebSocket.OPEN) {
+		            if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
 		                socket.send(JSON.stringify({
 		                    type: 'screen-sharing-started',
 		                    adminId: adminUniqueId,
@@ -1761,12 +1757,17 @@
 		            }
 		            
 		        } catch (error) {
+		            if (error.name === 'NotAllowedError') {
+		                showNotification("Ekran paylaşımı izni reddedildi", "error");
+		            } else if (error.name === 'AbortError') {
+		                showNotification("Ekran paylaşımı iptal edildi", "info");
+		            } else {
+		                showNotification("Ekran paylaşımı başlatılamadı: " + error.message, "error");
+		            }
 		            console.error("Ekran paylaşımı hatası:", error);
-		            showNotification("Ekran paylaşımı başlatılamadı", "error");
 		        }
 		    }
 		}
-
         // Cihaz Yönetimi
 		async function loadAvailableDevices() {
 			try {
@@ -3321,6 +3322,7 @@
     </script>
 </body>
 </html>
+
 
 
 
