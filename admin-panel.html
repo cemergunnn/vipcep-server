@@ -1727,6 +1727,13 @@
 		            isSharingScreen = true;
 		            screenShareBtn?.classList.add('active');
 		            showNotification("Ekran paylaşımı başlatıldı", "success");
+					if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		                socket.send(JSON.stringify({
+		                    type: 'admin-screen-sharing-started',
+		                    adminId: adminUniqueId,
+		                    targetId: currentCall.userId
+		                }));
+		            }
 		            
 		        } catch (error) {
 		            console.error('HATA:', error);
@@ -2163,35 +2170,121 @@
         }
 
 		async function toggleScreenShare() {
-		    console.log('toggleScreenShare çağrıldı');
+		    console.log('1. toggleScreenShare çağrıldı');
+		    console.log('2. isSharingScreen:', isSharingScreen);
+		    console.log('3. peerConnection var mı:', !!peerConnection);
+		    console.log('4. currentCall var mı:', !!currentCall);
 		    
-		    // Basit browser desteği kontrolü
-		    if (!navigator.mediaDevices) {
-		        alert('navigator.mediaDevices yok');
-		        return;
-		    }
+		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
+		    const screenshareContainer = document.getElementById('screenshareContainer');
 		    
-		    if (!navigator.mediaDevices.getDisplayMedia) {
-		        alert('getDisplayMedia desteklenmiyor');
-		        return;
-		    }
-		    
-		    alert('API desteği var, ekran paylaşımı başlatılıyor...');
-		    
-		    try {
-		        const stream = await navigator.mediaDevices.getDisplayMedia({
-		            video: true
-		        });
+		    if (isSharingScreen) {
+		        console.log('5. Ekran paylaşımı durduruluyor');
 		        
-		        alert('Başarılı! Stream alındı');
-		        console.log('Stream:', stream);
+		        // Ekran paylaşımını durdur
+		        if (screenStream) {
+		            screenStream.getTracks().forEach(track => track.stop());
+		            screenStream = null;
+		        }
 		        
-		        // Stream'i durdur (test için)
-		        stream.getTracks().forEach(track => track.stop());
+		        isSharingScreen = false;
+		        screenShareBtn?.classList.remove('active');
+		        screenshareContainer?.classList.remove('active');
 		        
-		    } catch (error) {
-		        alert('Hata: ' + error.name + ' - ' + error.message);
-		        console.error('Detay:', error);
+		        // Müşteriye durdurma mesajı gönder
+		        if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		            socket.send(JSON.stringify({
+		                type: 'admin-screen-sharing-stopped',
+		                adminId: adminUniqueId,
+		                targetId: currentCall.userId
+		            }));
+		        }
+		        
+		        showNotification("Ekran paylaşımı durduruldu", "info");
+		        
+		        // Kameraya geri dön (eğer açıksa)
+		        if (peerConnection && localVideoStream && isCameraOn) {
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            if (videoSender) {
+		                videoSender.replaceTrack(localVideoStream.getVideoTracks()[0]);
+		            }
+		        }
+		        
+		    } else {
+		        try {
+		            console.log('6. Ekran paylaşımı başlatılıyor...');
+		            
+		            screenStream = await navigator.mediaDevices.getDisplayMedia({
+		                video: { displaySurface: "screen" },
+		                audio: false
+		            });
+		            
+		            console.log('7. Screen stream alındı');
+		            console.log('8. Stream active:', screenStream.active);
+		            console.log('9. Video tracks sayısı:', screenStream.getVideoTracks().length);
+		            
+		            if (screenStream.getVideoTracks().length === 0) {
+		                console.log('10. HATA: Video track yok!');
+		                return;
+		            }
+		            
+		            if (!peerConnection) {
+		                console.log('11. HATA: PeerConnection yok!');
+		                return;
+		            }
+		            
+		            console.log('12. PeerConnection var, track değiştiriliyor');
+		            const videoTrack = screenStream.getVideoTracks()[0];
+		            console.log('13. Video track state:', videoTrack.readyState);
+		            
+		            const senders = peerConnection.getSenders();
+		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+		            
+		            if (videoSender) {
+		                console.log('14. replaceTrack kullanılıyor');
+		                await videoSender.replaceTrack(videoTrack);
+		                console.log('15. replaceTrack tamamlandı');
+		            } else {
+		                console.log('16. addTrack kullanılıyor');
+		                peerConnection.addTrack(videoTrack, screenStream);
+		                console.log('17. addTrack tamamlandı');
+		            }
+		            
+		            // Track sonlandığında otomatik durdurma
+		            videoTrack.addEventListener('ended', () => {
+		                console.log('Ekran paylaşımı kullanıcı tarafından sonlandırıldı');
+		                if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		                    socket.send(JSON.stringify({
+		                        type: 'admin-screen-sharing-stopped',
+		                        adminId: adminUniqueId,
+		                        targetId: currentCall.userId
+		                    }));
+		                }
+		                
+		                isSharingScreen = false;
+		                screenShareBtn?.classList.remove('active');
+		                screenshareContainer?.classList.remove('active');
+		                showNotification("Ekran paylaşımı sonlandırıldı", "info");
+		            });
+		            
+		            isSharingScreen = true;
+		            screenShareBtn?.classList.add('active');
+		            showNotification("Ekran paylaşımı başlatıldı", "success");
+		            
+		            // Müşteriye başlatma mesajı gönder
+		            if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		                socket.send(JSON.stringify({
+		                    type: 'admin-screen-sharing-started',
+		                    adminId: adminUniqueId,
+		                    targetId: currentCall.userId
+		                }));
+		            }
+		            
+		        } catch (error) {
+		            console.error('HATA:', error);
+		            showNotification("Ekran paylaşımı hatası: " + error.message, "error");
+		        }
 		    }
 		}
 		function toggleChat() {
@@ -3329,6 +3422,7 @@
     </script>
 </body>
 </html>
+
 
 
 
