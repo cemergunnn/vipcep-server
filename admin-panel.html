@@ -1673,123 +1673,61 @@
 		    });
 		}
 		async function toggleScreenShare() {
-		    console.log('toggleScreenShare çağrıldı - Electron ortamında');
+		    console.log('toggleScreenShare çağrıldı');
 		    
 		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
-		    const screenshareContainer = document.getElementById('screenshareContainer');
 		    
 		    if (isSharingScreen) {
-		        console.log('Ekran paylaşımı durduruluyor');
-		        
+		        // Durdurma kodu aynı
 		        if (screenStream) {
 		            screenStream.getTracks().forEach(track => track.stop());
 		            screenStream = null;
 		        }
-		        
 		        isSharingScreen = false;
 		        screenShareBtn?.classList.remove('active');
-		        screenshareContainer?.classList.remove('active');
-		        
-		        if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
-		            socket.send(JSON.stringify({
-		                type: 'admin-screen-sharing-stopped',
-		                adminId: adminUniqueId,
-		                targetId: currentCall.userId
-		            }));
-		        }
-		        
 		        showNotification("Ekran paylaşımı durduruldu", "info");
 		        
 		    } else {
 		        try {
-		            console.log('Electron desktopCapturer kullanılıyor...');
-		            
-		            // Electron'un desktopCapturer API'sini kullan
+		            // Direkt require ile dene
 		            const { desktopCapturer } = require('electron');
 		            
-		            // Mevcut ekranları al
 		            const sources = await desktopCapturer.getSources({
-		                types: ['screen'],
-		                thumbnailSize: { width: 150, height: 150 }
+		                types: ['screen']
 		            });
 		            
 		            if (sources.length === 0) {
-		                throw new Error('Ekran kaynağı bulunamadı');
+		                throw new Error('Ekran bulunamadı');
 		            }
 		            
-		            console.log('Ekran kaynakları bulundu:', sources.length);
-		            
-		            // İlk ekranı seç (birden fazla ekran varsa ilkini al)
-		            const selectedSource = sources[0];
-		            
-		            // getUserMedia ile ekran stream'i oluştur
 		            screenStream = await navigator.mediaDevices.getUserMedia({
 		                audio: false,
 		                video: {
 		                    mandatory: {
 		                        chromeMediaSource: 'desktop',
-		                        chromeMediaSourceId: selectedSource.id,
-		                        minWidth: 1280,
-		                        maxWidth: 1920,
-		                        minHeight: 720,
-		                        maxHeight: 1080
+		                        chromeMediaSourceId: sources[0].id
 		                    }
 		                }
 		            });
 		            
-		            console.log('Ekran stream i alındı:', screenStream);
-		            
-		            if (screenStream.getVideoTracks().length === 0) {
-		                throw new Error('Video track bulunamadı');
-		            }
-		            
-		            if (!peerConnection) {
-		                throw new Error('PeerConnection bulunamadı');
-		            }
-		            
-		            const videoTrack = screenStream.getVideoTracks()[0];
-		            const senders = peerConnection.getSenders();
-		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-		            
-		            if (videoSender) {
-		                console.log('Video track değiştiriliyor...');
-		                await videoSender.replaceTrack(videoTrack);
-		            } else {
-		                console.log('Yeni video track ekleniyor...');
-		                peerConnection.addTrack(videoTrack, screenStream);
-		            }
-		            
-		            // Track sonlandığında temizleme
-		            videoTrack.addEventListener('ended', () => {
-		                console.log('Ekran paylaşımı sonlandırıldı');
-		                if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
-		                    socket.send(JSON.stringify({
-		                        type: 'admin-screen-sharing-stopped',
-		                        adminId: adminUniqueId,
-		                        targetId: currentCall.userId
-		                    }));
-		                }
+		            // PeerConnection kısmı aynı
+		            if (peerConnection) {
+		                const videoTrack = screenStream.getVideoTracks()[0];
+		                const senders = peerConnection.getSenders();
+		                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 		                
-		                isSharingScreen = false;
-		                screenShareBtn?.classList.remove('active');
-		                showNotification("Ekran paylaşımı sonlandırıldı", "info");
-		            });
+		                if (videoSender) {
+		                    await videoSender.replaceTrack(videoTrack);
+		                }
+		            }
 		            
 		            isSharingScreen = true;
 		            screenShareBtn?.classList.add('active');
-		            showNotification("Ekran paylaşımı başlatıldı", "success");
-		            
-		            if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
-		                socket.send(JSON.stringify({
-		                    type: 'admin-screen-sharing-started',
-		                    adminId: adminUniqueId,
-		                    targetId: currentCall.userId
-		                }));
-		            }
+		            showNotification("Ekran paylaşımı başladı", "success");
 		            
 		        } catch (error) {
-		            console.error('Ekran paylaşımı hatası:', error);
-		            showNotification("Ekran paylaşımı hatası: " + error.message, "error");
+		            console.error('Hata:', error);
+		            showNotification("Hata: " + error.message, "error");
 		        }
 		    }
 		}
@@ -3498,6 +3436,7 @@
     </script>
 </body>
 </html>
+
 
 
 
