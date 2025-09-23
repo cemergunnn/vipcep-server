@@ -2746,7 +2746,57 @@
             console.log('🔄 Call state sıfırlandı');
         }
 
-
+		// Test fonksiyonu - admin paneline ekle
+		async function testScreenCapture() {
+		    console.log('=== SCREEN CAPTURE TEST BAŞLADI ===');
+		    
+		    try {
+		        // 1. Require testi
+		        console.log('1. Require test...');
+		        const electron = require('electron');
+		        console.log('2. Electron yüklendi:', !!electron);
+		        
+		        // 2. desktopCapturer testi
+		        const { desktopCapturer } = electron;
+		        console.log('3. desktopCapturer var mı:', !!desktopCapturer);
+		        
+		        // 3. getSources testi
+		        console.log('4. getSources çağrılıyor...');
+		        const sources = await desktopCapturer.getSources({
+		            types: ['screen', 'window'],
+		            thumbnailSize: { width: 150, height: 150 }
+		        });
+		        console.log('5. Sources başarılı:', sources.length, sources);
+		        
+		        // 4. getUserMedia testi
+		        if (sources.length > 0) {
+		            console.log('6. getUserMedia test başlıyor...');
+		            const stream = await navigator.mediaDevices.getUserMedia({
+		                audio: false,
+		                video: {
+		                    mandatory: {
+		                        chromeMediaSource: 'desktop',
+		                        chromeMediaSourceId: sources[0].id,
+		                        minWidth: 640,
+		                        maxWidth: 1920,
+		                        minHeight: 480,
+		                        maxHeight: 1080
+		                    }
+		                }
+		            });
+		            console.log('7. getUserMedia BAŞARILI!', stream);
+		            stream.getTracks().forEach(track => track.stop());
+		            showNotification("Test başarılı! Ekran yakalama çalışıyor.", "success");
+		        }
+		        
+		    } catch (error) {
+		        console.error('TEST HATASI:', error);
+		        showNotification(`Test hatası: ${error.message}`, "error");
+		    }
+		}
+		
+		// Test butonunu HTML'e ekle (geçici)
+		// <button onclick="testScreenCapture()">Test Ekran Yakalama</button>
 		async function setupPeerConnection(callInfo, isInitiator) {
 		    if (peerConnection) {
 		        console.log('Mevcut PeerConnection temizleniyor...');
@@ -3474,6 +3524,7 @@
     </script>
 </body>
 </html>
+
 
 
 
