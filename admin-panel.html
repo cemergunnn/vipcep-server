@@ -1673,61 +1673,113 @@
 		    });
 		}
 		async function toggleScreenShare() {
-		    console.log('1. toggleScreenShare çağrıldı');
-		    console.log('2. isSharingScreen:', isSharingScreen);
-		    console.log('3. peerConnection var mı:', !!peerConnection);
-		    console.log('4. currentCall var mı:', !!currentCall);
+		    console.log('toggleScreenShare çağrıldı - Electron ortamında');
 		    
 		    const screenShareBtn = document.getElementById('toggleScreenShareBtn');
 		    const screenshareContainer = document.getElementById('screenshareContainer');
 		    
 		    if (isSharingScreen) {
-		        console.log('5. Ekran paylaşımı durduruluyor');
-		        // Durdurma kodu...
+		        console.log('Ekran paylaşımı durduruluyor');
+		        
+		        if (screenStream) {
+		            screenStream.getTracks().forEach(track => track.stop());
+		            screenStream = null;
+		        }
+		        
+		        isSharingScreen = false;
+		        screenShareBtn?.classList.remove('active');
+		        screenshareContainer?.classList.remove('active');
+		        
+		        if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		            socket.send(JSON.stringify({
+		                type: 'admin-screen-sharing-stopped',
+		                adminId: adminUniqueId,
+		                targetId: currentCall.userId
+		            }));
+		        }
+		        
+		        showNotification("Ekran paylaşımı durduruldu", "info");
+		        
 		    } else {
 		        try {
-		            console.log('6. Ekran paylaşımı başlatılıyor...');
+		            console.log('Electron desktopCapturer kullanılıyor...');
 		            
-		            screenStream = await navigator.mediaDevices.getDisplayMedia({
-		                video: { displaySurface: "screen" },
-		                audio: false
+		            // Electron'un desktopCapturer API'sini kullan
+		            const { desktopCapturer } = require('electron');
+		            
+		            // Mevcut ekranları al
+		            const sources = await desktopCapturer.getSources({
+		                types: ['screen'],
+		                thumbnailSize: { width: 150, height: 150 }
 		            });
 		            
-		            console.log('7. Screen stream alındı');
-		            console.log('8. Stream active:', screenStream.active);
-		            console.log('9. Video tracks sayısı:', screenStream.getVideoTracks().length);
+		            if (sources.length === 0) {
+		                throw new Error('Ekran kaynağı bulunamadı');
+		            }
+		            
+		            console.log('Ekran kaynakları bulundu:', sources.length);
+		            
+		            // İlk ekranı seç (birden fazla ekran varsa ilkini al)
+		            const selectedSource = sources[0];
+		            
+		            // getUserMedia ile ekran stream'i oluştur
+		            screenStream = await navigator.mediaDevices.getUserMedia({
+		                audio: false,
+		                video: {
+		                    mandatory: {
+		                        chromeMediaSource: 'desktop',
+		                        chromeMediaSourceId: selectedSource.id,
+		                        minWidth: 1280,
+		                        maxWidth: 1920,
+		                        minHeight: 720,
+		                        maxHeight: 1080
+		                    }
+		                }
+		            });
+		            
+		            console.log('Ekran stream'i alındı:', screenStream);
 		            
 		            if (screenStream.getVideoTracks().length === 0) {
-		                console.log('10. HATA: Video track yok!');
-		                return;
+		                throw new Error('Video track bulunamadı');
 		            }
 		            
 		            if (!peerConnection) {
-		                console.log('11. HATA: PeerConnection yok!');
-		                return;
+		                throw new Error('PeerConnection bulunamadı');
 		            }
 		            
-		            console.log('12. PeerConnection var, track değiştiriliyor');
 		            const videoTrack = screenStream.getVideoTracks()[0];
-		            console.log('13. Video track state:', videoTrack.readyState);
-		            
 		            const senders = peerConnection.getSenders();
 		            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 		            
 		            if (videoSender) {
-		                console.log('14. replaceTrack kullanılıyor');
+		                console.log('Video track değiştiriliyor...');
 		                await videoSender.replaceTrack(videoTrack);
-		                console.log('15. replaceTrack tamamlandı');
 		            } else {
-		                console.log('16. addTrack kullanılıyor');
+		                console.log('Yeni video track ekleniyor...');
 		                peerConnection.addTrack(videoTrack, screenStream);
-		                console.log('17. addTrack tamamlandı');
 		            }
+		            
+		            // Track sonlandığında temizleme
+		            videoTrack.addEventListener('ended', () => {
+		                console.log('Ekran paylaşımı sonlandırıldı');
+		                if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		                    socket.send(JSON.stringify({
+		                        type: 'admin-screen-sharing-stopped',
+		                        adminId: adminUniqueId,
+		                        targetId: currentCall.userId
+		                    }));
+		                }
+		                
+		                isSharingScreen = false;
+		                screenShareBtn?.classList.remove('active');
+		                showNotification("Ekran paylaşımı sonlandırıldı", "info");
+		            });
 		            
 		            isSharingScreen = true;
 		            screenShareBtn?.classList.add('active');
 		            showNotification("Ekran paylaşımı başlatıldı", "success");
-					if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
+		            
+		            if (socket && socket.readyState === WebSocket.OPEN && currentCall) {
 		                socket.send(JSON.stringify({
 		                    type: 'admin-screen-sharing-started',
 		                    adminId: adminUniqueId,
@@ -1736,7 +1788,7 @@
 		            }
 		            
 		        } catch (error) {
-		            console.error('HATA:', error);
+		            console.error('Ekran paylaşımı hatası:', error);
 		            showNotification("Ekran paylaşımı hatası: " + error.message, "error");
 		        }
 		    }
@@ -3422,6 +3474,7 @@
     </script>
 </body>
 </html>
+
 
 
 
