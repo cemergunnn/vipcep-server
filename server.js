@@ -34,7 +34,7 @@ const SECURITY_CONFIG = {
 
 // Pushover API bilgileri
 const PUSHOVER_CONFIG = {
-    USER_KEY: 'gn4d78s4dot8o6zbz6q47fbifwuu8a', 
+    GROUP_KEY: 'gn4d78s4dot8o6zbz6q47fbifwuu8a', 
     API_TOKEN: 'ak3awa4ya2qi8wke5ibqxudxed7v61'
 };
 
@@ -1813,4 +1813,5 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
