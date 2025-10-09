@@ -1333,31 +1333,37 @@ wss.on('connection', (ws, req) => {
             const senderId = senderInfo ? (senderInfo.uniqueId || senderInfo.id) : (message.userId || 'unknown');
             const senderType = senderInfo ? senderInfo.userType : 'unknown';
 
-            switch (message.type) {
-                case 'register':
-                    const { userId, name, userType } = message;
+            switch (message.type) {
+                case 'register':
+                    const { userId, name, userType } = message;
+                    
                     if (userType === 'customer') {
-                        // Yeni bir müşteri bağlandığında bildirim gönder
-                        const notificationTitle = '🚀 Yeni Müşteri Bağlandı!';
-                        const notificationMessage = `${name} (${userId}) sisteme giriş yaptı.`;
-                        sendPushoverNotification(notificationTitle, notificationMessage);
+                        // isUserApproved fonksiyonu müşteri verisini döner.
+                        const approval = await isUserApproved(userId, name);
+                        if (approval.approved) {
+                            // Bildirim mesajını kredi bilgisiyle birlikte oluşturun
+                            const notificationTitle = '🚀 Yeni Müşteri Bağlandı!';
+                            const notificationMessage = `${name} (${userId}) sisteme giriş yaptı. Kredisi: ${approval.credits}`;
+                            sendPushoverNotification(notificationTitle, notificationMessage);
+                        }
                     }
-                    if (userType === 'super-admin') {
-                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
-                        console.log(`👑 Super Admin connected: ${name}`);
-                        broadcastSystemStateToSuperAdmins();
-                        return;
-                    }
-                    if (userType === 'admin') {
-                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
-                        ws.send(JSON.stringify({ type: 'admin-registered', uniqueId: userId }));
-                        broadcastCallbacksToAdmin(userId);
-                    } else {
-                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
-                    }
-                    console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
-                    broadcastAdminListToCustomers();
-                    break;
+            
+                    if (userType === 'super-admin') {
+                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
+                        console.log(`👑 Super Admin connected: ${name}`);
+                        broadcastSystemStateToSuperAdmins();
+                        return;
+                    }
+                    if (userType === 'admin') {
+                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
+                        ws.send(JSON.stringify({ type: 'admin-registered', uniqueId: userId }));
+                        broadcastCallbacksToAdmin(userId);
+                    } else {
+                        clients.set(userId, { ws, id: userId, uniqueId: userId, name, userType, online: true });
+                    }
+                    console.log(`👤 Client registered: ${name} (${userId}) as ${userType}`);
+                    broadcastAdminListToCustomers();
+                    break;
 
                     case 'customer-accepted-call':
                         const { adminId, customerId } = message;
@@ -1813,6 +1819,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
