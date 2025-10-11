@@ -7,8 +7,7 @@ const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
 const pgSession = require('connect-pg-simple')(session);
-const axios = require('axios');
-
+const Push = require('pushover-notifications');
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -1510,23 +1509,32 @@ wss.on('connection', (ws, req) => {
                 case 'login-request':
                     const approval = await isUserApproved(message.userId, message.userName);
                     if (approval.approved) {
-                        try {
+                    // Müşteri başarıyla giriş yaptı, şimdi PushOver bildirimi gönder
+                    try {
                         const pushoverUserKey = 'u26unvsy7fntxaubde92p1dwgeg8qe';
                         const pushoverApiKey = 'ak3awa4ya2qi8wke5ibqxudxed7v61';
-                        
-                        // PushOver API'sine POST isteği gönder
-                        await axios.post('https://api.pushover.net/1/messages.json', {
-                            token: pushoverApiKey,
+            
+                        const p = new Push({
                             user: pushoverUserKey,
+                            token: pushoverApiKey,
+                        });
+            
+                        const msg = {
                             message: `${message.userName} uygulamaya giriş yaptı. Güncel kredi: ${approval.credits}`,
                             title: 'VIPCEP Giriş Bildirimi',
-                            sound: 'magic' // Bildirim sesi
+                            sound: 'magic', // Bildirim sesi
+                        };
+            
+                        p.send(msg, function(err, result) {
+                            if (err) {
+                                console.error('❌ PushOver bildirimi gönderilirken hata oluştu:', err.message);
+                            } else {
+                                console.log('✅ PushOver bildirimi başarıyla gönderildi:', result);
+                            }
                         });
-
-                        console.log('✅ PushOver bildirimi başarıyla gönderildi.');
-
+            
                     } catch (pushError) {
-                        console.error('❌ PushOver bildirimi gönderilirken hata oluştu:', pushError.response ? pushError.response.data : pushError.message);
+                        console.error('❌ PushOver bildirimi gönderilirken hata oluştu:', pushError.message);
                     }
                         ws.send(JSON.stringify({ type: 'login-response', success: true, credits: approval.credits }));
                     } else {
@@ -1791,6 +1799,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
