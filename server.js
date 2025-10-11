@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const session = require('express-session');
 const { Pool } = require('pg');
 const pgSession = require('connect-pg-simple')(session);
+const axios = require('axios');
 
 // Database connection
 const pool = new Pool({
@@ -1509,6 +1510,24 @@ wss.on('connection', (ws, req) => {
                 case 'login-request':
                     const approval = await isUserApproved(message.userId, message.userName);
                     if (approval.approved) {
+                        try {
+                        const pushoverUserKey = 'u26unvsy7fntxaubde92p1dwgeg8qe';
+                        const pushoverApiKey = 'ak3awa4ya2qi8wke5ibqxudxed7v61';
+                        
+                        // PushOver API'sine POST isteği gönder
+                        await axios.post('https://api.pushover.net/1/messages.json', {
+                            token: pushoverApiKey,
+                            user: pushoverUserKey,
+                            message: `${message.userName} uygulamaya giriş yaptı. Güncel kredi: ${approval.credits}`,
+                            title: 'VIPCEP Giriş Bildirimi',
+                            sound: 'magic' // Bildirim sesi
+                        });
+
+                        console.log('✅ PushOver bildirimi başarıyla gönderildi.');
+
+                    } catch (pushError) {
+                        console.error('❌ PushOver bildirimi gönderilirken hata oluştu:', pushError.response ? pushError.response.data : pushError.message);
+                    }
                         ws.send(JSON.stringify({ type: 'login-response', success: true, credits: approval.credits }));
                     } else {
                         ws.send(JSON.stringify({ type: 'login-response', success: false, reason: approval.reason }));
@@ -1772,6 +1791,7 @@ startServer().catch(error => {
     console.error('❌ Sunucu başlatma hatası:', error);
     process.exit(1);
 });
+
 
 
 
